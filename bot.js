@@ -2,9 +2,15 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const Database = require("better-sqlite3");
 
 // ---------------- CONFIGURATION ----------------
-const BOT_TOKEN = process.env.BOT_TOKEN || "YOUR_TELEGRAM_BOT_TOKEN_HERE"; 
-const ADMIN_ID = parseInt(process.env.ADMIN_ID || "123456789"); 
+// Render Environment Variables-ൽ നിന്ന് മാത്രം എടക്കുന്നു
+const BOT_TOKEN = process.env.BOT_TOKEN; 
+const ADMIN_ID = parseInt(process.env.ADMIN_ID); 
 // -----------------------------------------------
+
+if (!BOT_TOKEN) {
+    console.error("FATAL ERROR: BOT_TOKEN is missing in Environment Variables!");
+    process.exit(1);
+}
 
 const bot = new Bot(BOT_TOKEN);
 const db = new Database("bot_database.db");
@@ -226,11 +232,15 @@ bot.command("withdraw", async (ctx) => {
     await ctx.reply("✅ Withdrawal request submitted successfully! Admin will process it soon.");
 
     // Notify Admin
-    await ctx.api.sendMessage(
-        ADMIN_ID,
-        `🔔 **New Withdrawal Request!**\n\n👤 User ID: \`${userId}\`\n💳 UPI/Number: \`${user.upi_id}\`\n💰 Amount: ₹${amount}`,
-        { parse_mode: "Markdown" }
-    );
+    if (ADMIN_ID) {
+        try {
+            await ctx.api.sendMessage(
+                ADMIN_ID,
+                `🔔 **New Withdrawal Request!**\n\n👤 User ID: \`${userId}\`\n💳 UPI/Number: \`${user.upi_id}\`\n💰 Amount: ₹${amount}`,
+                { parse_mode: "Markdown" }
+            );
+        } catch (err) {}
+    }
 });
 
 // --- INLINE KEYBOARD ACTIONS (ADMIN PANEL) ---
