@@ -2,15 +2,9 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const Database = require("better-sqlite3");
 
 // ---------------- CONFIGURATION ----------------
-// Render Environment Variables-ൽ നിന്ന് മാത്രം എടക്കുന്നു
-const BOT_TOKEN = process.env.BOT_TOKEN; 
-const ADMIN_ID = parseInt(process.env.ADMIN_ID); 
+const BOT_TOKEN = process.env.BOT_TOKEN || "8883226932:AAGIszZzzfhLfl6EMJx-GtRhw4gc371FE_w"; 
+const ADMIN_ID = parseInt(process.env.ADMIN_ID || "8061612320"); 
 // -----------------------------------------------
-
-if (!BOT_TOKEN) {
-    console.error("FATAL ERROR: BOT_TOKEN is missing in Environment Variables!");
-    process.exit(1);
-}
 
 const bot = new Bot(BOT_TOKEN);
 const db = new Database("bot_database.db");
