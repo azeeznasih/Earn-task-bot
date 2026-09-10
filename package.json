@@ -1,0 +1,14 @@
+{
+  "name": "earn-task-bot",
+  "version": "1.0.0",
+  "description": "Task Payment Bot using Grammy.js",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^16.4.0",
+    "grammy": "^1.21.1"
+  }
+}
