@@ -89,12 +89,6 @@ async function initDatabase() {
                 value TEXT
             );
 
-            CREATE TABLE IF NOT EXISTS custom_buttons (
-                btn_key TEXT PRIMARY KEY,
-                label TEXT,
-                row_idx INT
-            );
-
             CREATE TABLE IF NOT EXISTS withdrawals (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT,
@@ -125,18 +119,6 @@ async function initDatabase() {
             await query(`INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, val]);
         }
 
-        const buttons = [
-            ["btn_tasks", "📋 Tasks", 1],
-            ["btn_balance", "🚀 My Balance", 1],
-            ["btn_gift", "🎁 Gift Code", 2],
-            ["btn_p2p", "💸 P2P Transfer", 2],
-            ["btn_withdraw", "🏧 Withdraw", 3],
-            ["btn_payment", "💳 Payout Method", 3]
-        ];
-
-        for (const [btn_key, label, row_idx] of buttons) {
-            await query(`INSERT INTO custom_buttons (btn_key, label, row_idx) VALUES ($1, $2, $3) ON CONFLICT (btn_key) DO NOTHING;`, [btn_key, label, row_idx]);
-        }
         console.log("PostgreSQL Database Initialized Successfully!");
     } catch (e) {
         console.error("Database connection initialization failed:", e.message);
@@ -200,36 +182,11 @@ function isValidIFSC(ifsc) { return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCa
 function isValidBankAcc(acc) { return /^\d{9,18}$/.test(acc); }
 
 // --- KEYBOARDS ---
-async function getDynamicMainKeyboard() {
-    try {
-        const res = await query("SELECT * FROM custom_buttons ORDER BY row_idx ASC, btn_key ASC");
-        const rows = {};
-
-        res.rows.forEach(b => {
-            if (!rows[b.row_idx]) rows[b.row_idx] = [];
-            rows[b.row_idx].push(b.label);
-        });
-
-        const kb = new Keyboard();
-        Object.keys(rows).sort((a,b) => Number(a) - Number(b)).forEach(r => {
-            rows[r].forEach(lbl => kb.text(lbl));
-            kb.row();
-        });
-
-        return kb.resized();
-    } catch (e) {
-        return new Keyboard()
-            .text("📋 Tasks").text("🚀 My Balance").row()
-            .text("🎁 Gift Code").text("💸 P2P Transfer").row()
-            .text("🏧 Withdraw").text("💳 Payout Method").resized();
-    }
-}
-
-async function getButtonLabel(key) {
-    try {
-        const res = await query("SELECT label FROM custom_buttons WHERE btn_key = $1", [key]);
-        return res.rows[0] ? res.rows[0].label : "";
-    } catch(e) { return ""; }
+function getMainKeyboard() {
+    return new Keyboard()
+        .text("📋 Tasks").text("🚀 My Balance").row()
+        .text("🎁 Gift Code").text("💸 P2P Transfer").row()
+        .text("🏧 Withdraw").text("💳 Payout Method").resized();
 }
 
 async function getAdminPanelInline() {
@@ -280,21 +237,10 @@ bot.command("start", async (ctx) => {
     const username = ctx.from.username || "N/A";
     await getUser(userId, username);
 
-    const sharePhoneKb = new Keyboard().requestContact("📱 Share Phone Number to Register").resized();
-
-    await ctx.reply(`👋 **Welcome to Earn Task Bot!**\n\n🆔 **User ID:** \`${userId}\`\n👤 **Username:** @${username}\n\nPlease click below to complete profile integration or continue to main menu.`, {
+    await ctx.reply(`👋 **Welcome to Earn Task Bot!**\n\n🆔 **User ID:** \`${userId}\`\n👤 **Username:** @${username}\n\nChoose an option from below:`, {
         parse_mode: "Markdown",
-        reply_markup: sharePhoneKb
+        reply_markup: getMainKeyboard()
     });
-
-    await ctx.reply("Main Menu:", { reply_markup: await getDynamicMainKeyboard() });
-});
-
-bot.on("message:contact", async (ctx) => {
-    const userId = ctx.from.id;
-    const phone = ctx.message.contact.phone_number;
-    await getUser(userId, ctx.from.username || "", phone);
-    await ctx.reply(`✅ **Phone number updated successfully:** \`${phone}\``, { parse_mode: "Markdown", reply_markup: await getDynamicMainKeyboard() });
 });
 
 bot.command("admin", async (ctx) => {
@@ -316,7 +262,7 @@ bot.command("pay", async (ctx) => {
     const upiUri = `upi://pay?pa=${encodeURIComponent(merchantUpi)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR`;
 
     const payKb = new InlineKeyboard().url("📲 Pay Now via UPI App", upiUri);
-    await ctx.reply(`💳 **Auto UPI Gateway Payment**\n\n💵 **Amount:** ₹${amount}\n📌 **Payee:** \`${merchantUpi}\`\n\nClick below to open your UPI app and complete instant automatic payment.`, {
+    await ctx.reply(`💳 **Auto UPI Gateway Payment**\n\n💵 **Amount:** ₹${amount}\n📌 **Payee:** \`${merchantUpi}\`\n\nClick below to open your UPI app and complete payment.`, {
         parse_mode: "Markdown",
         reply_markup: payKb
     });
@@ -587,19 +533,24 @@ bot.on("message", async (ctx) => {
     }
 
     // MAIN BUTTON HANDLERS
-    const lblBal = await getButtonLabel("btn_balance") || "🚀 My Balance";
-    const lblPayment = await getButtonLabel("btn_payment") || "💳 Payout Method";
-    const lblWithdraw = await getButtonLabel("btn_withdraw") || "🏧 Withdraw";
-
-    if (text === lblBal) {
+    if (text === "🚀 My Balance") {
         const balMsg = `💳 Wallet Overview 💳\n\n🌐 Wallet ID → ${userId}\n💵 Balance → ₹${parseFloat(user.balance || 0).toFixed(2)}`;
         await ctx.reply(balMsg, { reply_markup: await getBalanceOverviewKeyboard() });
     } 
-    else if (text === lblPayment) {
+    else if (text === "💳 Payout Method") {
         await ctx.reply(`Choose Payment Method Below 👇`, { reply_markup: getPayoutMethodsInline() });
     }
-    else if (text === lblWithdraw) {
+    else if (text === "🏧 Withdraw") {
         await ctx.reply(`🏧 **Select Withdrawal Method:**`, { parse_mode: "Markdown", reply_markup: getWithdrawInline() });
+    }
+    else if (text === "📋 Tasks") {
+        await ctx.reply("📋 **Tasks List:**\n\nNo tasks available currently.", { parse_mode: "Markdown" });
+    }
+    else if (text === "🎁 Gift Code") {
+        await ctx.reply("🎁 **Gift Code:**\n\nPlease enter your gift code to redeem.", { parse_mode: "Markdown" });
+    }
+    else if (text === "💸 P2P Transfer") {
+        await ctx.reply("💸 **P2P Transfer:**\n\nFeature coming soon!", { parse_mode: "Markdown" });
     }
 });
 
