@@ -1,4 +1,4 @@
-const { Bot, InlineKeyboard } = require("grammy");
+const { Bot, InlineKeyboard, Keyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
 
@@ -66,8 +66,8 @@ async function getBotFund() {
   return fundConfig ? fundConfig.value : 1000;
 }
 
-// Inline keyboard layout builder
-function getMainMenuKeyboard() {
+// 1. Inline Keyboard (מലഞ്ചോടൊപ്പം വരുന്ന ബട്ടണുകൾ)
+function getInlineMenuKeyboard() {
   return new InlineKeyboard()
     .text("💰 My Balance", "btn_balance")
     .text("🔄 Refresh", "btn_refresh")
@@ -79,19 +79,33 @@ function getMainMenuKeyboard() {
     .text("🏦 Withdraw", "btn_withdraw");
 }
 
-// --- Bot Commands & Callbacks ---
+// 2. Persistent Reply Keyboard (താഴെ കാണുന്ന 6 ബട്ടണുകൾ)
+function getReplyKeyboard() {
+  return new Keyboard()
+    .text("📋 Tasks").text("💰 My Balance").row()
+    .text("🎁 Gift Code").text("💸 P2P Transfer").row()
+    .text("🏦 Withdraw").text("💳 Payout Method")
+    .resized();
+}
+
+// --- Bot Commands & Handlers ---
 
 // /start Command
 bot.command("start", async (ctx) => {
   await getUser(ctx.from.id);
   const welcomeText = `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the options below:`;
+  
   await ctx.reply(welcomeText, {
     parse_mode: "Markdown",
-    reply_markup: getMainMenuKeyboard()
+    reply_markup: getReplyKeyboard() // താഴെയുള്ള 6 ബട്ടണുകൾ വരാൻ
+  });
+
+  await ctx.reply("👇 Main Menu Options:", {
+    reply_markup: getInlineMenuKeyboard() // മെസ്സേജിനുള്ളിലെ ഇൻലൈൻ ബട്ടണുകൾ
   });
 });
 
-// Balance & Refresh In-Place Update
+// Balance & Refresh In-Place Update function
 async function renderBalance(ctx, isEdit = false) {
   const user = await getUser(ctx.from.id);
   const botFund = await getBotFund();
@@ -110,14 +124,13 @@ async function renderBalance(ctx, isEdit = false) {
   if (isEdit) {
     try {
       await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: keyboard });
-    } catch (e) {
-      // Ignore if message is not modified
-    }
+    } catch (e) {}
   } else {
     await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
   }
 }
 
+// Inline Callback Queries
 bot.callbackQuery("btn_balance", async (ctx) => {
   await ctx.answerCallbackQuery();
   await renderBalance(ctx, true);
@@ -132,11 +145,10 @@ bot.callbackQuery("btn_main_menu", async (ctx) => {
   await ctx.answerCallbackQuery();
   await ctx.editMessageText("👋 Returned to Main Menu!", {
     parse_mode: "Markdown",
-    reply_markup: getMainMenuKeyboard()
+    reply_markup: getInlineMenuKeyboard()
   });
 });
 
-// Payout Setup UI
 bot.callbackQuery("btn_payout_setup", async (ctx) => {
   await ctx.answerCallbackQuery();
   const user = await getUser(ctx.from.id);
@@ -144,78 +156,108 @@ bot.callbackQuery("btn_payout_setup", async (ctx) => {
   const text = `⚙️ *Payout Method Setup*\n\n` +
                `📍 **Current UPI:** ${user.payoutUPI || "Not Set"}\n` +
                `🏦 **Current Bank Details:** ${user.payoutBank || "Not Set"}\n\n` +
-               `To make changes, send the command below:\n` +
-               `👉 \`/setupi <Your_UPI_ID>\``;
+               `To update, send command:\n👉 \`/setupi <Your_UPI_ID>\``;
 
   const keyboard = new InlineKeyboard().text("🔙 Back to Main Menu", "btn_main_menu");
   await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: keyboard });
 });
 
+bot.callbackQuery("btn_p2p", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.reply("💸 To transfer balance, use format:\n`/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
+});
+
+bot.callbackQuery("btn_gift", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.reply("🎁 To claim gift code, use format:\n`/claim <GIFT_CODE>`", { parse_mode: "Markdown" });
+});
+
+bot.callbackQuery("btn_withdraw", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.reply("🏦 Withdraw feature is coming soon!");
+});
+
+// Reply Keyboard Text Handlers (താഴെയുള്ള ബട്ടണുകൾ അമർത്തുമ്പോൾ പ്രവർത്തിക്കുന്നത്)
+bot.hears("💰 My Balance", async (ctx) => {
+  await renderBalance(ctx, false);
+});
+
+bot.hears("📋 Tasks", async (ctx) => {
+  await ctx.reply("📋 Available tasks will appear here soon!");
+});
+
+bot.hears("🎁 Gift Code", async (ctx) => {
+  await ctx.reply("🎁 Send your gift code using: `/claim <code>`", { parse_mode: "Markdown" });
+});
+
+bot.hears("💸 P2P Transfer", async (ctx) => {
+  await ctx.reply("💸 To transfer funds, use: `/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
+});
+
+bot.hears("🏦 Withdraw", async (ctx) => {
+  await ctx.reply("🏦 Withdraw requests are processed via your saved Payout Method.");
+});
+
+bot.hears("💳 Payout Method", async (ctx) => {
+  const user = await getUser(ctx.from.id);
+  await ctx.reply(`💳 *Your Payout Details*\n\n📍 UPI: ${user.payoutUPI || "Not Set"}\n\nTo update, use: \`/setupi <UPI_ID>\``, { parse_mode: "Markdown" });
+});
+
+// Bot Commands
 bot.command("setupi", async (ctx) => {
   const upi = ctx.match.trim();
-  if (!upi) return ctx.reply("❌ Please provide your UPI ID. Example: `/setupi myname@upi`", { parse_mode: "Markdown" });
+  if (!upi) return ctx.reply("❌ Please provide UPI ID: `/setupi myname@upi`", { parse_mode: "Markdown" });
   
   await User.findOneAndUpdate({ userId: ctx.from.id }, { payoutUPI: upi });
-  await ctx.reply(`✅ Your UPI ID has been saved successfully: \`${upi}\``, { parse_mode: "Markdown" });
+  await ctx.reply(`✅ UPI ID saved successfully: \`${upi}\``, { parse_mode: "Markdown" });
 });
 
 bot.command("transfer", async (ctx) => {
   const args = ctx.match.split(" ");
-  if (args.length < 2) {
-    return ctx.reply("❌ Use correct format: `/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
-  }
+  if (args.length < 2) return ctx.reply("❌ Format: `/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
 
   const targetId = parseInt(args[0], 10);
   const amount = parseFloat(args[1]);
 
-  if (isNaN(targetId) || isNaN(amount) || amount <= 0) {
-    return ctx.reply("❌ Invalid User ID or Amount!");
-  }
+  if (isNaN(targetId) || isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid ID or Amount!");
 
   const sender = await getUser(ctx.from.id);
-  if (sender.balance < amount) {
-    return ctx.reply("❌ You do not have enough balance in your account!");
-  }
+  if (sender.balance < amount) return ctx.reply("❌ Insufficient balance!");
 
   const recipient = await User.findOne({ userId: targetId });
-  if (!recipient) {
-    return ctx.reply("❌ Recipient not found! Check the User ID.");
-  }
+  if (!recipient) return ctx.reply("❌ Recipient not found!");
 
   sender.balance -= amount;
   recipient.balance += amount;
   await sender.save();
   await recipient.save();
 
-  await ctx.reply(`✅ ₹${amount} successfully transferred to User ID \`${targetId}\`!`, { parse_mode: "Markdown" });
+  await ctx.reply(`✅ ₹${amount} transferred successfully!`);
 });
 
 bot.command("claim", async (ctx) => {
   const codeInput = ctx.match.trim();
-  if (!codeInput) return ctx.reply("❌ Please provide a gift code. Example: `/claim GIFT100`", { parse_mode: "Markdown" });
+  if (!codeInput) return ctx.reply("❌ Provide gift code: `/claim GIFT100`", { parse_mode: "Markdown" });
 
   const gift = await GiftCode.findOne({ code: codeInput });
-  if (!gift) return ctx.reply("❌ The provided Gift Code does not exist!");
-  if (gift.isClaimed) return ctx.reply("❌ This Gift Code has already been claimed!");
+  if (!gift) return ctx.reply("❌ Invalid Gift Code!");
+  if (gift.isClaimed) return ctx.reply("❌ Gift Code already claimed!");
 
   gift.isClaimed = true;
   gift.claimedBy = ctx.from.id;
   await gift.save();
 
   await User.findOneAndUpdate({ userId: ctx.from.id }, { $inc: { balance: gift.amount } });
-  await ctx.reply(`🎉 Congratulations! ₹${gift.amount} has been added to your balance via Gift Code!`);
+  await ctx.reply(`🎉 ₹${gift.amount} added to your balance!`);
 });
 
 bot.command("addbalance", async (ctx) => {
   if (ctx.from.id !== ADMIN_ID) return;
-
   const args = ctx.match.split(" ");
   const targetId = parseInt(args[0], 10);
   const amount = parseFloat(args[1]);
 
-  if (isNaN(targetId) || isNaN(amount)) {
-    return ctx.reply("Admin Format: `/addbalance <User_ID> <Amount>`", { parse_mode: "Markdown" });
-  }
+  if (isNaN(targetId) || isNaN(amount)) return ctx.reply("Admin: `/addbalance <User_ID> <Amount>`");
 
   const updatedUser = await User.findOneAndUpdate(
     { userId: targetId },
@@ -223,7 +265,7 @@ bot.command("addbalance", async (ctx) => {
     { new: true, upsert: true }
   );
 
-  await ctx.reply(`✅ User \`${targetId}\` balance updated to ₹${updatedUser.balance.toFixed(2)}.`, { parse_mode: "Markdown" });
+  await ctx.reply(`✅ User \`${targetId}\` balance updated to ₹${updatedUser.balance.toFixed(2)}`);
 });
 
 // --- Database Connect & Bot Start ---
