@@ -2,7 +2,7 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const { Pool } = require("pg");
 const http = require("http");
 
-// --- RENDER PORT & SELF-PING SERVER (For 24/7 Uptime) ---
+// --- RENDER PORT & SELF-PING SERVER ---
 const PORT = process.env.PORT || 3000;
 const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
@@ -42,8 +42,10 @@ async function initDatabase() {
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
                 username TEXT,
-                phone_number TEXT,
                 balance NUMERIC DEFAULT 0.0,
+                task_earnings NUMERIC DEFAULT 0.0,
+                referral_earnings NUMERIC DEFAULT 0.0,
+                total_withdrawals NUMERIC DEFAULT 0.0,
                 upi_id TEXT,
                 mobile_no TEXT,
                 bank_acc TEXT,
@@ -87,14 +89,13 @@ async function initDatabase() {
         `);
 
         const defaultSettings = [
-            ["welcome_bonus_enabled", "OFF"],
-            ["welcome_bonus_amount", "10"],
+            ["start_message", "Welcome to Payment Task Bot!"],
+            ["cancel_button_text", "❌ Cancel"],
             ["support_username", "https://t.me/telegram"],
             ["payout_channel", ""],
+            ["gateway_name", "VSP"],
+            ["gateway_url", ""],
             ["custom_live_fund", "10000"],
-            ["merchant_upi_id", "merchant@upi"],
-            ["merchant_name", "EarnBot"],
-            ["admin_withdraw_panel_toggle", "ON"],
             ["min_wd_upi", "50"], ["max_wd_upi", "5000"],
             ["min_wd_bank", "100"], ["max_wd_bank", "10000"],
             ["min_wd_wallet", "30"], ["max_wd_wallet", "2000"],
@@ -107,7 +108,7 @@ async function initDatabase() {
         }
 
         const buttons = [
-            ["btn_tasks", "📋 Tasks", 1],
+            ["btn_tasks", "📋 Daily Tasks", 1],
             ["btn_balance", "🚀 My Balance", 1],
             ["btn_gift", "🎁 Gift Code", 2],
             ["btn_p2p", "💸 P2P Transfer", 2],
@@ -135,24 +136,11 @@ async function setSetting(key, value) {
     await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2", [key, value]);
 }
 
-async function getUser(userId, username = "", phone = "") {
+async function getUser(userId, username = "") {
     let res = await pool.query("SELECT * FROM users WHERE user_id = $1", [userId]);
     if (res.rows.length === 0) {
-        const bonusEnabled = await getSetting("welcome_bonus_enabled");
-        let initialBal = 0.0;
-        if (bonusEnabled === "ON") {
-            initialBal = parseFloat(await getSetting("welcome_bonus_amount") || "0");
-        }
-        await pool.query(
-            "INSERT INTO users (user_id, username, phone_number, balance) VALUES ($1, $2, $3, $4)",
-            [userId, username, phone, initialBal]
-        );
+        await pool.query("INSERT INTO users (user_id, username, balance) VALUES ($1, $2, 0.0)", [userId, username]);
         res = await pool.query("SELECT * FROM users WHERE user_id = $1", [userId]);
-    } else if (username || phone) {
-        await pool.query(
-            "UPDATE users SET username = COALESCE(NULLIF($2, ''), username), phone_number = COALESCE(NULLIF($3, ''), phone_number) WHERE user_id = $1",
-            [userId, username, phone]
-        );
     }
     return res.rows[0];
 }
@@ -161,9 +149,11 @@ async function updateBalance(userId, amount) {
     await pool.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [amount, userId]);
 }
 
-function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function isValidIFSC(ifsc) { return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCase()); }
-function isValidBankAcc(acc) { return /^\d{9,18}$/.test(acc); }
+async function updateLiveFund(deductAmount) {
+    const currentFund = parseFloat(await getSetting("custom_live_fund") || "10000");
+    const updated = Math.max(0, currentFund - deductAmount);
+    await setSetting("custom_live_fund", updated.toString());
+}
 
 // --- KEYBOARDS & UI BUILDERS ---
 async function getDynamicMainKeyboard() {
@@ -189,6 +179,7 @@ async function getButtonLabel(key) {
     return res.rows[0] ? res.rows[0].label : "";
 }
 
+// MATCHING IMAGE UI EXACTLY
 async function getBalanceOverviewKeyboard() {
     const supportLink = await getSetting("support_username") || "https://t.me/telegram";
     return new InlineKeyboard()
@@ -197,121 +188,174 @@ async function getBalanceOverviewKeyboard() {
         .url("📣 Contact Support", supportLink);
 }
 
-function getPayoutMethodsInline() {
+async function getPayoutMethodsInline() {
+    const gwName = await getSetting("gateway_name") || "Gateway";
     return new InlineKeyboard()
-        .text("🔗 Set Wallet", "set_wallet_action").row()
+        .text(`🔗 Link ${gwName} Wallet`, "set_wallet_action").row()
         .text("💵 Set UPI Address", "set_upi_action").row()
         .text("🏦 Set Bank Account", "set_bank_action").row()
         .text("🎁 Redeem Code Email", "set_redeem_action").row()
         .text("🛒 Amazon Gift Card", "set_amazon_action");
 }
 
-function getWithdrawInline() {
+async function getWithdrawInline() {
+    const gwName = await getSetting("gateway_name") || "Gateway";
     return new InlineKeyboard()
-        .text("🌐 Ultra-Pay Wallet", "wd_wallet").text("💵 UPI Address", "wd_upi").row()
-        .text("👤 VSV Wallet", "wd_wallet").row()
+        .text(`🌐 ${gwName} Auto Wallet`, "wd_wallet").text("💵 UPI Address", "wd_upi").row()
         .text("🏦 Bank Transfer", "wd_bank").text("🎁 Redeem Code", "wd_redeem").row()
         .text("🛒 Amazon Gift Card", "wd_amazon");
+}
+
+function getAdminKeyboard() {
+    return new InlineKeyboard()
+        .text("➕ / ➖ Add/Subtract Balance", "adm_change_balance").row()
+        .text("⚙️ Gateway Setup (Name & URI)", "adm_setup_gateway").row()
+        .text("📢 Set Payout Channel", "adm_set_payout_channel").row()
+        .text("🏧 Min & Max Withdraw Limits", "adm_withdraw_limits").row()
+        .text("✏️ Edit Start Message", "adm_edit_start_msg");
 }
 
 async function getAdminWithdrawSettingsKeyboard() {
     const minUpi = await getSetting("min_wd_upi"); const maxUpi = await getSetting("max_wd_upi");
     const minBank = await getSetting("min_wd_bank"); const maxBank = await getSetting("max_wd_bank");
     const minWallet = await getSetting("min_wd_wallet"); const maxWallet = await getSetting("max_wd_wallet");
-    const minAmazon = await getSetting("min_wd_amazon"); const maxAmazon = await getSetting("max_wd_amazon");
-    const minRedeem = await getSetting("min_wd_redeem"); const maxRedeem = await getSetting("max_wd_redeem");
 
     return new InlineKeyboard()
         .text(`💵 UPI Limit (${minUpi}-${maxUpi})`, "adm_set_limit_upi").row()
         .text(`🏦 Bank Limit (${minBank}-${maxBank})`, "adm_set_limit_bank").row()
-        .text(`🌐 Wallet Limit (${minWallet}-${maxWallet})`, "adm_set_limit_wallet").row()
-        .text(`🛒 Amazon Limit (${minAmazon}-${maxAmazon})`, "adm_set_limit_amazon").row()
-        .text(`🎁 Redeem Limit (${minRedeem}-${maxRedeem})`, "adm_set_limit_redeem");
+        .text(`🌐 Gateway Wallet Limit (${minWallet}-${maxWallet})`, "adm_set_limit_wallet").row();
 }
 
 // --- COMMAND HANDLERS ---
 bot.command("start", async (ctx) => {
     const userId = ctx.from.id;
-    const username = ctx.from.username || "N/A";
-    await getUser(userId, username);
+    await getUser(userId, ctx.from.username || "N/A");
 
-    const sharePhoneKb = new Keyboard().requestContact("📱 Share Phone Number to Register").resized();
-
-    await ctx.reply(`👋 **Welcome to Earn Task Bot!**\n\n🆔 **User ID:** \`${userId}\`\n👤 **Username:** @${username}\n\nPlease click below to complete profile integration or continue to main menu.`, {
-        parse_mode: "Markdown",
-        reply_markup: sharePhoneKb
-    });
-
-    await ctx.reply("Main Menu:", { reply_markup: await getDynamicMainKeyboard() });
+    const startMsg = await getSetting("start_message") || "Welcome to Payment Task Bot!";
+    await ctx.reply(startMsg, { reply_markup: await getDynamicMainKeyboard() });
 });
 
 bot.command("admin", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.reply("⚡ **Admin Panel - Withdraw Limits Control** ⚡\n\n താഴെ കാണുന്ന ബട്ടണുകളിൽ ക്ലിക്ക് ചെയ്ത് Min, Max അപ്ഡേറ്റ് ചെയ്യാം:", {
+    await ctx.reply("⚡ **Admin Dashboard Control** ⚡", {
         parse_mode: "Markdown",
-        reply_markup: await getAdminWithdrawSettingsKeyboard()
+        reply_markup: getAdminKeyboard()
     });
 });
 
-bot.on("message:contact", async (ctx) => {
-    const userId = ctx.from.id;
-    const phone = ctx.message.contact.phone_number;
-    await getUser(userId, ctx.from.username || "", phone);
-    await ctx.reply(`✅ **Phone number updated successfully:** \`${phone}\``, { parse_mode: "Markdown", reply_markup: await getDynamicMainKeyboard() });
+// --- ADMIN INLINE ACTIONS ---
+bot.callbackQuery("adm_change_balance", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    adminState[ctx.from.id] = "awaiting_balance_change";
+    await ctx.reply("💰 **ആഡ്/കുറയ്‌ക്കേണ്ട യൂസർ ഐഡിയും തുകയും നൽകുക:**\n\n*Format:* `User_ID,Amount`\n*Example:* `8061612320,100` (Add)\n*Example:* `8061612320,-50` (Deduct)", { parse_mode: "Markdown" });
+    await ctx.answerCallbackQuery();
 });
 
-// --- ADMIN LIMIT SETTING ACTIONS ---
+bot.callbackQuery("adm_setup_gateway", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    adminState[ctx.from.id] = "awaiting_gateway_name";
+    await ctx.reply("🌐 **Gateway Name എൻ്റർ ചെയ്യുക (e.g. VSP):**");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("adm_set_payout_channel", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    adminState[ctx.from.id] = "awaiting_payout_channel";
+    await ctx.reply("📢 **Payout Channel Username നൽകുക (e.g. @MyChannel):**");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("adm_withdraw_limits", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    await ctx.reply("🏧 **Withdraw Limits:**", { reply_markup: await getAdminWithdrawSettingsKeyboard() });
+    await ctx.answerCallbackQuery();
+});
+
 bot.callbackQuery(/^adm_set_limit_(.+)$/, async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.answerCallbackQuery({ text: "Unauthorized!" });
+    if (ctx.from.id !== ADMIN_ID) return;
     const method = ctx.match[1];
     adminState[ctx.from.id] = `awaiting_min_max_${method}`;
-
-    const minVal = await getSetting(`min_wd_${method}`);
-    const maxVal = await getSetting(`max_wd_${method}`);
-
-    await ctx.reply(
-        `⚙️ **Set Min & Max Withdraw Limits for ${method.toUpperCase()}**\n\n` +
-        `Current Minimum: ₹${minVal}\n` +
-        `Current Maximum: ₹${maxVal}\n\n` +
-        `👉 **പുതിയ Min, Max എൻ്റർ ചെയ്യുക (Format: Min,Max):**\n` +
-        `*Example:* \`50,5000\``, 
-        { parse_mode: "Markdown" }
-    );
+    await ctx.reply(`⚙️ **${method.toUpperCase()} Limits Update (Format: Min,Max):**`);
     await ctx.answerCallbackQuery();
 });
 
-// --- CALLBACK QUERIES (IN-PLACE REFRESH / SAME MESSAGE UPDATE) ---
-bot.callbackQuery("view_statement", async (ctx) => {
-    const userId = ctx.from.id;
-    const user = await getUser(userId);
-    
-    const statementMsg = 
-        `📒 **Balance Statement** 📒\n\n` +
-        `🌐 **User ID:** \`${userId}\`\n` +
-        `👤 **Username:** @${user.username || 'N/A'}\n` +
-        `📱 **Phone:** \`${user.phone_number || 'Not Linked'}\`\n` +
-        `💵 **Current Balance:** ₹${parseFloat(user.balance).toFixed(2)}\n` +
-        `📊 **Account Status:** Active ✅`;
+// --- WITHDRAWAL APPROVAL & LIVE DEDUCTION ---
+bot.callbackQuery(/^wd_app_(.+)_(\d+)$/, async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const action = ctx.match[1];
+    const wdId = ctx.match[2];
 
-    const backInline = new InlineKeyboard().text("🔙 Back", "view_wallet_overview");
-    try { await ctx.editMessageText(statementMsg, { parse_mode: "Markdown", reply_markup: backInline }); } catch (e) {}
+    const wdRes = await pool.query("SELECT * FROM withdrawals WHERE id = $1 AND status = 'PENDING'", [wdId]);
+    if (wdRes.rows.length === 0) return ctx.answerCallbackQuery({ text: "Already processed!" });
+
+    const wd = wdRes.rows[0];
+
+    if (action === "yes") {
+        await pool.query("UPDATE withdrawals SET status = 'APPROVED' WHERE id = $1", [wdId]);
+        await pool.query("UPDATE users SET total_withdrawals = total_withdrawals + $1 WHERE user_id = $2", [wd.amount, wd.user_id]);
+        
+        // Deduct Live Bot Fund dynamically
+        await updateLiveFund(parseFloat(wd.amount));
+
+        try {
+            await ctx.api.sendMessage(wd.user_id, `🎉 **Withdrawal Approved!**\n\n💵 Amount: ₹${wd.amount}\n💳 Method: ${wd.method.toUpperCase()}\n✅ Payment transferred! Check your account.`, { parse_mode: "Markdown" });
+        } catch (e) {}
+
+        const payoutChan = await getSetting("payout_channel");
+        if (payoutChan) {
+            try {
+                await ctx.api.sendMessage(payoutChan, `✅ **PAYOUT SUCCESSFUL** ✅\n\n👤 User ID: \`${wd.user_id}\`\n💰 Amount: ₹${wd.amount}\n💳 Method: ${wd.method.toUpperCase()}\n⚡ Status: Processed Automatically`, { parse_mode: "Markdown" });
+            } catch (e) {}
+        }
+
+        await ctx.editMessageText(`✅ **Withdrawal #${wdId} Approved & Fund Updated!**`);
+    } else {
+        await pool.query("UPDATE withdrawals SET status = 'REJECTED' WHERE id = $1", [wdId]);
+        await updateBalance(wd.user_id, parseFloat(wd.amount)); // Refund
+
+        try {
+            await ctx.api.sendMessage(wd.user_id, `❌ **Withdrawal Rejected & Refunded!**\n\n₹${wd.amount} returned to your balance.`);
+        } catch (e) {}
+
+        await ctx.editMessageText(`❌ **Withdrawal #${wdId} Rejected and Refunded.**`);
+    }
     await ctx.answerCallbackQuery();
+});
+
+// --- IN-PLACE SAME MESSAGE UPDATES ---
+bot.callbackQuery(["view_statement", "refresh_statement"], async (ctx) => {
+    const user = await getUser(ctx.from.id);
+    const msg = 
+        `📒 **Balance Statement** 📒\n\n` +
+        `🌐 **User ID:** \`${ctx.from.id}\`\n` +
+        `👤 **Username:** @${user.username || 'N/A'}\n\n` +
+        `💵 **Total Available Balance:** ₹${parseFloat(user.balance).toFixed(2)}\n` +
+        `📋 **Task Earnings:** ₹${parseFloat(user.task_earnings || 0).toFixed(2)}\n` +
+        `👥 **Referral Earnings:** ₹${parseFloat(user.referral_earnings || 0).toFixed(2)}\n` +
+        `🏧 **Total Withdrawals:** ₹${parseFloat(user.total_withdrawals || 0).toFixed(2)}\n\n` +
+        `Last updated just now. Click **Refresh** to check new additions.`;
+
+    const navKb = new InlineKeyboard()
+        .text("🔄 Refresh", "refresh_statement").row()
+        .text("🔙 Back", "view_wallet_overview");
+
+    try { await ctx.editMessageText(msg, { parse_mode: "Markdown", reply_markup: navKb }); } catch (e) {}
+    await ctx.answerCallbackQuery({ text: "Updated!" });
 });
 
 bot.callbackQuery("view_live_fund", async (ctx) => {
     const liveFundVal = parseFloat(await getSetting("custom_live_fund") || "10000");
-    const fundMsg = `💰 **Live Bot Fund** 💰\n\n🏦 **Available Liquidity:** ₹${liveFundVal.toFixed(2)}`;
-    const backInline = new InlineKeyboard().text("🔙 Back", "view_wallet_overview");
-    try { await ctx.editMessageText(fundMsg, { parse_mode: "Markdown", reply_markup: backInline }); } catch (e) {}
+    const fundMsg = `💳 **Live Bot Fund** 💳\n\n🏦 **Current Liquidity Fund:** ₹${liveFundVal.toFixed(2)}\n\n(Updates automatically upon every payout approval) ✅`;
+    const backKb = new InlineKeyboard().text("🔙 Back", "view_wallet_overview");
+    try { await ctx.editMessageText(fundMsg, { parse_mode: "Markdown", reply_markup: backKb }); } catch (e) {}
     await ctx.answerCallbackQuery();
 });
 
 bot.callbackQuery("view_wallet_overview", async (ctx) => {
-    const userId = ctx.from.id;
-    const user = await getUser(userId);
+    const user = await getUser(ctx.from.id);
     const balMsg = 
         `💳 Wallet Overview 💳\n\n` +
-        `🌐 Wallet ID → ${userId}\n` +
+        `🌐 Wallet ID → ${ctx.from.id}\n` +
         `💵 Balance → ₹${parseFloat(user.balance).toFixed(2)}\n\n` +
         `Built with security you can Trust. Support that responds promptly. ✅`;
 
@@ -319,66 +363,88 @@ bot.callbackQuery("view_wallet_overview", async (ctx) => {
     await ctx.answerCallbackQuery();
 });
 
-// WITHDRAW METHOD HANDLERS
+// WITHDRAW METHOD CLICK
 bot.callbackQuery(/^wd_(.+)$/, async (ctx) => {
     const userId = ctx.from.id;
     const method = ctx.match[1];
     const user = await getUser(userId);
 
-    let details = "";
-    if (method === "upi") details = user.upi_id ? `UPI: ${user.upi_id}` : null;
-    else if (method === "bank") details = user.bank_acc ? `Acc: ${user.bank_acc} | IFSC: ${user.bank_ifsc}` : null;
-    else if (method === "wallet") details = user.mobile_no ? `Mobile: ${user.mobile_no}` : null;
-    else if (method === "amazon") details = user.amazon_email ? `Email: ${user.amazon_email}` : null;
-    else if (method === "redeem") details = user.redeem_email ? `Email: ${user.redeem_email}` : null;
-
-    if (!details) {
-        return ctx.reply(`❌ Set up your ${method.toUpperCase()} in **Payout Method** first!`, { parse_mode: "Markdown" });
-    }
-
     const minLim = parseFloat(await getSetting(`min_wd_${method}`) || "10");
     const maxLim = parseFloat(await getSetting(`max_wd_${method}`) || "10000");
 
     userState[userId] = `awaiting_withdraw_amount_${method}`;
-    await ctx.reply(`🏧 **Withdraw via ${method.toUpperCase()}**\n\n📌 Min Limit: ₹${minLim}\n📌 Max Limit: ₹${maxLim}\n💳 Balance: ₹${parseFloat(user.balance).toFixed(2)}\n\nEnter Amount:`, { parse_mode: "Markdown" });
+    await ctx.reply(`🏧 **Withdraw via ${method.toUpperCase()}**\n\n📌 Min: ₹${minLim} | Max: ₹${maxLim}\n💳 Balance: ₹${parseFloat(user.balance).toFixed(2)}\n\nEnter Amount:`, { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
 // PAYOUT SETTINGS ACTIONS
-bot.callbackQuery("set_wallet_action", async (ctx) => { userState[ctx.from.id] = "awaiting_wallet_input"; await ctx.reply("📱 Enter Mobile Number / Wallet ID:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("set_wallet_action", async (ctx) => {
+    const gwName = await getSetting("gateway_name") || "Gateway";
+    userState[ctx.from.id] = "awaiting_wallet_input";
+    await ctx.reply(`📱 Enter Mobile Number linked with **${gwName}**:`);
+    await ctx.answerCallbackQuery();
+});
+
 bot.callbackQuery("set_upi_action", async (ctx) => { userState[ctx.from.id] = "awaiting_upi_input"; await ctx.reply("💵 Enter UPI ID:"); await ctx.answerCallbackQuery(); });
 bot.callbackQuery("set_bank_action", async (ctx) => { userState[ctx.from.id] = "awaiting_bank_acc"; await ctx.reply("🏦 Enter Bank Account Number:"); await ctx.answerCallbackQuery(); });
-bot.callbackQuery("set_redeem_action", async (ctx) => { userState[ctx.from.id] = "awaiting_redeem_email"; await ctx.reply("🎁 Enter Redeem Code Email:"); await ctx.answerCallbackQuery(); });
-bot.callbackQuery("set_amazon_action", async (ctx) => { userState[ctx.from.id] = "awaiting_amazon_email"; await ctx.reply("🛒 Enter Amazon Gift Card Email:"); await ctx.answerCallbackQuery(); });
 
 // --- MESSAGE HANDLER ---
 bot.on("message", async (ctx) => {
     const userId = ctx.from.id;
     const text = ctx.message.text ? ctx.message.text.trim() : "";
 
-    // ADMIN MIN/MAX SETTING UPDATE
-    if (userId === ADMIN_ID && adminState[userId] && adminState[userId].startsWith("awaiting_min_max_")) {
-        const method = adminState[userId].replace("awaiting_min_max_", "");
-        delete adminState[userId];
+    // ADMIN STATE LOGIC
+    if (userId === ADMIN_ID) {
+        if (adminState[userId] === "awaiting_balance_change") {
+            delete adminState[userId];
+            const parts = text.split(",");
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                const targetId = parts[0].trim();
+                const amt = parseFloat(parts[1].trim());
 
-        const parts = text.split(",");
-        if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
-            return ctx.reply("❌ Invalid format! Please enter like: `50,5000`", { parse_mode: "Markdown" });
+                await updateBalance(targetId, amt);
+                const updatedUser = await getUser(targetId);
+
+                // Send notification to User
+                try {
+                    await ctx.api.sendMessage(targetId, `🔔 **Balance Updated!**\n\nAdmin has ${amt >= 0 ? 'added' : 'deducted'} ₹${Math.abs(amt)}.\n💳 **New Total Balance:** ₹${parseFloat(updatedUser.balance).toFixed(2)}`, { parse_mode: "Markdown" });
+                } catch (e) {}
+
+                return ctx.reply(`✅ **Balance Updated Successfully!**\n\n👤 **User ID:** \`${targetId}\`\n➕/➖ **Change:** ₹${amt}\n💳 **User's Current Balance:** ₹${parseFloat(updatedUser.balance).toFixed(2)}`, { parse_mode: "Markdown" });
+            } else {
+                return ctx.reply("❌ Invalid format! Example: `8061612320,100`", { parse_mode: "Markdown" });
+            }
         }
 
-        const newMin = parseFloat(parts[0].trim());
-        const newMax = parseFloat(parts[1].trim());
+        if (adminState[userId] === "awaiting_gateway_name") {
+            adminState[userId] = `awaiting_gateway_url_${text}`;
+            return ctx.reply(`✅ Name saved: **"${text}"**.\n\n🔗 Enter Gateway URI Link:`);
+        }
 
-        await setSetting(`min_wd_${method}`, newMin.toString());
-        await setSetting(`max_wd_${method}`, newMax.toString());
+        if (adminState[userId] && adminState[userId].startsWith("awaiting_gateway_url_")) {
+            const gwName = adminState[userId].replace("awaiting_gateway_url_", "");
+            delete adminState[userId];
+            await setSetting("gateway_name", gwName);
+            await setSetting("gateway_url", text);
+            return ctx.reply(`🎉 **Gateway Ready!**\nName: ${gwName}\nURI: ${text}`);
+        }
 
-        return ctx.reply(
-            `✅ **Limits Updated Successfully!**\n\n` +
-            `💳 Method: ${method.toUpperCase()}\n` +
-            `📌 New Min: ₹${newMin}\n` +
-            `📌 New Max: ₹${newMax}`, 
-            { parse_mode: "Markdown", reply_markup: await getAdminWithdrawSettingsKeyboard() }
-        );
+        if (adminState[userId] === "awaiting_payout_channel") {
+            delete adminState[userId];
+            await setSetting("payout_channel", text);
+            return ctx.reply(`📢 **Payout Channel Saved:** \`${text}\``, { parse_mode: "Markdown" });
+        }
+
+        if (adminState[userId] && adminState[userId].startsWith("awaiting_min_max_")) {
+            const method = adminState[userId].replace("awaiting_min_max_", "");
+            delete adminState[userId];
+            const parts = text.split(",");
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                await setSetting(`min_wd_${method}`, parts[0].trim());
+                await setSetting(`max_wd_${method}`, parts[1].trim());
+                return ctx.reply(`✅ **${method.toUpperCase()} Limits Updated!**`);
+            }
+        }
     }
 
     const user = await getUser(userId, ctx.from.username || "");
@@ -390,13 +456,13 @@ bot.on("message", async (ctx) => {
 
         const transferAmt = parseFloat(text);
         if (isNaN(transferAmt) || transferAmt <= 0) return ctx.reply("❌ Invalid amount!");
-        if (parseFloat(user.balance) < transferAmt) return ctx.reply(`❌ Insufficient Balance!`);
+        if (parseFloat(user.balance) < transferAmt) return ctx.reply("❌ Insufficient Balance!");
 
         await updateBalance(userId, -transferAmt);
         await updateBalance(targetId, transferAmt);
 
-        await ctx.reply(`✅ Successfully Transferred ₹${transferAmt} to User ID \`${targetId}\`!`, { parse_mode: "Markdown" });
-        try { await ctx.api.sendMessage(targetId, `💸 You received ₹${transferAmt} via P2P Transfer from User ID \`${userId}\`!`, { parse_mode: "Markdown" }); } catch (e) {}
+        await ctx.reply(`✅ Transferred ₹${transferAmt} to User ID \`${targetId}\`!`, { parse_mode: "Markdown" });
+        try { await ctx.api.sendMessage(targetId, `💸 Received ₹${transferAmt} via P2P Transfer!`); } catch (e) {}
         return;
     }
 
@@ -407,22 +473,22 @@ bot.on("message", async (ctx) => {
             return ctx.reply("❌ Invalid User ID!");
         }
         userState[userId] = `awaiting_p2p_amount_${targetId}`;
-        return ctx.reply(`💸 **Transferring to User:** \`${targetId}\`\n💳 **Your Balance:** ₹${parseFloat(user.balance).toFixed(2)}\n\nEnter Transfer Amount:`, { parse_mode: "Markdown" });
+        return ctx.reply(`💸 **Transfer to:** \`${targetId}\`\nEnter Amount:`, { parse_mode: "Markdown" });
     }
 
     // GIFT CODE REDEEM
     if (userState[userId] === "awaiting_gift_code_input") {
         delete userState[userId];
         const res = await pool.query("SELECT * FROM gift_codes WHERE code = $1 AND is_used = 0", [text]);
-        if (res.rows.length === 0) return ctx.reply("❌ Invalid or already used Gift Code!");
+        if (res.rows.length === 0) return ctx.reply("❌ Invalid or used Gift Code!");
 
         const gift = res.rows[0];
         await pool.query("UPDATE gift_codes SET is_used = 1 WHERE code = $1", [text]);
         await updateBalance(userId, parseFloat(gift.reward));
-        return ctx.reply(`🎉 **Gift Code Redeemed!** Added **₹${gift.reward}** to your balance.`, { parse_mode: "Markdown" });
+        return ctx.reply(`🎉 **Gift Code Redeemed!** ₹${gift.reward} added to balance.`, { parse_mode: "Markdown" });
     }
 
-    // WITHDRAW AMOUNT SUBMISSION
+    // WITHDRAW REQUEST SUBMISSION
     if (userState[userId] && userState[userId].startsWith("awaiting_withdraw_amount_")) {
         const method = userState[userId].replace("awaiting_withdraw_amount_", "");
         delete userState[userId];
@@ -431,68 +497,41 @@ bot.on("message", async (ctx) => {
         const minLim = parseFloat(await getSetting(`min_wd_${method}`) || "10");
         const maxLim = parseFloat(await getSetting(`max_wd_${method}`) || "10000");
 
-        if (isNaN(amount) || amount < minLim || amount > maxLim) return ctx.reply(`❌ Limit for ${method.toUpperCase()} is ₹${minLim} - ₹${maxLim}.`);
-        if (parseFloat(user.balance) < amount) return ctx.reply(`❌ Insufficient Balance!`);
+        if (isNaN(amount) || amount < minLim || amount > maxLim) return ctx.reply(`❌ Limit for ${method.toUpperCase()} is ₹${minLim} - ₹${maxLim}`);
+        if (parseFloat(user.balance) < amount) return ctx.reply("❌ Insufficient Balance!");
 
-        let payoutInfo = "";
-        if (method === "upi") payoutInfo = `UPI: ${user.upi_id}`;
-        else if (method === "bank") payoutInfo = `Acc: ${user.bank_acc} | IFSC: ${user.bank_ifsc}`;
-        else if (method === "wallet") payoutInfo = `Mobile: ${user.mobile_no}`;
-        else if (method === "amazon") payoutInfo = `Amazon: ${user.amazon_email}`;
-        else if (method === "redeem") payoutInfo = `Redeem: ${user.redeem_email}`;
-
+        // Deduct balance initially
         await updateBalance(userId, -amount);
-        await pool.query(
-            "INSERT INTO withdrawals (user_id, amount, method, details, status) VALUES ($1, $2, $3, $4, 'PENDING')",
-            [userId, amount, method, payoutInfo]
-        );
 
-        await ctx.reply(`⏳ **Withdrawal Placed!**\n💵 Amount: ₹${amount}\n💳 Method: ${method.toUpperCase()}`, { parse_mode: "Markdown" });
+        const wdRes = await pool.query("INSERT INTO withdrawals (user_id, amount, method, status) VALUES ($1, $2, $3, 'PENDING') RETURNING id", [userId, amount, method]);
+        const wdId = wdRes.rows[0].id;
+
+        await ctx.reply(`⏳ **Withdrawal Request Submitted!**\n\n💵 Amount: ₹${amount}\n💳 Method: ${method.toUpperCase()}\nStatus: Processing...`, { parse_mode: "Markdown" });
+
+        const appKb = new InlineKeyboard()
+            .text("✅ Approve", `wd_app_yes_${wdId}`)
+            .text("❌ Reject & Refund", `wd_app_no_${wdId}`);
+
+        try {
+            await ctx.api.sendMessage(ADMIN_ID, `🔔 **NEW WITHDRAWAL REQUEST (#${wdId})**\n\n👤 User ID: \`${userId}\`\n💰 Amount: ₹${amount}\n💳 Method: ${method.toUpperCase()}`, { parse_mode: "Markdown", reply_markup: appKb });
+        } catch (e) {}
         return;
     }
 
-    // USER PAYOUT INPUTS
+    // PAYOUT INPUTS
     if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
+        const gwName = await getSetting("gateway_name") || "Gateway";
         await pool.query("UPDATE users SET mobile_no = $1 WHERE user_id = $2", [text, userId]);
-        return ctx.reply(`✅ **Wallet Updated:** \`${text}\``, { parse_mode: "Markdown" });
+        return ctx.reply(`✅ **${gwName} Wallet Linked:** \`${text}\``, { parse_mode: "Markdown" });
     }
-
     if (userState[userId] === "awaiting_upi_input") {
         delete userState[userId];
         await pool.query("UPDATE users SET upi_id = $1 WHERE user_id = $2", [text, userId]);
-        return ctx.reply(`✅ **UPI Address Updated:** \`${text}\``, { parse_mode: "Markdown" });
+        return ctx.reply(`✅ **UPI Saved:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
-    if (userState[userId] === "awaiting_redeem_email") {
-        if (!isValidEmail(text)) return ctx.reply("❌ Invalid Email!");
-        delete userState[userId];
-        await pool.query("UPDATE users SET redeem_email = $1 WHERE user_id = $2", [text, userId]);
-        return ctx.reply(`✅ **Redeem Code Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
-    }
-
-    if (userState[userId] === "awaiting_amazon_email") {
-        if (!isValidEmail(text)) return ctx.reply("❌ Invalid Email!");
-        delete userState[userId];
-        await pool.query("UPDATE users SET amazon_email = $1 WHERE user_id = $2", [text, userId]);
-        return ctx.reply(`✅ **Amazon Gift Card Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
-    }
-
-    if (userState[userId] === "awaiting_bank_acc") {
-        if (!isValidBankAcc(text)) return ctx.reply("❌ Invalid Account Number!");
-        await pool.query("UPDATE users SET bank_acc = $1 WHERE user_id = $2", [text, userId]);
-        userState[userId] = "awaiting_bank_ifsc";
-        return ctx.reply(`✅ Account saved! Enter **Bank IFSC Code**:`);
-    }
-
-    if (userState[userId] === "awaiting_bank_ifsc") {
-        if (!isValidIFSC(text)) return ctx.reply("❌ Invalid IFSC Code!");
-        delete userState[userId];
-        await pool.query("UPDATE users SET bank_ifsc = $1 WHERE user_id = $2", [text.toUpperCase(), userId]);
-        return ctx.reply(`✅ **Bank Account Linked Successfully!**`, { parse_mode: "Markdown" });
-    }
-
-    // MAIN BUTTON HANDLERS
+    // MAIN BUTTON TRIGGERS
     const lblBal = await getButtonLabel("btn_balance");
     const lblPayment = await getButtonLabel("btn_payment");
     const lblWithdraw = await getButtonLabel("btn_withdraw");
@@ -510,23 +549,18 @@ bot.on("message", async (ctx) => {
         await ctx.reply(balMsg, { reply_markup: await getBalanceOverviewKeyboard() });
     } 
     else if (text === lblPayment) {
-        const walletTxt = user.mobile_no || "Not Set";
+        const gwName = await getSetting("gateway_name") || "Gateway";
+        const walletTxt = user.mobile_no ? `${user.mobile_no} (${gwName} Valid ✅)` : "Not Set";
         const upiTxt = user.upi_id || "Not Set";
-
-        const msg = 
-            `💳 Payout Method\n\n` +
-            `Choose Desired Payment Method From Below 👇\n\n` +
-            `Your Current Wallet - ${walletTxt}\n` +
-            `Your Current UPI - ${upiTxt}`;
-
-        await ctx.reply(msg, { reply_markup: getPayoutMethodsInline() });
+        const msg = `💳 **Payout Method**\n\nChoose Desired Payment Method From Below 👇\n\nYour Current ${gwName} Wallet - ${walletTxt}\nYour Current UPI - ${upiTxt}`;
+        await ctx.reply(msg, { parse_mode: "Markdown", reply_markup: await getPayoutMethodsInline() });
     }
     else if (text === lblWithdraw) {
-        await ctx.reply(`✨ Choose Withdrawal Method:`, { parse_mode: "Markdown", reply_markup: getWithdrawInline() });
+        await ctx.reply(`✨ Choose Withdrawal Method:`, { parse_mode: "Markdown", reply_markup: await getWithdrawInline() });
     }
     else if (text === lblP2p) {
         userState[userId] = "awaiting_p2p_target";
-        await ctx.reply("💸 **P2P Balance Transfer**\n\nEnter Target **User ID** to send funds:");
+        await ctx.reply("💸 **P2P Balance Transfer**\n\nEnter Target **User ID**:");
     }
     else if (text === lblGift) {
         userState[userId] = "awaiting_gift_code_input";
@@ -535,7 +569,6 @@ bot.on("message", async (ctx) => {
     else if (text === lblTasks) {
         const tasksRes = await pool.query("SELECT * FROM tasks");
         if (tasksRes.rows.length === 0) return ctx.reply("📋 No active tasks available right now.");
-        
         let msg = "📋 **Available Tasks:**\n\n";
         const taskKb = new InlineKeyboard();
         tasksRes.rows.forEach(t => {
@@ -548,4 +581,3 @@ bot.on("message", async (ctx) => {
 
 // START BOT
 bot.start();
-console.log("Bot updated with Admin Min/Max Withdraw Inline controls!");
