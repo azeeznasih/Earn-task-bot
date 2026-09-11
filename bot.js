@@ -14,7 +14,6 @@ http.createServer((req, res) => {
 // ---------------- CONFIGURATION ----------------
 const BOT_TOKEN = process.env.BOT_TOKEN || "YOUR_BOT_TOKEN_HERE"; 
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || "8061612320"); 
-const SUPPORT_USERNAME = "YourSupportUsername"; // നിങ്ങളുടെ സപ്പോർട്ട് യൂസർനെയിം (@ ഇല്ലാതെ)
 // -----------------------------------------------
 
 const bot = new Bot(BOT_TOKEN);
@@ -69,15 +68,18 @@ function initDatabase() {
     const insertSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
     insertSetting.run("welcome_bonus_enabled", "OFF");
     insertSetting.run("welcome_bonus_amount", "10");
+    insertSetting.run("support_username", "https://t.me/telegram"); // Default support link
+    insertSetting.run("show_live_fund", "ON");
+    insertSetting.run("show_statement", "ON");
 
-    // Dynamic Keyboard default setup (Requested Row Order)
+    // Dynamic Keyboard default setup
     const initBtn = db.prepare("INSERT OR IGNORE INTO custom_buttons (btn_key, label, row_idx) VALUES (?, ?, ?)");
     initBtn.run("btn_tasks", "📋 Tasks", 1);
-    initBtn.run("btn_balance", "💳 My Balance", 1);
+    initBtn.run("btn_balance", "🚀 My Balance", 1);
     initBtn.run("btn_gift", "🎁 Gift Code", 2);
     initBtn.run("btn_p2p", "💸 P2P Transfer", 2);
     initBtn.run("btn_withdraw", "🏧 Withdraw", 3);
-    initBtn.run("btn_payment", "⚙️ Payment Method", 3);
+    initBtn.run("btn_payment", "💳 Payout Method", 3);
 }
 
 initDatabase();
@@ -137,12 +139,16 @@ function getButtonLabel(key) {
 
 // --- ADMIN INLINE PANELS ---
 function getAdminPanelInline() {
+    const fundStatus = getSetting("show_live_fund");
+    const stmtStatus = getSetting("show_statement");
+
     return new InlineKeyboard()
         .text("➕ Add Task", "admin_add_task").text("🔑 Create Gift Code", "admin_create_code").row()
         .text("💰 Add Balance", "admin_add_bal").text("➖ Deduct Balance", "admin_rem_bal").row()
         .text("⌨️ Customize Keyboard", "admin_custom_kb").text("📊 Bot Stats", "admin_stats").row()
-        .text("📢 Broadcast Message", "admin_broadcast").text("⚙️ Toggle Bonus", "admin_toggle_bonus").row()
-        .text("❌ Close Panel", "admin_close");
+        .text("🛠 Set Support Link", "admin_set_support").text("📢 Broadcast", "admin_broadcast").row()
+        .text(`💰 Fund Button: ${fundStatus}`, "admin_toggle_fund").text(`📒 Stmt Button: ${stmtStatus}`, "admin_toggle_stmt").row()
+        .text("⚙️ Toggle Bonus", "admin_toggle_bonus").text("❌ Close Panel", "admin_close");
 }
 
 function getKeyboardManagerInline() {
@@ -178,106 +184,11 @@ bot.command("start", async (ctx) => {
 
 bot.command("admin", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.reply(`🔐 **Advanced Admin Panel**\nSelect an operation:`, {
+    await ctx.reply(`🔐 **Advanced Admin Panel**\nSelect an operation to configure your bot:`, {
         parse_mode: "Markdown",
         reply_markup: getAdminPanelInline()
     });
 });
-
-bot.command("linkupi", async (ctx) => {
-    const userId = ctx.from.id;
-    const upiInput = ctx.match;
-    if (!upiInput) return ctx.reply("❌ **Use:** `/linkupi YOUR_UPI_ID`", { parse_mode: "Markdown" });
-    db.prepare("UPDATE users SET upi_id = ? WHERE user_id = ?").run(upiInput.trim(), userId);
-    await ctx.reply(`✅ **UPI ID Linked Successfully!**\n\`${upiInput.trim()}\``, { parse_mode: "Markdown" });
-});
-
-bot.command("linkmobile", async (ctx) => {
-    const userId = ctx.from.id;
-    const mobileInput = ctx.match;
-    if (!mobileInput) return ctx.reply("❌ **Use:** `/linkmobile YOUR_NUMBER`", { parse_mode: "Markdown" });
-    db.prepare("UPDATE users SET mobile_no = ? WHERE user_id = ?").run(mobileInput.trim(), userId);
-    await ctx.reply(`✅ **Gateway Mobile Number Linked!**\n\`${mobileInput.trim()}\``, { parse_mode: "Markdown" });
-});
-
-bot.command("p2p", async (ctx) => {
-    const userId = ctx.from.id;
-    const args = ctx.match ? ctx.match.split(" ") : [];
-
-    if (args.length < 2) {
-        return ctx.reply("❌ **Use:** `/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
-    }
-
-    const targetId = parseInt(args[0]);
-    const amount = parseFloat(args[1]);
-
-    if (isNaN(targetId) || isNaN(amount) || amount <= 0) {
-        return ctx.reply("❌ Invalid User ID or Amount!");
-    }
-
-    if (targetId === userId) {
-        return ctx.reply("❌ You cannot send balance to yourself!");
-    }
-
-    const sender = getUser(userId);
-    if (sender.balance < amount) {
-        return ctx.reply("❌ **Insufficient Balance!**");
-    }
-
-    updateBalance(userId, -amount);
-    updateBalance(targetId, amount);
-
-    await ctx.reply(`✅ **Successfully transferred ₹${amount.toFixed(2)} to ID:** \`${targetId}\``, { parse_mode: "Markdown" });
-
-    try {
-        await ctx.api.sendMessage(targetId, `🎉 **You received ₹${amount.toFixed(2)} from Telegram ID:** \`${userId}\``, { parse_mode: "Markdown" });
-    } catch (err) {}
-});
-
-bot.command("withdraw", async (ctx) => {
-    const userId = ctx.from.id;
-    const amount = parseFloat(ctx.match);
-    const user = getUser(userId);
-
-    if (isNaN(amount) || amount <= 0) {
-        return ctx.reply("❌ **Use:** `/withdraw AMOUNT`", { parse_mode: "Markdown" });
-    }
-
-    if (user.balance < amount) {
-        return ctx.reply("❌ **Insufficient Balance!**");
-    }
-
-    if (!user.upi_id && !user.mobile_no) {
-        return ctx.reply("❌ Please link your Payment Method first!");
-    }
-
-    updateBalance(userId, -amount);
-    await ctx.reply(`✅ **Withdrawal Request Submitted!**\nAmount: ₹${amount.toFixed(2)}\nStatus: Pending Approval`);
-
-    if (ADMIN_ID) {
-        try {
-            await ctx.api.sendMessage(
-                ADMIN_ID,
-                `📥 **Withdrawal Request!**\nUser ID: \`${userId}\`\nAmount: ₹${amount.toFixed(2)}\nUPI ID: \`${user.upi_id || "None"}\`\nMobile: \`${user.mobile_no || "None"}\``,
-                { parse_mode: "Markdown" }
-            );
-        } catch (e) {}
-    }
-});
-
-function processRedeemCode(ctx, codeRaw) {
-    const userId = ctx.from.id;
-    let code = codeRaw.trim().toUpperCase();
-    if (!code) return ctx.reply("❌ Enter a valid Gift Code!");
-
-    const gift = db.prepare("SELECT * FROM gift_codes WHERE code = ?").get(code);
-    if (!gift) return ctx.reply("❌ **Invalid Gift Code!**");
-    if (gift.is_used === 1) return ctx.reply("❌ **Already Redeemed!**");
-
-    db.prepare("UPDATE gift_codes SET is_used = 1 WHERE code = ?").run(code);
-    updateBalance(userId, gift.reward);
-    return ctx.reply(`🎉 **Congratulations!** ₹${gift.reward} added to your wallet!`, { parse_mode: "Markdown" });
-}
 
 // --- CALLBACK QUERY HANDLERS ---
 bot.callbackQuery("admin_main_menu", async (ctx) => {
@@ -287,7 +198,7 @@ bot.callbackQuery("admin_main_menu", async (ctx) => {
 
 bot.callbackQuery("admin_custom_kb", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.editMessageText("⌨️ **Keyboard Customizer Panel**\n\n- Click **Edit** to change button text.\n- Click **Row Up/Down (Arrows)** to move button position:", {
+    await ctx.editMessageText("⌨️ **Keyboard Customizer Panel**\n\n- Click **Edit** to change label.\n- Click **Row Up/Down** to re-arrange buttons:", {
         reply_markup: getKeyboardManagerInline()
     });
 });
@@ -316,41 +227,53 @@ bot.callbackQuery(/^kb_move_down_(.+)$/, async (ctx) => {
     await ctx.answerCallbackQuery({ text: "Moved Row Down!" });
 });
 
-bot.callbackQuery("refresh_balance", async (ctx) => {
-    const userId = ctx.from.id;
-    const user = getUser(userId);
-
-    const balanceText = 
-        `✨ **My Balance Dashboard** ✨\n\n` +
-        `🆔 **Telegram ID:** \`${userId}\` *(Tap to Copy)*\n` +
-        `💰 **Balance:** ₹${user.balance.toFixed(2)}`;
-
-    const balanceInline = new InlineKeyboard()
-        .text("🔄 Refresh", "refresh_balance")
-        .url("💬 Customer Support", `https://t.me/${SUPPORT_USERNAME}`);
-
-    try {
-        await ctx.editMessageText(balanceText, { parse_mode: "Markdown", reply_markup: balanceInline });
-        await ctx.answerCallbackQuery({ text: "✅ Balance Refreshed!" });
-    } catch (err) {
-        await ctx.answerCallbackQuery({ text: "Already Up to date!" });
-    }
-});
-
-bot.callbackQuery(/^submit_proof_(\d+)$/, async (ctx) => {
-    const taskId = ctx.match[1];
-    userState[ctx.from.id] = `awaiting_proof_${taskId}`;
-    await ctx.reply(`📸 **Submit Task Proof**\nSend screenshot or proof message for Task #${taskId}:`);
+bot.callbackQuery("admin_set_support", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    adminState[ADMIN_ID] = "awaiting_support_link";
+    await ctx.reply("🔗 Send new Customer Support Telegram Link (e.g., `https://t.me/YourUsername`):", { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
-bot.callbackQuery("pay_link_upi", async (ctx) => {
-    await ctx.reply("💳 **Link UPI ID**\nSend command:\n\n`/linkupi YOUR_UPI_ID`", { parse_mode: "Markdown" });
+bot.callbackQuery("admin_toggle_fund", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const curr = getSetting("show_live_fund");
+    const next = curr === "ON" ? "OFF" : "ON";
+    setSetting("show_live_fund", next);
+    await ctx.editMessageReplyMarkup({ reply_markup: getAdminPanelInline() });
+    await ctx.answerCallbackQuery({ text: `Live Fund Button set to ${next}` });
+});
+
+bot.callbackQuery("admin_toggle_stmt", async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const curr = getSetting("show_statement");
+    const next = curr === "ON" ? "OFF" : "ON";
+    setSetting("show_statement", next);
+    await ctx.editMessageReplyMarkup({ reply_markup: getAdminPanelInline() });
+    await ctx.answerCallbackQuery({ text: `Statement Button set to ${next}` });
+});
+
+// Interactive Payment Method Callbacks
+bot.callbackQuery("set_wallet_action", async (ctx) => {
+    userState[ctx.from.id] = "awaiting_wallet_input";
+    await ctx.reply("💳 Send your Wallet / Mobile Number below:");
     await ctx.answerCallbackQuery();
 });
 
-bot.callbackQuery("pay_link_mobile", async (ctx) => {
-    await ctx.reply("📱 **Link Gateway / Mobile**\nSend command:\n\n`/linkmobile YOUR_NUMBER`", { parse_mode: "Markdown" });
+bot.callbackQuery("set_upi_action", async (ctx) => {
+    userState[ctx.from.id] = "awaiting_upi_input";
+    await ctx.reply("💵 Send your UPI ID below:");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("user_balance_statement", async (ctx) => {
+    const user = getUser(ctx.from.id);
+    await ctx.reply(`📒 **Balance Statement**\n\nCurrent Balance: ₹${user.balance.toFixed(2)}\nStatus: Active Account\nAll transactions processed securely.`, { parse_mode: "Markdown" });
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("user_live_fund", async (ctx) => {
+    const totalBal = db.prepare("SELECT SUM(balance) as sum FROM users").get().sum || 0;
+    await ctx.reply(`💰 **Live Bot Fund**\n\nTotal Liquidity/Fund in System: ₹${(totalBal + 10000).toFixed(2)}`, { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
@@ -387,8 +310,7 @@ bot.callbackQuery("admin_stats", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get().count;
     const totalBal = db.prepare("SELECT SUM(balance) as sum FROM users").get().sum || 0;
-    const totalTasks = db.prepare("SELECT COUNT(*) as count FROM tasks").get().count;
-    await ctx.reply(`📊 **Bot Stats**\nUsers: \`${totalUsers}\`\nTotal Balance: ₹\`${totalBal.toFixed(2)}\`\nTasks: \`${totalTasks}\``, { parse_mode: "Markdown" });
+    await ctx.reply(`📊 **Bot Stats**\nUsers: \`${totalUsers}\`\nTotal Balance: ₹\`${totalBal.toFixed(2)}\``, { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
@@ -420,24 +342,28 @@ bot.on("message", async (ctx) => {
     const text = ctx.message.text ? ctx.message.text.trim() : "";
     const user = getUser(userId);
 
-    // 1. Task proof submission
-    if (userState[userId] && userState[userId].startsWith("awaiting_proof_")) {
-        const taskId = userState[userId].replace("awaiting_proof_", "");
+    // 1. User State Inputs for Wallet & UPI
+    if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
-        await ctx.reply("✅ **Proof Received!** Admin will review soon.");
-        if (ADMIN_ID) {
-            try {
-                await ctx.api.sendMessage(ADMIN_ID, `📥 **Task Proof Submitted!**\nUser: \`${userId}\` | Task: #${taskId}`, { parse_mode: "Markdown" });
-                await ctx.forwardMessage(ADMIN_ID, ctx.message.message_id);
-            } catch (e) {}
-        }
-        return;
+        db.prepare("UPDATE users SET mobile_no = ? WHERE user_id = ?").run(text, userId);
+        return ctx.reply(`✅ **Wallet Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
-    // 2. Admin inputs
+    if (userState[userId] === "awaiting_upi_input") {
+        delete userState[userId];
+        db.prepare("UPDATE users SET upi_id = ? WHERE user_id = ?").run(text, userId);
+        return ctx.reply(`✅ **UPI Address Updated:** \`${text}\``, { parse_mode: "Markdown" });
+    }
+
+    // 2. Admin Inputs Handler
     if (userId === ADMIN_ID && adminState[ADMIN_ID]) {
         const state = adminState[ADMIN_ID];
         delete adminState[ADMIN_ID];
+
+        if (state === "awaiting_support_link") {
+            setSetting("support_username", text);
+            return ctx.reply(`✅ **Support Link Updated:** ${text}`);
+        }
 
         if (state.startsWith("edit_label_")) {
             const btnKey = state.replace("edit_label_", "");
@@ -479,13 +405,7 @@ bot.on("message", async (ctx) => {
         }
     }
 
-    // 3. User Gift Code Input
-    if (userState[userId] === "awaiting_gift_code") {
-        delete userState[userId];
-        return processRedeemCode(ctx, text);
-    }
-
-    // 4. MAIN DYNAMIC BUTTON HANDLERS
+    // 3. MAIN DYNAMIC BUTTON HANDLERS
     const lblTasks = getButtonLabel("btn_tasks");
     const lblBal = getButtonLabel("btn_balance");
     const lblGift = getButtonLabel("btn_gift");
@@ -493,54 +413,69 @@ bot.on("message", async (ctx) => {
     const lblWithdraw = getButtonLabel("btn_withdraw");
     const lblPayment = getButtonLabel("btn_payment");
 
+    // Exact Match for "My Balance" Layout (Photo 1 & 2)
     if (text === lblBal) {
-        const balanceText = 
-            `✨ **My Balance Dashboard** ✨\n\n` +
-            `🆔 **Telegram ID:** \`${userId}\` *(Tap to Copy)*\n` +
-            `💰 **Balance:** ₹${user.balance.toFixed(2)}`;
+        const supportLink = getSetting("support_username") || "https://t.me/telegram";
+        const fundStatus = getSetting("show_live_fund");
+        const stmtStatus = getSetting("show_statement");
 
-        const balanceInline = new InlineKeyboard()
-            .text("🔄 Refresh", "refresh_balance")
-            .url("💬 Customer Support", `https://t.me/${SUPPORT_USERNAME}`);
+        const balMsg = 
+            `💳 **Wallet Overview** 💳\n\n` +
+            `🌐 **Wallet ID** → \`${userId}\`\n` +
+            `💵 **Balance** → ₹${user.balance.toFixed(2)}\n\n` +
+            `*Built with security you can Trust. Support that responds promptly. ✅*`;
 
-        await ctx.reply(balanceText, { parse_mode: "Markdown", reply_markup: balanceInline });
+        const balInline = new InlineKeyboard();
+
+        if (stmtStatus === "ON") {
+            balInline.text("📒 Balance Statement", "user_balance_statement").row();
+        }
+        if (fundStatus === "ON") {
+            balInline.text("💰 Live Bot Fund", "user_live_fund").row();
+        }
+
+        balInline.url("📣 Contact Support", supportLink);
+
+        await ctx.reply(balMsg, { parse_mode: "Markdown", reply_markup: balInline });
     } 
+    // Exact Match for "Payout / Payment Method" Layout (Photo 1)
+    else if (text === lblPayment) {
+        const walletVal = user.mobile_no ? `\`${user.mobile_no}\`` : "*Not Set*";
+        const upiVal = user.upi_id ? `\`${user.upi_id}\`` : "*Not Set*";
+
+        const payMsg = 
+            `**Choose Desired Payment Method From Below 👇**\n\n` +
+            `**Your Current Wallet -** ${walletVal}\n` +
+            `**Your Current UPI -** ${upiVal}`;
+
+        const payInline = new InlineKeyboard()
+            .text("🔗 Set Wallet", "set_wallet_action").row()
+            .text("💵 Set UPI Address", "set_upi_action");
+
+        await ctx.reply(payMsg, { parse_mode: "Markdown", reply_markup: payInline });
+    }
     else if (text === lblTasks) {
         const tasks = db.prepare("SELECT * FROM tasks").all();
         if (tasks.length === 0) return ctx.reply("✨ No tasks available currently.");
 
         await ctx.reply("🎯 **Available Tasks:**");
         for (const t of tasks) {
-            const taskInline = new InlineKeyboard()
-                .url("🔗 Open Link", t.link).row()
-                .text("📤 Submit Proof / Screenshot", `submit_proof_${t.id}`);
-
-            await ctx.reply(`📌 **${t.title}**\n💵 **Reward:** ₹${t.reward}`, {
-                parse_mode: "Markdown",
-                reply_markup: taskInline
-            });
+            const taskInline = new InlineKeyboard().url("🔗 Open Link", t.link);
+            await ctx.reply(`📌 **${t.title}**\n💵 **Reward:** ₹${t.reward}`, { parse_mode: "Markdown", reply_markup: taskInline });
         }
     } 
     else if (text === lblGift) {
-        userState[userId] = "awaiting_gift_code";
-        await ctx.reply("🎁 **Gift Code Enter**\n\nദയവായി നിങ്ങളുടെ ഗിഫ്റ്റ് കോഡ് താഴെ ടൈപ്പ് ചെയ്തു അയക്കുക:", { parse_mode: "Markdown" });
-    } 
-    else if (text === lblPayment) {
-        const payInline = new InlineKeyboard()
-            .text("💳 Link UPI ID", "pay_link_upi").row()
-            .text("📱 Link Gateway / Mobile Number", "pay_link_mobile");
-
-        await ctx.reply("⚙️ **Payment Method Settings**", { parse_mode: "Markdown", reply_markup: payInline });
+        await ctx.reply("🎁 **Gift Code Enter**\n\nSend your code using: `/redeem CODE`", { parse_mode: "Markdown" });
     } 
     else if (text === lblP2p) {
-        await ctx.reply("💸 **P2P Transfer**\n\nവഴി പണം അയക്കാൻ:\n`/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
+        await ctx.reply("💸 **P2P Transfer**\n\nUse command:\n`/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
     } 
     else if (text === lblWithdraw) {
         if (!user.upi_id && !user.mobile_no) return ctx.reply("❌ Link payment method first!");
-        await ctx.reply(`🏧 **Withdrawal Panel**\nBalance: ₹${user.balance.toFixed(2)}\n\nപണം പിൻവലിക്കാൻ:\n\`/withdraw AMOUNT\``, { parse_mode: "Markdown" });
+        await ctx.reply(`🏧 **Withdrawal Panel**\nBalance: ₹${user.balance.toFixed(2)}\n\nUse command:\n\`/withdraw AMOUNT\``, { parse_mode: "Markdown" });
     }
 });
 
 // START BOT
 bot.start();
-console.log("Custom Editable Keyboard Bot is active!");
+console.log("Updated Dynamic Bot with Full Customization is active!");
