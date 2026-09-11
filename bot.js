@@ -12,8 +12,9 @@ http.createServer((req, res) => {
 });
 
 // ---------------- CONFIGURATION ----------------
-const BOT_TOKEN = process.env.BOT_TOKEN || "YOUR_BOT_TOKEN_HERE"; 
-const ADMIN_ID = parseInt(process.env.ADMIN_ID || "8061612320"); 
+// താങ്കൾ നൽകിയ പുതിയ ടോക്കൺ നേരിട്ട് ഇവിടെ ചേർത്തിട്ടുണ്ട്
+const BOT_TOKEN = "8883226932:AAHUseWqnyaHF3vBB9N_23H_0wBoAb9vtzE"; 
+const ADMIN_ID = 8061612320; 
 // -----------------------------------------------
 
 const bot = new Bot(BOT_TOKEN);
@@ -68,11 +69,10 @@ function initDatabase() {
     const insertSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
     insertSetting.run("welcome_bonus_enabled", "OFF");
     insertSetting.run("welcome_bonus_amount", "10");
-    insertSetting.run("support_username", "https://t.me/telegram"); // Default support link
+    insertSetting.run("support_username", "https://t.me/telegram");
     insertSetting.run("show_live_fund", "ON");
     insertSetting.run("show_statement", "ON");
 
-    // Dynamic Keyboard default setup
     const initBtn = db.prepare("INSERT OR IGNORE INTO custom_buttons (btn_key, label, row_idx) VALUES (?, ?, ?)");
     initBtn.run("btn_tasks", "📋 Tasks", 1);
     initBtn.run("btn_balance", "🚀 My Balance", 1);
@@ -252,7 +252,6 @@ bot.callbackQuery("admin_toggle_stmt", async (ctx) => {
     await ctx.answerCallbackQuery({ text: `Statement Button set to ${next}` });
 });
 
-// Interactive Payment Method Callbacks
 bot.callbackQuery("set_wallet_action", async (ctx) => {
     userState[ctx.from.id] = "awaiting_wallet_input";
     await ctx.reply("💳 Send your Wallet / Mobile Number below:");
@@ -277,7 +276,6 @@ bot.callbackQuery("user_live_fund", async (ctx) => {
     await ctx.answerCallbackQuery();
 });
 
-// Admin standard callbacks
 bot.callbackQuery("admin_add_task", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     adminState[ADMIN_ID] = "awaiting_task";
@@ -342,7 +340,6 @@ bot.on("message", async (ctx) => {
     const text = ctx.message.text ? ctx.message.text.trim() : "";
     const user = getUser(userId);
 
-    // 1. User State Inputs for Wallet & UPI
     if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
         db.prepare("UPDATE users SET mobile_no = ? WHERE user_id = ?").run(text, userId);
@@ -355,7 +352,6 @@ bot.on("message", async (ctx) => {
         return ctx.reply(`✅ **UPI Address Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
-    // 2. Admin Inputs Handler
     if (userId === ADMIN_ID && adminState[ADMIN_ID]) {
         const state = adminState[ADMIN_ID];
         delete adminState[ADMIN_ID];
@@ -405,7 +401,6 @@ bot.on("message", async (ctx) => {
         }
     }
 
-    // 3. MAIN DYNAMIC BUTTON HANDLERS
     const lblTasks = getButtonLabel("btn_tasks");
     const lblBal = getButtonLabel("btn_balance");
     const lblGift = getButtonLabel("btn_gift");
@@ -413,7 +408,6 @@ bot.on("message", async (ctx) => {
     const lblWithdraw = getButtonLabel("btn_withdraw");
     const lblPayment = getButtonLabel("btn_payment");
 
-    // Exact Match for "My Balance" Layout (Photo 1 & 2)
     if (text === lblBal) {
         const supportLink = getSetting("support_username") || "https://t.me/telegram";
         const fundStatus = getSetting("show_live_fund");
@@ -438,7 +432,6 @@ bot.on("message", async (ctx) => {
 
         await ctx.reply(balMsg, { parse_mode: "Markdown", reply_markup: balInline });
     } 
-    // Exact Match for "Payout / Payment Method" Layout (Photo 1)
     else if (text === lblPayment) {
         const walletVal = user.mobile_no ? `\`${user.mobile_no}\`` : "*Not Set*";
         const upiVal = user.upi_id ? `\`${user.upi_id}\`` : "*Not Set*";
@@ -478,4 +471,4 @@ bot.on("message", async (ctx) => {
 
 // START BOT
 bot.start();
-console.log("Updated Dynamic Bot with Full Customization is active!");
+console.log("Bot with hardcoded Token is active!");
