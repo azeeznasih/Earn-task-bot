@@ -1,13 +1,12 @@
-
 {
   "name": "telegram-payment-task-bot",
   "version": "1.0.0",
-  "description": "Telegram Payment Task Bot powered by MongoDB Atlas",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node bot.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "grammy": "^1.35.0",
     "mongoose": "^8.12.0"
   },
