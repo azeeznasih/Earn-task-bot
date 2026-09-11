@@ -2,13 +2,13 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const Database = require("better-sqlite3");
 const http = require("http");
 
-// --- RENDER DUMMY SERVER (FOR 24/7 UPTIME) ---
+// --- RENDER PORT DUMMY SERVER (FOR 24/7 UNINTERRUPTED UPTIME) ---
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Telegram Bot is Running 24/7!");
+    res.end("Telegram Bot Service is active and running 24/7!");
 }).listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+    console.log(`HTTP Server listening on port ${PORT}`);
 });
 
 // ---------------- CONFIGURATION ----------------
