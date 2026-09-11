@@ -12,7 +12,7 @@ http.createServer((req, res) => {
 });
 
 // ---------------- CONFIGURATION ----------------
-const BOT_TOKEN = process.env.BOT_TOKEN || "8883226932:AAGIszZzzfhLfl6EMJx-GtRhw4gc371FE_w"; 
+const BOT_TOKEN = process.env.BOT_TOKEN || "YOUR_BOT_TOKEN_HERE"; 
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || "8061612320"); 
 const SUPPORT_USERNAME = "YourSupportUsername"; // നിങ്ങളുടെ സപ്പോർട്ട് യൂസർനെയിം (@ ഇല്ലാതെ)
 // -----------------------------------------------
@@ -70,7 +70,7 @@ function initDatabase() {
     insertSetting.run("welcome_bonus_enabled", "OFF");
     insertSetting.run("welcome_bonus_amount", "10");
 
-    // Dynamic Keyboard default entries
+    // Dynamic Keyboard default setup (Requested Row Order)
     const initBtn = db.prepare("INSERT OR IGNORE INTO custom_buttons (btn_key, label, row_idx) VALUES (?, ?, ?)");
     initBtn.run("btn_tasks", "📋 Tasks", 1);
     initBtn.run("btn_balance", "💳 My Balance", 1);
@@ -122,7 +122,7 @@ function getDynamicMainKeyboard() {
     });
 
     const kb = new Keyboard();
-    Object.keys(rows).sort().forEach(r => {
+    Object.keys(rows).sort((a,b) => Number(a) - Number(b)).forEach(r => {
         rows[r].forEach(lbl => kb.text(lbl));
         kb.row();
     });
@@ -141,8 +141,8 @@ function getAdminPanelInline() {
         .text("➕ Add Task", "admin_add_task").text("🔑 Create Gift Code", "admin_create_code").row()
         .text("💰 Add Balance", "admin_add_bal").text("➖ Deduct Balance", "admin_rem_bal").row()
         .text("⌨️ Customize Keyboard", "admin_custom_kb").text("📊 Bot Stats", "admin_stats").row()
-        .text("📢 Broadcast Message", "admin_broadcast").text("🗑️ Delete Task", "admin_del_task").row()
-        .text("⚙️ Toggle Bonus", "admin_toggle_bonus").text("❌ Close Panel", "admin_close");
+        .text("📢 Broadcast Message", "admin_broadcast").text("⚙️ Toggle Bonus", "admin_toggle_bonus").row()
+        .text("❌ Close Panel", "admin_close");
 }
 
 function getKeyboardManagerInline() {
@@ -200,6 +200,71 @@ bot.command("linkmobile", async (ctx) => {
     await ctx.reply(`✅ **Gateway Mobile Number Linked!**\n\`${mobileInput.trim()}\``, { parse_mode: "Markdown" });
 });
 
+bot.command("p2p", async (ctx) => {
+    const userId = ctx.from.id;
+    const args = ctx.match ? ctx.match.split(" ") : [];
+
+    if (args.length < 2) {
+        return ctx.reply("❌ **Use:** `/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
+    }
+
+    const targetId = parseInt(args[0]);
+    const amount = parseFloat(args[1]);
+
+    if (isNaN(targetId) || isNaN(amount) || amount <= 0) {
+        return ctx.reply("❌ Invalid User ID or Amount!");
+    }
+
+    if (targetId === userId) {
+        return ctx.reply("❌ You cannot send balance to yourself!");
+    }
+
+    const sender = getUser(userId);
+    if (sender.balance < amount) {
+        return ctx.reply("❌ **Insufficient Balance!**");
+    }
+
+    updateBalance(userId, -amount);
+    updateBalance(targetId, amount);
+
+    await ctx.reply(`✅ **Successfully transferred ₹${amount.toFixed(2)} to ID:** \`${targetId}\``, { parse_mode: "Markdown" });
+
+    try {
+        await ctx.api.sendMessage(targetId, `🎉 **You received ₹${amount.toFixed(2)} from Telegram ID:** \`${userId}\``, { parse_mode: "Markdown" });
+    } catch (err) {}
+});
+
+bot.command("withdraw", async (ctx) => {
+    const userId = ctx.from.id;
+    const amount = parseFloat(ctx.match);
+    const user = getUser(userId);
+
+    if (isNaN(amount) || amount <= 0) {
+        return ctx.reply("❌ **Use:** `/withdraw AMOUNT`", { parse_mode: "Markdown" });
+    }
+
+    if (user.balance < amount) {
+        return ctx.reply("❌ **Insufficient Balance!**");
+    }
+
+    if (!user.upi_id && !user.mobile_no) {
+        return ctx.reply("❌ Please link your Payment Method first!");
+    }
+
+    updateBalance(userId, -amount);
+    await ctx.reply(`✅ **Withdrawal Request Submitted!**\nAmount: ₹${amount.toFixed(2)}\nStatus: Pending Approval`);
+
+    if (ADMIN_ID) {
+        try {
+            await ctx.api.sendMessage(
+                ADMIN_ID,
+                `📥 **Withdrawal Request!**\nUser ID: \`${userId}\`\nAmount: ₹${amount.toFixed(2)}\nUPI ID: \`${user.upi_id || "None"}\`\nMobile: \`${user.mobile_no || "None"}\``,
+                { parse_mode: "Markdown" }
+            );
+        } catch (e) {}
+    }
+});
+
 function processRedeemCode(ctx, codeRaw) {
     const userId = ctx.from.id;
     let code = codeRaw.trim().toUpperCase();
@@ -222,7 +287,7 @@ bot.callbackQuery("admin_main_menu", async (ctx) => {
 
 bot.callbackQuery("admin_custom_kb", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.editMessageText("⌨️ **Keyboard Customizer Panel**\n\n- Click **Edit** to change button text.\n- Click **Row Up/Down** to move button position:", {
+    await ctx.editMessageText("⌨️ **Keyboard Customizer Panel**\n\n- Click **Edit** to change button text.\n- Click **Row Up/Down (Arrows)** to move button position:", {
         reply_markup: getKeyboardManagerInline()
     });
 });
@@ -240,7 +305,7 @@ bot.callbackQuery(/^kb_move_up_(.+)$/, async (ctx) => {
     const btnKey = ctx.match[1];
     db.prepare("UPDATE custom_buttons SET row_idx = MAX(1, row_idx - 1) WHERE btn_key = ?").run(btnKey);
     await ctx.editMessageReplyMarkup({ reply_markup: getKeyboardManagerInline() });
-    await ctx.answerCallbackQuery({ text: "Moved Up!" });
+    await ctx.answerCallbackQuery({ text: "Moved Row Up!" });
 });
 
 bot.callbackQuery(/^kb_move_down_(.+)$/, async (ctx) => {
@@ -248,7 +313,7 @@ bot.callbackQuery(/^kb_move_down_(.+)$/, async (ctx) => {
     const btnKey = ctx.match[1];
     db.prepare("UPDATE custom_buttons SET row_idx = row_idx + 1 WHERE btn_key = ?").run(btnKey);
     await ctx.editMessageReplyMarkup({ reply_markup: getKeyboardManagerInline() });
-    await ctx.answerCallbackQuery({ text: "Moved Down!" });
+    await ctx.answerCallbackQuery({ text: "Moved Row Down!" });
 });
 
 bot.callbackQuery("refresh_balance", async (ctx) => {
