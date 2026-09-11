@@ -1,14 +1,17 @@
+
 {
-  "name": "earn-task-bot",
+  "name": "telegram-payment-task-bot",
   "version": "1.0.0",
-  "description": "Task Payment Bot using Grammy.js",
-  "main": "bot.js",
+  "description": "Telegram Payment Task Bot powered by MongoDB Atlas",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.0",
-    "dotenv": "^16.4.7",
-    "grammy": "^1.35.0"
+    "grammy": "^1.35.0",
+    "mongoose": "^8.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
