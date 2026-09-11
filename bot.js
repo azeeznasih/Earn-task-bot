@@ -12,7 +12,6 @@ http.createServer((req, res) => {
 });
 
 // ---------------- CONFIGURATION ----------------
-// താങ്കൾ നൽകിയ പുതിയ ടോക്കൺ നേരിട്ട് ഇവിടെ ചേർത്തിട്ടുണ്ട്
 const BOT_TOKEN = "8883226932:AAHUseWqnyaHF3vBB9N_23H_0wBoAb9vtzE"; 
 const ADMIN_ID = 8061612320; 
 // -----------------------------------------------
@@ -30,9 +29,19 @@ function initDatabase() {
             user_id INTEGER PRIMARY KEY,
             balance REAL DEFAULT 0.0,
             upi_id TEXT DEFAULT NULL,
-            mobile_no TEXT DEFAULT NULL
+            mobile_no TEXT DEFAULT NULL,
+            bank_acc TEXT DEFAULT NULL,
+            bank_ifsc TEXT DEFAULT NULL,
+            redeem_email TEXT DEFAULT NULL,
+            amazon_email TEXT DEFAULT NULL
         );
     `);
+
+    // Migration logic for existing databases
+    try { db.exec("ALTER TABLE users ADD COLUMN bank_acc TEXT DEFAULT NULL;"); } catch (e) {}
+    try { db.exec("ALTER TABLE users ADD COLUMN bank_ifsc TEXT DEFAULT NULL;"); } catch (e) {}
+    try { db.exec("ALTER TABLE users ADD COLUMN redeem_email TEXT DEFAULT NULL;"); } catch (e) {}
+    try { db.exec("ALTER TABLE users ADD COLUMN amazon_email TEXT DEFAULT NULL;"); } catch (e) {}
 
     db.exec(`
         CREATE TABLE IF NOT EXISTS tasks (
@@ -102,8 +111,8 @@ function getUser(userId) {
         if (bonusEnabled === "ON") {
             initialBal = parseFloat(getSetting("welcome_bonus_amount") || "0");
         }
-        db.prepare("INSERT INTO users (user_id, balance, upi_id, mobile_no) VALUES (?, ?, NULL, NULL)").run(userId, initialBal);
-        user = { user_id: userId, balance: initialBal, upi_id: null, mobile_no: null };
+        db.prepare("INSERT INTO users (user_id, balance) VALUES (?, ?)").run(userId, initialBal);
+        user = { user_id: userId, balance: initialBal, upi_id: null, mobile_no: null, bank_acc: null, bank_ifsc: null, redeem_email: null, amazon_email: null };
     }
     return user;
 }
@@ -111,6 +120,19 @@ function getUser(userId) {
 function updateBalance(userId, amount) {
     getUser(userId);
     db.prepare("UPDATE users SET balance = balance + ? WHERE user_id = ?").run(amount, userId);
+}
+
+// Validation Helpers
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidIFSC(ifsc) {
+    return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCase());
+}
+
+function isValidBankAcc(acc) {
+    return /^\d{9,18}$/.test(acc);
 }
 
 // --- DYNAMIC KEYBOARD BUILDER ---
@@ -252,15 +274,34 @@ bot.callbackQuery("admin_toggle_stmt", async (ctx) => {
     await ctx.answerCallbackQuery({ text: `Statement Button set to ${next}` });
 });
 
+// PAYOUT METHOD CALLBACKS
 bot.callbackQuery("set_wallet_action", async (ctx) => {
     userState[ctx.from.id] = "awaiting_wallet_input";
-    await ctx.reply("💳 Send your Wallet / Mobile Number below:");
+    await ctx.reply("📱 Please enter your Mobile / Wallet Number:");
     await ctx.answerCallbackQuery();
 });
 
 bot.callbackQuery("set_upi_action", async (ctx) => {
     userState[ctx.from.id] = "awaiting_upi_input";
-    await ctx.reply("💵 Send your UPI ID below:");
+    await ctx.reply("💵 Please enter your UPI ID:");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("set_bank_action", async (ctx) => {
+    userState[ctx.from.id] = "awaiting_bank_acc";
+    await ctx.reply("🏦 Please enter your Bank Account Number:");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("set_redeem_action", async (ctx) => {
+    userState[ctx.from.id] = "awaiting_redeem_email";
+    await ctx.reply("📧 Please enter your Email ID for Redeem Code:");
+    await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery("set_amazon_action", async (ctx) => {
+    userState[ctx.from.id] = "awaiting_amazon_email";
+    await ctx.reply("🛒 Please enter your Email ID for Amazon Gift Card:");
     await ctx.answerCallbackQuery();
 });
 
@@ -340,6 +381,7 @@ bot.on("message", async (ctx) => {
     const text = ctx.message.text ? ctx.message.text.trim() : "";
     const user = getUser(userId);
 
+    // USER INPUT PROCESSING
     if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
         db.prepare("UPDATE users SET mobile_no = ? WHERE user_id = ?").run(text, userId);
@@ -352,6 +394,43 @@ bot.on("message", async (ctx) => {
         return ctx.reply(`✅ **UPI Address Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
+    if (userState[userId] === "awaiting_bank_acc") {
+        if (!isValidBankAcc(text)) {
+            return ctx.reply("❌ **Invalid Account Number!** Please enter a valid Bank Account Number (9-18 digits):");
+        }
+        db.prepare("UPDATE users SET bank_acc = ? WHERE user_id = ?").run(text, userId);
+        userState[userId] = "awaiting_bank_ifsc";
+        return ctx.reply(`✅ Account Number saved!\n\n🏦 **Now, please enter your Bank IFSC Code:**`);
+    }
+
+    if (userState[userId] === "awaiting_bank_ifsc") {
+        if (!isValidIFSC(text)) {
+            return ctx.reply("❌ **Invalid IFSC Code!** Please enter a valid 11-digit IFSC code (e.g., SBIN0001234):");
+        }
+        delete userState[userId];
+        db.prepare("UPDATE users SET bank_ifsc = ? WHERE user_id = ?").run(text.toUpperCase(), userId);
+        return ctx.reply(`✅ **Bank Account Linked Successfully!**\n\nAccount: \`${user.bank_acc}\`\nIFSC: \`${text.toUpperCase()}\``, { parse_mode: "Markdown" });
+    }
+
+    if (userState[userId] === "awaiting_redeem_email") {
+        if (!isValidEmail(text)) {
+            return ctx.reply("❌ **Invalid Email Address!** Please enter a valid Email ID for Redeem Code:");
+        }
+        delete userState[userId];
+        db.prepare("UPDATE users SET redeem_email = ? WHERE user_id = ?").run(text, userId);
+        return ctx.reply(`✅ **Redeem Code Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
+    }
+
+    if (userState[userId] === "awaiting_amazon_email") {
+        if (!isValidEmail(text)) {
+            return ctx.reply("❌ **Invalid Email Address!** Please enter a valid Email ID for Amazon Gift Card:");
+        }
+        delete userState[userId];
+        db.prepare("UPDATE users SET amazon_email = ? WHERE user_id = ?").run(text, userId);
+        return ctx.reply(`✅ **Amazon Gift Card Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
+    }
+
+    // ADMIN INPUT PROCESSING
     if (userId === ADMIN_ID && adminState[ADMIN_ID]) {
         const state = adminState[ADMIN_ID];
         delete adminState[ADMIN_ID];
@@ -435,15 +514,24 @@ bot.on("message", async (ctx) => {
     else if (text === lblPayment) {
         const walletVal = user.mobile_no ? `\`${user.mobile_no}\`` : "*Not Set*";
         const upiVal = user.upi_id ? `\`${user.upi_id}\`` : "*Not Set*";
+        const bankVal = user.bank_acc ? `\`${user.bank_acc} (${user.bank_ifsc})\`` : "*Not Set*";
+        const redeemVal = user.redeem_email ? `\`${user.redeem_email}\`` : "*Not Set*";
+        const amazonVal = user.amazon_email ? `\`${user.amazon_email}\`` : "*Not Set*";
 
         const payMsg = 
-            `**Choose Desired Payment Method From Below 👇**\n\n` +
-            `**Your Current Wallet -** ${walletVal}\n` +
-            `**Your Current UPI -** ${upiVal}`;
+            `Choose Desired Payment Method From Below 👇\n\n` +
+            `Your Current Wallet - ${walletVal}\n` +
+            `Your Current UPI - ${upiVal}\n` +
+            `Your Current Bank - ${bankVal}\n` +
+            `Your Current Redeem Email - ${redeemVal}\n` +
+            `Your Current Amazon Email - ${amazonVal}`;
 
         const payInline = new InlineKeyboard()
             .text("🔗 Set Wallet", "set_wallet_action").row()
-            .text("💵 Set UPI Address", "set_upi_action");
+            .text("💵 Set UPI Address", "set_upi_action").row()
+            .text("🏦 Set Bank Account", "set_bank_action").row()
+            .text("🎁 Set Redeem Code Email", "set_redeem_action").row()
+            .text("🛒 Set Amazon Gift Card Email", "set_amazon_action");
 
         await ctx.reply(payMsg, { parse_mode: "Markdown", reply_markup: payInline });
     }
@@ -464,11 +552,13 @@ bot.on("message", async (ctx) => {
         await ctx.reply("💸 **P2P Transfer**\n\nUse command:\n`/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
     } 
     else if (text === lblWithdraw) {
-        if (!user.upi_id && !user.mobile_no) return ctx.reply("❌ Link payment method first!");
+        if (!user.upi_id && !user.mobile_no && !user.bank_acc && !user.redeem_email && !user.amazon_email) {
+            return ctx.reply("❌ Link at least one payment method first!");
+        }
         await ctx.reply(`🏧 **Withdrawal Panel**\nBalance: ₹${user.balance.toFixed(2)}\n\nUse command:\n\`/withdraw AMOUNT\``, { parse_mode: "Markdown" });
     }
 });
 
 // START BOT
 bot.start();
-console.log("Bot with hardcoded Token is active!");
+console.log("Bot updated with Bank Account, Redeem Email & Amazon Gift Card options!");
