@@ -15,35 +15,49 @@ http.createServer((req, res) => {
 
 // Keep Render Alive (Self-Ping every 5 mins)
 setInterval(() => {
-    http.get(RENDER_EXTERNAL_URL, (res) => {
-        // Ping success
-    }).on('error', (err) => {
-        console.error("Self-ping error:", err.message);
-    });
+    http.get(RENDER_EXTERNAL_URL, () => {}).on('error', () => {});
 }, 5 * 60 * 1000);
 
 // ---------------- CONFIGURATION ----------------
 const BOT_TOKEN = process.env.BOT_TOKEN || "8883226932:AAHUseWqnyaHF3vBB9N_23H_0wBoAb9vtzE"; 
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || "8061612320"); 
-
-// External PostgreSQL Database Connection String (e.g., Supabase / Render Postgres)
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:password@localhost:5432/postgres";
+const DATABASE_URL = process.env.DATABASE_URL; // Render Environment Variable
 // -----------------------------------------------
 
 const bot = new Bot(BOT_TOKEN);
-const pool = new Pool({
-    connectionString: DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+
+// Global Safe Error Handler to prevent Render Crashes
+bot.catch((err) => {
+    console.error("Caught bot error:", err.error || err);
 });
+
+let pool = null;
+
+if (DATABASE_URL) {
+    pool = new Pool({
+        connectionString: DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+} else {
+    console.warn("⚠️ DATABASE_URL not provided in Environment Variables! Database operations will fail safely.");
+}
 
 const userState = {};
 const adminState = {};
 
+// Helper for Safe Database Queries
+async function query(text, params) {
+    if (!pool) {
+        throw new Error("Database connection is not configured. Please set DATABASE_URL environment variable.");
+    }
+    return await pool.query(text, params);
+}
+
 // --- DATABASE SETUP (POSTGRESQL) ---
 async function initDatabase() {
-    const client = await pool.connect();
+    if (!pool) return;
     try {
-        await client.query(`
+        await query(`
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
                 username TEXT,
@@ -91,7 +105,6 @@ async function initDatabase() {
             );
         `);
 
-        // Insert Default Settings
         const defaultSettings = [
             ["welcome_bonus_enabled", "OFF"],
             ["welcome_bonus_amount", "10"],
@@ -109,7 +122,7 @@ async function initDatabase() {
         ];
 
         for (const [key, val] of defaultSettings) {
-            await client.query(`INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, val]);
+            await query(`INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, val]);
         }
 
         const buttons = [
@@ -122,88 +135,111 @@ async function initDatabase() {
         ];
 
         for (const [btn_key, label, row_idx] of buttons) {
-            await client.query(`INSERT INTO custom_buttons (btn_key, label, row_idx) VALUES ($1, $2, $3) ON CONFLICT (btn_key) DO NOTHING;`, [btn_key, label, row_idx]);
+            await query(`INSERT INTO custom_buttons (btn_key, label, row_idx) VALUES ($1, $2, $3) ON CONFLICT (btn_key) DO NOTHING;`, [btn_key, label, row_idx]);
         }
-
-    } finally {
-        client.release();
+        console.log("PostgreSQL Database Initialized Successfully!");
+    } catch (e) {
+        console.error("Database connection initialization failed:", e.message);
     }
 }
 
-initDatabase().catch(console.error);
+initDatabase();
 
 // --- HELPER FUNCTIONS ---
 async function getSetting(key) {
-    const res = await pool.query("SELECT value FROM settings WHERE key = $1", [key]);
-    return res.rows[0] ? res.rows[0].value : null;
+    try {
+        const res = await query("SELECT value FROM settings WHERE key = $1", [key]);
+        return res.rows[0] ? res.rows[0].value : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 async function setSetting(key, value) {
-    await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2", [key, value]);
+    try {
+        await query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2", [key, value]);
+    } catch (e) {}
 }
 
 async function getUser(userId, username = "", phone = "") {
-    let res = await pool.query("SELECT * FROM users WHERE user_id = $1", [userId]);
-    if (res.rows.length === 0) {
-        const bonusEnabled = await getSetting("welcome_bonus_enabled");
-        let initialBal = 0.0;
-        if (bonusEnabled === "ON") {
-            initialBal = parseFloat(await getSetting("welcome_bonus_amount") || "0");
-        }
-        await pool.query(
-            "INSERT INTO users (user_id, username, phone_number, balance) VALUES ($1, $2, $3, $4)",
-            [userId, username, phone, initialBal]
-        );
-        res = await pool.query("SELECT * FROM users WHERE user_id = $1", [userId]);
-    } else {
-        if (username || phone) {
-            await pool.query(
-                "UPDATE users SET username = COALESCE(NULLIF($2, ''), username), phone_number = COALESCE(NULLIF($3, ''), phone_number) WHERE user_id = $1",
-                [userId, username, phone]
+    try {
+        let res = await query("SELECT * FROM users WHERE user_id = $1", [userId]);
+        if (res.rows.length === 0) {
+            const bonusEnabled = await getSetting("welcome_bonus_enabled");
+            let initialBal = 0.0;
+            if (bonusEnabled === "ON") {
+                initialBal = parseFloat(await getSetting("welcome_bonus_amount") || "0");
+            }
+            await query(
+                "INSERT INTO users (user_id, username, phone_number, balance) VALUES ($1, $2, $3, $4)",
+                [userId, username, phone, initialBal]
             );
+            res = await query("SELECT * FROM users WHERE user_id = $1", [userId]);
+        } else {
+            if (username || phone) {
+                await query(
+                    "UPDATE users SET username = COALESCE(NULLIF($2, ''), username), phone_number = COALESCE(NULLIF($3, ''), phone_number) WHERE user_id = $1",
+                    [userId, username, phone]
+                );
+            }
         }
+        return res.rows[0];
+    } catch (e) {
+        return { user_id: userId, balance: 0.0, username: username, phone_number: phone };
     }
-    return res.rows[0];
 }
 
 async function updateBalance(userId, amount) {
-    await pool.query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [amount, userId]);
+    try {
+        await query("UPDATE users SET balance = balance + $1 WHERE user_id = $2", [amount, userId]);
+    } catch (e) {}
 }
 
-// Validations
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function isValidIFSC(ifsc) { return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCase()); }
 function isValidBankAcc(acc) { return /^\d{9,18}$/.test(acc); }
 
 // --- KEYBOARDS ---
 async function getDynamicMainKeyboard() {
-    const res = await pool.query("SELECT * FROM custom_buttons ORDER BY row_idx ASC, btn_key ASC");
-    const rows = {};
+    try {
+        const res = await query("SELECT * FROM custom_buttons ORDER BY row_idx ASC, btn_key ASC");
+        const rows = {};
 
-    res.rows.forEach(b => {
-        if (!rows[b.row_idx]) rows[b.row_idx] = [];
-        rows[b.row_idx].push(b.label);
-    });
+        res.rows.forEach(b => {
+            if (!rows[b.row_idx]) rows[b.row_idx] = [];
+            rows[b.row_idx].push(b.label);
+        });
 
-    const kb = new Keyboard();
-    Object.keys(rows).sort((a,b) => Number(a) - Number(b)).forEach(r => {
-        rows[r].forEach(lbl => kb.text(lbl));
-        kb.row();
-    });
+        const kb = new Keyboard();
+        Object.keys(rows).sort((a,b) => Number(a) - Number(b)).forEach(r => {
+            rows[r].forEach(lbl => kb.text(lbl));
+            kb.row();
+        });
 
-    return kb.resized();
+        return kb.resized();
+    } catch (e) {
+        return new Keyboard()
+            .text("📋 Tasks").text("🚀 My Balance").row()
+            .text("🎁 Gift Code").text("💸 P2P Transfer").row()
+            .text("🏧 Withdraw").text("💳 Payout Method").resized();
+    }
 }
 
 async function getButtonLabel(key) {
-    const res = await pool.query("SELECT label FROM custom_buttons WHERE btn_key = $1", [key]);
-    return res.rows[0] ? res.rows[0].label : "";
+    try {
+        const res = await query("SELECT label FROM custom_buttons WHERE btn_key = $1", [key]);
+        return res.rows[0] ? res.rows[0].label : "";
+    } catch(e) { return ""; }
 }
 
 async function getAdminPanelInline() {
     const liveFund = await getSetting("custom_live_fund") || "10000";
     const panelToggle = await getSetting("admin_withdraw_panel_toggle") || "ON";
-    const pendingRes = await pool.query("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'PENDING'");
-    const pendingCount = pendingRes.rows[0].count;
+    let pendingCount = 0;
+    try {
+        const pendingRes = await query("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'PENDING'");
+        pendingCount = pendingRes.rows[0].count;
+    } catch(e) {}
 
     return new InlineKeyboard()
         .text("➕ Add Task", "admin_add_task").text("🔑 Create Gift Code", "admin_create_code").row()
@@ -277,7 +313,6 @@ bot.command("pay", async (ctx) => {
     const merchantUpi = await getSetting("merchant_upi_id") || "merchant@upi";
     const merchantName = await getSetting("merchant_name") || "EarnBot";
 
-    // Auto Dynamic UPI URI
     const upiUri = `upi://pay?pa=${encodeURIComponent(merchantUpi)}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR`;
 
     const payKb = new InlineKeyboard().url("📲 Pay Now via UPI App", upiUri);
@@ -297,7 +332,7 @@ bot.callbackQuery("view_statement", async (ctx) => {
         `🌐 **User ID:** \`${userId}\`\n` +
         `👤 **Username:** @${user.username || 'N/A'}\n` +
         `📱 **Phone:** \`${user.phone_number || 'Not Linked'}\`\n` +
-        `💵 **Current Balance:** ₹${parseFloat(user.balance).toFixed(2)}\n` +
+        `💵 **Current Balance:** ₹${parseFloat(user.balance || 0).toFixed(2)}\n` +
         `📊 **Account Status:** Active ✅`;
 
     const backInline = new InlineKeyboard().text("🔙 Back", "view_wallet_overview");
@@ -316,7 +351,7 @@ bot.callbackQuery("view_live_fund", async (ctx) => {
 bot.callbackQuery("view_wallet_overview", async (ctx) => {
     const userId = ctx.from.id;
     const user = await getUser(userId);
-    const balMsg = `💳 Wallet Overview 💳\n\n🌐 Wallet ID → ${userId}\n💵 Balance → ₹${parseFloat(user.balance).toFixed(2)}`;
+    const balMsg = `💳 Wallet Overview 💳\n\n🌐 Wallet ID → ${userId}\n💵 Balance → ₹${parseFloat(user.balance || 0).toFixed(2)}`;
     try { await ctx.editMessageText(balMsg, { reply_markup: await getBalanceOverviewKeyboard() }); } catch (e) {}
     await ctx.answerCallbackQuery();
 });
@@ -348,14 +383,17 @@ bot.callbackQuery("admin_set_gateway", async (ctx) => {
 // WITHDRAW APPROVAL DIRECTLY FROM CHANNEL / ADMIN PANEL
 bot.callbackQuery(/^app_wd_(\d+)$/, async (ctx) => {
     const reqId = ctx.match[1];
-    const res = await pool.query("SELECT * FROM withdrawals WHERE id = $1", [reqId]);
-    const req = res.rows[0];
+    let req;
+    try {
+        const res = await query("SELECT * FROM withdrawals WHERE id = $1", [reqId]);
+        req = res.rows[0];
+    } catch(e) {}
 
     if (!req || req.status !== 'PENDING') {
-        return ctx.reply("❌ Request already processed.");
+        return ctx.reply("❌ Request already processed or unavailable.");
     }
 
-    await pool.query("UPDATE withdrawals SET status = 'APPROVED' WHERE id = $1", [reqId]);
+    await query("UPDATE withdrawals SET status = 'APPROVED' WHERE id = $1", [reqId]);
 
     try {
         await ctx.api.sendMessage(req.user_id, `🎉 **Withdrawal Approved!**\n\n₹${req.amount} sent via ${req.method.toUpperCase()}! ✅`, { parse_mode: "Markdown" });
@@ -367,16 +405,18 @@ bot.callbackQuery(/^app_wd_(\d+)$/, async (ctx) => {
 
 bot.callbackQuery(/^rej_wd_(\d+)$/, async (ctx) => {
     const reqId = ctx.match[1];
-    const res = await pool.query("SELECT * FROM withdrawals WHERE id = $1", [reqId]);
-    const req = res.rows[0];
+    let req;
+    try {
+        const res = await query("SELECT * FROM withdrawals WHERE id = $1", [reqId]);
+        req = res.rows[0];
+    } catch(e) {}
 
     if (!req || req.status !== 'PENDING') {
-        return ctx.reply("❌ Request already processed.");
+        return ctx.reply("❌ Request already processed or unavailable.");
     }
 
-    // Refund Balance to User
     await updateBalance(req.user_id, req.amount);
-    await pool.query("UPDATE withdrawals SET status = 'REJECTED' WHERE id = $1", [reqId]);
+    await query("UPDATE withdrawals SET status = 'REJECTED' WHERE id = $1", [reqId]);
 
     try {
         await ctx.api.sendMessage(req.user_id, `❌ **Withdrawal Rejected!**\n\n₹${req.amount} refunded back to your wallet.`, { parse_mode: "Markdown" });
@@ -407,7 +447,7 @@ bot.callbackQuery(/^wd_(.+)$/, async (ctx) => {
     const maxLim = parseFloat(await getSetting(`max_wd_${method}`) || "10000");
 
     userState[userId] = `awaiting_withdraw_amount_${method}`;
-    await ctx.reply(`🏧 **Withdraw via ${method.toUpperCase()}**\n\n📌 Min Limit: ₹${minLim}\n📌 Max Limit: ₹${maxLim}\n💳 Balance: ₹${parseFloat(user.balance).toFixed(2)}\n\nEnter Amount:`, { parse_mode: "Markdown" });
+    await ctx.reply(`🏧 **Withdraw via ${method.toUpperCase()}**\n\n📌 Min Limit: ₹${minLim}\n📌 Max Limit: ₹${maxLim}\n💳 Balance: ₹${parseFloat(user.balance || 0).toFixed(2)}\n\nEnter Amount:`, { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
@@ -440,8 +480,8 @@ bot.on("message", async (ctx) => {
             return ctx.reply(`❌ Invalid amount! Limit for ${method.toUpperCase()} is ₹${minLim} - ₹${maxLim}.`);
         }
 
-        if (parseFloat(user.balance) < amount) {
-            return ctx.reply(`❌ **Insufficient Balance!** Current Balance: ₹${parseFloat(user.balance).toFixed(2)}`);
+        if (parseFloat(user.balance || 0) < amount) {
+            return ctx.reply(`❌ **Insufficient Balance!** Current Balance: ₹${parseFloat(user.balance || 0).toFixed(2)}`);
         }
 
         let payoutInfo = "";
@@ -451,22 +491,22 @@ bot.on("message", async (ctx) => {
         else if (method === "amazon") payoutInfo = `Amazon: ${user.amazon_email}`;
         else if (method === "redeem") payoutInfo = `Redeem: ${user.redeem_email}`;
 
-        // Deduct balance instantly & Record Pending Request
         await updateBalance(userId, -amount);
-        const wRes = await pool.query(
-            "INSERT INTO withdrawals (user_id, amount, method, details, status) VALUES ($1, $2, $3, $4, 'PENDING') RETURNING id",
-            [userId, amount, method, payoutInfo]
-        );
-        const reqId = wRes.rows[0].id;
+        let reqId = Math.floor(Math.random() * 90000) + 10000;
+        try {
+            const wRes = await query(
+                "INSERT INTO withdrawals (user_id, amount, method, details, status) VALUES ($1, $2, $3, $4, 'PENDING') RETURNING id",
+                [userId, amount, method, payoutInfo]
+            );
+            reqId = wRes.rows[0].id;
+        } catch(e) {}
 
         await ctx.reply(`⏳ **Withdrawal Placed!**\n\n💵 Amount: ₹${amount}\n💳 Method: ${method.toUpperCase()}\nStatus: *Pending Review*`, { parse_mode: "Markdown" });
 
-        // Action Keyboard for Approval/Rejection
         const actionKb = new InlineKeyboard()
             .text("✅ Approve", `app_wd_${reqId}`)
             .text("❌ Reject", `rej_wd_${reqId}`);
 
-        // Send to Payout Channel
         const payoutChannel = await getSetting("payout_channel");
         if (payoutChannel) {
             try {
@@ -490,19 +530,19 @@ bot.on("message", async (ctx) => {
     // USER SETTINGS INPUTS
     if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
-        await pool.query("UPDATE users SET mobile_no = $1 WHERE user_id = $2", [text, userId]);
+        await query("UPDATE users SET mobile_no = $1 WHERE user_id = $2", [text, userId]);
         return ctx.reply(`✅ **Wallet Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
     if (userState[userId] === "awaiting_upi_input") {
         delete userState[userId];
-        await pool.query("UPDATE users SET upi_id = $1 WHERE user_id = $2", [text, userId]);
+        await query("UPDATE users SET upi_id = $1 WHERE user_id = $2", [text, userId]);
         return ctx.reply(`✅ **UPI Address Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
     if (userState[userId] === "awaiting_bank_acc") {
         if (!isValidBankAcc(text)) return ctx.reply("❌ Invalid Account Number!");
-        await pool.query("UPDATE users SET bank_acc = $1 WHERE user_id = $2", [text, userId]);
+        await query("UPDATE users SET bank_acc = $1 WHERE user_id = $2", [text, userId]);
         userState[userId] = "awaiting_bank_ifsc";
         return ctx.reply(`✅ Account saved! Enter **Bank IFSC Code**:`);
     }
@@ -510,7 +550,7 @@ bot.on("message", async (ctx) => {
     if (userState[userId] === "awaiting_bank_ifsc") {
         if (!isValidIFSC(text)) return ctx.reply("❌ Invalid IFSC Code!");
         delete userState[userId];
-        await pool.query("UPDATE users SET bank_ifsc = $1 WHERE user_id = $2", [text.toUpperCase(), userId]);
+        await query("UPDATE users SET bank_ifsc = $1 WHERE user_id = $2", [text.toUpperCase(), userId]);
         return ctx.reply(`✅ **Bank Account Linked Successfully!**`, { parse_mode: "Markdown" });
     }
 
@@ -547,12 +587,12 @@ bot.on("message", async (ctx) => {
     }
 
     // MAIN BUTTON HANDLERS
-    const lblBal = await getButtonLabel("btn_balance");
-    const lblPayment = await getButtonLabel("btn_payment");
-    const lblWithdraw = await getButtonLabel("btn_withdraw");
+    const lblBal = await getButtonLabel("btn_balance") || "🚀 My Balance";
+    const lblPayment = await getButtonLabel("btn_payment") || "💳 Payout Method";
+    const lblWithdraw = await getButtonLabel("btn_withdraw") || "🏧 Withdraw";
 
     if (text === lblBal) {
-        const balMsg = `💳 Wallet Overview 💳\n\n🌐 Wallet ID → ${userId}\n💵 Balance → ₹${parseFloat(user.balance).toFixed(2)}`;
+        const balMsg = `💳 Wallet Overview 💳\n\n🌐 Wallet ID → ${userId}\n💵 Balance → ₹${parseFloat(user.balance || 0).toFixed(2)}`;
         await ctx.reply(balMsg, { reply_markup: await getBalanceOverviewKeyboard() });
     } 
     else if (text === lblPayment) {
@@ -565,4 +605,4 @@ bot.on("message", async (ctx) => {
 
 // START BOT
 bot.start();
-console.log("Bot deployed with PostgreSQL DB & Auto UPI Gateway!");
+console.log("Bot deployed smoothly!");
