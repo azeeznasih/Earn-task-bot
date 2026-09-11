@@ -37,7 +37,6 @@ function initDatabase() {
         );
     `);
 
-    // Migration logic for existing databases
     try { db.exec("ALTER TABLE users ADD COLUMN bank_acc TEXT DEFAULT NULL;"); } catch (e) {}
     try { db.exec("ALTER TABLE users ADD COLUMN bank_ifsc TEXT DEFAULT NULL;"); } catch (e) {}
     try { db.exec("ALTER TABLE users ADD COLUMN redeem_email TEXT DEFAULT NULL;"); } catch (e) {}
@@ -79,6 +78,7 @@ function initDatabase() {
     insertSetting.run("welcome_bonus_enabled", "OFF");
     insertSetting.run("welcome_bonus_amount", "10");
     insertSetting.run("support_username", "https://t.me/telegram");
+    insertSetting.run("payout_channel", ""); 
     insertSetting.run("show_live_fund", "ON");
     insertSetting.run("show_statement", "ON");
 
@@ -122,20 +122,12 @@ function updateBalance(userId, amount) {
     db.prepare("UPDATE users SET balance = balance + ? WHERE user_id = ?").run(amount, userId);
 }
 
-// Validation Helpers
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+// Validations
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function isValidIFSC(ifsc) { return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCase()); }
+function isValidBankAcc(acc) { return /^\d{9,18}$/.test(acc); }
 
-function isValidIFSC(ifsc) {
-    return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.toUpperCase());
-}
-
-function isValidBankAcc(acc) {
-    return /^\d{9,18}$/.test(acc);
-}
-
-// --- DYNAMIC KEYBOARD BUILDER ---
+// --- KEYBOARDS ---
 function getDynamicMainKeyboard() {
     const buttons = db.prepare("SELECT * FROM custom_buttons ORDER BY row_idx ASC, btn_key ASC").all();
     const rows = {};
@@ -159,46 +151,40 @@ function getButtonLabel(key) {
     return row ? row.label : "";
 }
 
-// --- ADMIN INLINE PANELS ---
 function getAdminPanelInline() {
-    const fundStatus = getSetting("show_live_fund");
-    const stmtStatus = getSetting("show_statement");
+    const payoutChan = getSetting("payout_channel") || "Not Set";
 
     return new InlineKeyboard()
         .text("➕ Add Task", "admin_add_task").text("🔑 Create Gift Code", "admin_create_code").row()
         .text("💰 Add Balance", "admin_add_bal").text("➖ Deduct Balance", "admin_rem_bal").row()
         .text("⌨️ Customize Keyboard", "admin_custom_kb").text("📊 Bot Stats", "admin_stats").row()
-        .text("🛠 Set Support Link", "admin_set_support").text("📢 Broadcast", "admin_broadcast").row()
-        .text(`💰 Fund Button: ${fundStatus}`, "admin_toggle_fund").text(`📒 Stmt Button: ${stmtStatus}`, "admin_toggle_stmt").row()
-        .text("⚙️ Toggle Bonus", "admin_toggle_bonus").text("❌ Close Panel", "admin_close");
+        .text("🛠 Set Support Link", "admin_set_support").text("📢 Set Payout Channel", "admin_set_payout_channel").row()
+        .text(`📢 Payout Channel: ${payoutChan}`, "admin_noop").row()
+        .text("📢 Broadcast", "admin_broadcast").text("⚙️ Toggle Bonus", "admin_toggle_bonus").row()
+        .text("❌ Close Panel", "admin_close");
 }
 
-function getKeyboardManagerInline() {
-    const buttons = db.prepare("SELECT * FROM custom_buttons ORDER BY row_idx ASC, btn_key ASC").all();
-    const inline = new InlineKeyboard();
+// 2 Per Row Layout for Payout Methods
+function getPayoutMethodsInline() {
+    return new InlineKeyboard()
+        .text("🔗 Set Wallet", "set_wallet_action").text("💵 Set UPI Address", "set_upi_action").row()
+        .text("🏦 Set Bank Account", "set_bank_action").text("🎁 Redeem Code Email", "set_redeem_action").row()
+        .text("🛒 Amazon Gift Card", "set_amazon_action");
+}
 
-    buttons.forEach(b => {
-        inline.text(`✏️ ${b.label} (Row ${b.row_idx})`, `kb_edit_${b.btn_key}`).row();
-        inline.text("⬅️ Row Up", `kb_move_up_${b.btn_key}`).text("Row Down ➡️", `kb_move_down_${b.btn_key}`).row();
-    });
-
-    inline.text("🔙 Back to Admin", "admin_main_menu");
-    return inline;
+// 2 Per Row Layout for Withdrawal Options
+function getWithdrawInline() {
+    return new InlineKeyboard()
+        .text("📱 Wallet Withdraw", "wd_wallet").text("💵 UPI Withdraw", "wd_upi").row()
+        .text("🏦 Bank Transfer", "wd_bank").text("🎁 Redeem Code", "wd_redeem").row()
+        .text("🛒 Amazon Gift Card", "wd_amazon");
 }
 
 // --- COMMAND HANDLERS ---
 bot.command("start", async (ctx) => {
     const userId = ctx.from.id;
     getUser(userId);
-    const bonusStatus = getSetting("welcome_bonus_enabled");
-
-    let bonusMsg = "";
-    if (bonusStatus === "ON") {
-        const amt = getSetting("welcome_bonus_amount");
-        bonusMsg = `\n🎉 **You received ₹${amt} Welcome Bonus!**`;
-    }
-
-    await ctx.reply(`👋 **Welcome to Earn Task Bot!**\nComplete simple tasks and earn real cash rewards.${bonusMsg}`, {
+    await ctx.reply(`👋 **Welcome to Earn Task Bot!**\nComplete simple tasks and earn real cash rewards.`, {
         parse_mode: "Markdown",
         reply_markup: getDynamicMainKeyboard()
     });
@@ -206,174 +192,75 @@ bot.command("start", async (ctx) => {
 
 bot.command("admin", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.reply(`🔐 **Advanced Admin Panel**\nSelect an operation to configure your bot:`, {
+    await ctx.reply(`🔐 **Advanced Admin Panel**`, {
         parse_mode: "Markdown",
         reply_markup: getAdminPanelInline()
     });
 });
 
-// --- CALLBACK QUERY HANDLERS ---
-bot.callbackQuery("admin_main_menu", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.editMessageText("🔐 **Advanced Admin Panel**\nSelect an operation:", { reply_markup: getAdminPanelInline() });
+bot.command("redeem", async (ctx) => {
+    const userId = ctx.from.id;
+    const text = ctx.message.text.split(" ")[1];
+    if (!text) return ctx.reply("❌ Please provide code: `/redeem CODE`", { parse_mode: "Markdown" });
+
+    const codeRow = db.prepare("SELECT * FROM gift_codes WHERE code = ? AND is_used = 0").get(text.toUpperCase());
+    if (!codeRow) return ctx.reply("❌ Invalid or already used Gift Code!");
+
+    db.prepare("UPDATE gift_codes SET is_used = 1 WHERE code = ?").run(text.toUpperCase());
+    updateBalance(userId, codeRow.reward);
+    return ctx.reply(`🎉 **Success!** You redeemed ₹${codeRow.reward}!`);
 });
 
-bot.callbackQuery("admin_custom_kb", async (ctx) => {
+// --- CALLBACK QUERIES ---
+bot.callbackQuery("admin_set_payout_channel", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.editMessageText("⌨️ **Keyboard Customizer Panel**\n\n- Click **Edit** to change label.\n- Click **Row Up/Down** to re-arrange buttons:", {
-        reply_markup: getKeyboardManagerInline()
-    });
-});
-
-bot.callbackQuery(/^kb_edit_(.+)$/, async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const btnKey = ctx.match[1];
-    adminState[ADMIN_ID] = `edit_label_${btnKey}`;
-    await ctx.reply(`✏️ Send new text/label for button \`${btnKey}\`:`, { parse_mode: "Markdown" });
+    adminState[ADMIN_ID] = "awaiting_payout_channel";
+    await ctx.reply("📢 Send your Payout Channel Username or ID (e.g., `@MyPayoutChannel` or `-100123456789`):\n\n*(Note: Make sure the Bot is an ADMIN in that Channel!)*");
     await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery(/^kb_move_up_(.+)$/, async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const btnKey = ctx.match[1];
-    db.prepare("UPDATE custom_buttons SET row_idx = MAX(1, row_idx - 1) WHERE btn_key = ?").run(btnKey);
-    await ctx.editMessageReplyMarkup({ reply_markup: getKeyboardManagerInline() });
-    await ctx.answerCallbackQuery({ text: "Moved Row Up!" });
-});
-
-bot.callbackQuery(/^kb_move_down_(.+)$/, async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const btnKey = ctx.match[1];
-    db.prepare("UPDATE custom_buttons SET row_idx = row_idx + 1 WHERE btn_key = ?").run(btnKey);
-    await ctx.editMessageReplyMarkup({ reply_markup: getKeyboardManagerInline() });
-    await ctx.answerCallbackQuery({ text: "Moved Row Down!" });
 });
 
 bot.callbackQuery("admin_set_support", async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     adminState[ADMIN_ID] = "awaiting_support_link";
-    await ctx.reply("🔗 Send new Customer Support Telegram Link (e.g., `https://t.me/YourUsername`):", { parse_mode: "Markdown" });
+    await ctx.reply("🔗 Send new Customer Support Telegram Link:");
     await ctx.answerCallbackQuery();
 });
 
-bot.callbackQuery("admin_toggle_fund", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const curr = getSetting("show_live_fund");
-    const next = curr === "ON" ? "OFF" : "ON";
-    setSetting("show_live_fund", next);
-    await ctx.editMessageReplyMarkup({ reply_markup: getAdminPanelInline() });
-    await ctx.answerCallbackQuery({ text: `Live Fund Button set to ${next}` });
-});
+// PAYOUT METHOD SETTINGS
+bot.callbackQuery("set_wallet_action", async (ctx) => { userState[ctx.from.id] = "awaiting_wallet_input"; await ctx.reply("📱 Enter your Mobile / Wallet Number:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("set_upi_action", async (ctx) => { userState[ctx.from.id] = "awaiting_upi_input"; await ctx.reply("💵 Enter your UPI ID:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("set_bank_action", async (ctx) => { userState[ctx.from.id] = "awaiting_bank_acc"; await ctx.reply("🏦 Enter your Bank Account Number:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("set_redeem_action", async (ctx) => { userState[ctx.from.id] = "awaiting_redeem_email"; await ctx.reply("📧 Enter your Email ID for Redeem Code:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("set_amazon_action", async (ctx) => { userState[ctx.from.id] = "awaiting_amazon_email"; await ctx.reply("🛒 Enter your Email ID for Amazon Gift Card:"); await ctx.answerCallbackQuery(); });
 
-bot.callbackQuery("admin_toggle_stmt", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const curr = getSetting("show_statement");
-    const next = curr === "ON" ? "OFF" : "ON";
-    setSetting("show_statement", next);
-    await ctx.editMessageReplyMarkup({ reply_markup: getAdminPanelInline() });
-    await ctx.answerCallbackQuery({ text: `Statement Button set to ${next}` });
-});
+// WITHDRAW CALLBACK HANDLERS
+bot.callbackQuery(/^wd_(.+)$/, async (ctx) => {
+    const userId = ctx.from.id;
+    const method = ctx.match[1];
+    const user = getUser(userId);
 
-// PAYOUT METHOD CALLBACKS
-bot.callbackQuery("set_wallet_action", async (ctx) => {
-    userState[ctx.from.id] = "awaiting_wallet_input";
-    await ctx.reply("📱 Please enter your Mobile / Wallet Number:");
+    let details = "";
+    if (method === "upi") details = user.upi_id ? `UPI: ${user.upi_id}` : null;
+    else if (method === "bank") details = user.bank_acc ? `Acc: ${user.bank_acc} | IFSC: ${user.bank_ifsc}` : null;
+    else if (method === "wallet") details = user.mobile_no ? `Mobile: ${user.mobile_no}` : null;
+    else if (method === "amazon") details = user.amazon_email ? `Email: ${user.amazon_email}` : null;
+    else if (method === "redeem") details = user.redeem_email ? `Email: ${user.redeem_email}` : null;
+
+    if (!details) {
+        return ctx.reply(`❌ You haven't set up your payout method for this option yet. Please go to **Payout Method** first!`, { parse_mode: "Markdown" });
+    }
+
+    userState[userId] = `awaiting_withdraw_amount_${method}`;
+    await ctx.reply(`🏧 **Enter Amount to Withdraw via ${method.toUpperCase()}**\n\nYour Linked Details: \`${details}\`\nCurrent Balance: ₹${user.balance.toFixed(2)}`, { parse_mode: "Markdown" });
     await ctx.answerCallbackQuery();
 });
 
-bot.callbackQuery("set_upi_action", async (ctx) => {
-    userState[ctx.from.id] = "awaiting_upi_input";
-    await ctx.reply("💵 Please enter your UPI ID:");
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("set_bank_action", async (ctx) => {
-    userState[ctx.from.id] = "awaiting_bank_acc";
-    await ctx.reply("🏦 Please enter your Bank Account Number:");
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("set_redeem_action", async (ctx) => {
-    userState[ctx.from.id] = "awaiting_redeem_email";
-    await ctx.reply("📧 Please enter your Email ID for Redeem Code:");
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("set_amazon_action", async (ctx) => {
-    userState[ctx.from.id] = "awaiting_amazon_email";
-    await ctx.reply("🛒 Please enter your Email ID for Amazon Gift Card:");
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("user_balance_statement", async (ctx) => {
-    const user = getUser(ctx.from.id);
-    await ctx.reply(`📒 **Balance Statement**\n\nCurrent Balance: ₹${user.balance.toFixed(2)}\nStatus: Active Account\nAll transactions processed securely.`, { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("user_live_fund", async (ctx) => {
-    const totalBal = db.prepare("SELECT SUM(balance) as sum FROM users").get().sum || 0;
-    await ctx.reply(`💰 **Live Bot Fund**\n\nTotal Liquidity/Fund in System: ₹${(totalBal + 10000).toFixed(2)}`, { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_add_task", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    adminState[ADMIN_ID] = "awaiting_task";
-    await ctx.reply("📝 Send task details: `Title | Reward | Link`", { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_create_code", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    adminState[ADMIN_ID] = "awaiting_giftcode";
-    await ctx.reply("🔑 Send Gift Code: `CODE AMOUNT`", { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_add_bal", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    adminState[ADMIN_ID] = "awaiting_addbal";
-    await ctx.reply("💰 Send: `USER_ID AMOUNT`", { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_rem_bal", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    adminState[ADMIN_ID] = "awaiting_rembal";
-    await ctx.reply("➖ Send: `USER_ID AMOUNT`", { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_stats", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get().count;
-    const totalBal = db.prepare("SELECT SUM(balance) as sum FROM users").get().sum || 0;
-    await ctx.reply(`📊 **Bot Stats**\nUsers: \`${totalUsers}\`\nTotal Balance: ₹\`${totalBal.toFixed(2)}\``, { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_broadcast", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    adminState[ADMIN_ID] = "awaiting_broadcast";
-    await ctx.reply("📢 Send broadcast message:");
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_toggle_bonus", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const curr = getSetting("welcome_bonus_enabled");
-    const next = curr === "ON" ? "OFF" : "ON";
-    setSetting("welcome_bonus_enabled", next);
-    await ctx.reply(`⚙️ Bonus status: *${next}*`, { parse_mode: "Markdown" });
-    await ctx.answerCallbackQuery();
-});
-
-bot.callbackQuery("admin_close", async (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    await ctx.deleteMessage();
-    await ctx.answerCallbackQuery();
-});
+bot.callbackQuery("admin_add_task", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; adminState[ADMIN_ID] = "awaiting_task"; await ctx.reply("📝 Send: `Title | Reward | Link`"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("admin_create_code", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; adminState[ADMIN_ID] = "awaiting_giftcode"; await ctx.reply("🔑 Send: `CODE AMOUNT`"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("admin_add_bal", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; adminState[ADMIN_ID] = "awaiting_addbal"; await ctx.reply("💰 Send: `USER_ID AMOUNT`"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("admin_rem_bal", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; adminState[ADMIN_ID] = "awaiting_rembal"; await ctx.reply("➖ Send: `USER_ID AMOUNT`"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("admin_broadcast", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; adminState[ADMIN_ID] = "awaiting_broadcast"; await ctx.reply("📢 Send broadcast text:"); await ctx.answerCallbackQuery(); });
+bot.callbackQuery("admin_close", async (ctx) => { if (ctx.from.id !== ADMIN_ID) return; await ctx.deleteMessage(); });
 
 // --- MESSAGE HANDLER ---
 bot.on("message", async (ctx) => {
@@ -381,7 +268,55 @@ bot.on("message", async (ctx) => {
     const text = ctx.message.text ? ctx.message.text.trim() : "";
     const user = getUser(userId);
 
-    // USER INPUT PROCESSING
+    // WITHDRAW AMOUNT PROCESSING
+    if (userState[userId] && userState[userId].startsWith("awaiting_withdraw_amount_")) {
+        const method = userState[userId].replace("awaiting_withdraw_amount_", "");
+        delete userState[userId];
+
+        const amount = parseFloat(text);
+        if (isNaN(amount) || amount <= 0) {
+            return ctx.reply("❌ Invalid amount entered! Withdrawal cancelled.");
+        }
+
+        if (user.balance < amount) {
+            return ctx.reply(`❌ **Insufficient Balance!**\nYour Balance: ₹${user.balance.toFixed(2)}`, { parse_mode: "Markdown" });
+        }
+
+        // Get Details
+        let payoutInfo = "";
+        if (method === "upi") payoutInfo = `UPI: ${user.upi_id}`;
+        else if (method === "bank") payoutInfo = `Acc: ${user.bank_acc} | IFSC: ${user.bank_ifsc}`;
+        else if (method === "wallet") payoutInfo = `Mobile: ${user.mobile_no}`;
+        else if (method === "amazon") payoutInfo = `Amazon Email: ${user.amazon_email}`;
+        else if (method === "redeem") payoutInfo = `Redeem Email: ${user.redeem_email}`;
+
+        // Deduct Balance
+        updateBalance(userId, -amount);
+
+        // Success reply to user
+        await ctx.reply(`✅ **Withdrawal Request Submitted Successfully!**\n\n💵 **Amount:** ₹${amount}\n💳 **Method:** ${method.toUpperCase()}\n📌 **Details:** \`${payoutInfo}\`\n\nStatus: *Pending / Sent for Processing*`, { parse_mode: "Markdown" });
+
+        // Send to Payout Channel
+        const payoutChannel = getSetting("payout_channel");
+        if (payoutChannel) {
+            try {
+                const proofMsg = 
+                    `🎉 **NEW WITHDRAWAL REQUEST** 🎉\n\n` +
+                    `👤 **User ID:** \`${userId}\`\n` +
+                    `💰 **Amount:** ₹${amount.toFixed(2)}\n` +
+                    `💳 **Method:** ${method.toUpperCase()}\n` +
+                    `📌 **Details:** \`${payoutInfo}\`\n\n` +
+                    `STATUS: 🟢 Processing`;
+
+                await ctx.api.sendMessage(payoutChannel, proofMsg, { parse_mode: "Markdown" });
+            } catch (err) {
+                console.error("Payout channel error:", err);
+            }
+        }
+        return;
+    }
+
+    // USER SETTINGS INPUTS
     if (userState[userId] === "awaiting_wallet_input") {
         delete userState[userId];
         db.prepare("UPDATE users SET mobile_no = ? WHERE user_id = ?").run(text, userId);
@@ -395,91 +330,52 @@ bot.on("message", async (ctx) => {
     }
 
     if (userState[userId] === "awaiting_bank_acc") {
-        if (!isValidBankAcc(text)) {
-            return ctx.reply("❌ **Invalid Account Number!** Please enter a valid Bank Account Number (9-18 digits):");
-        }
+        if (!isValidBankAcc(text)) return ctx.reply("❌ Invalid Account Number! Enter 9-18 digits:");
         db.prepare("UPDATE users SET bank_acc = ? WHERE user_id = ?").run(text, userId);
         userState[userId] = "awaiting_bank_ifsc";
-        return ctx.reply(`✅ Account Number saved!\n\n🏦 **Now, please enter your Bank IFSC Code:**`);
+        return ctx.reply(`✅ Account saved! Now enter **Bank IFSC Code**:`);
     }
 
     if (userState[userId] === "awaiting_bank_ifsc") {
-        if (!isValidIFSC(text)) {
-            return ctx.reply("❌ **Invalid IFSC Code!** Please enter a valid 11-digit IFSC code (e.g., SBIN0001234):");
-        }
+        if (!isValidIFSC(text)) return ctx.reply("❌ Invalid IFSC Code! (e.g. SBIN0001234):");
         delete userState[userId];
         db.prepare("UPDATE users SET bank_ifsc = ? WHERE user_id = ?").run(text.toUpperCase(), userId);
-        return ctx.reply(`✅ **Bank Account Linked Successfully!**\n\nAccount: \`${user.bank_acc}\`\nIFSC: \`${text.toUpperCase()}\``, { parse_mode: "Markdown" });
+        return ctx.reply(`✅ **Bank Account Linked Successfully!**`, { parse_mode: "Markdown" });
     }
 
     if (userState[userId] === "awaiting_redeem_email") {
-        if (!isValidEmail(text)) {
-            return ctx.reply("❌ **Invalid Email Address!** Please enter a valid Email ID for Redeem Code:");
-        }
+        if (!isValidEmail(text)) return ctx.reply("❌ Invalid Email! Enter valid email:");
         delete userState[userId];
         db.prepare("UPDATE users SET redeem_email = ? WHERE user_id = ?").run(text, userId);
         return ctx.reply(`✅ **Redeem Code Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
     if (userState[userId] === "awaiting_amazon_email") {
-        if (!isValidEmail(text)) {
-            return ctx.reply("❌ **Invalid Email Address!** Please enter a valid Email ID for Amazon Gift Card:");
-        }
+        if (!isValidEmail(text)) return ctx.reply("❌ Invalid Email! Enter valid email:");
         delete userState[userId];
         db.prepare("UPDATE users SET amazon_email = ? WHERE user_id = ?").run(text, userId);
-        return ctx.reply(`✅ **Amazon Gift Card Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
+        return ctx.reply(`✅ **Amazon Email Updated:** \`${text}\``, { parse_mode: "Markdown" });
     }
 
-    // ADMIN INPUT PROCESSING
+    // ADMIN INPUTS
     if (userId === ADMIN_ID && adminState[ADMIN_ID]) {
         const state = adminState[ADMIN_ID];
         delete adminState[ADMIN_ID];
 
-        if (state === "awaiting_support_link") {
-            setSetting("support_username", text);
-            return ctx.reply(`✅ **Support Link Updated:** ${text}`);
+        if (state === "awaiting_payout_channel") {
+            setSetting("payout_channel", text);
+            return ctx.reply(`✅ **Payout Channel set to:** ${text}`);
         }
 
-        if (state.startsWith("edit_label_")) {
-            const btnKey = state.replace("edit_label_", "");
-            db.prepare("UPDATE custom_buttons SET label = ? WHERE btn_key = ?").run(text, btnKey);
-            return ctx.reply(`✅ Button label updated to: *${text}*`, { parse_mode: "Markdown", reply_markup: getDynamicMainKeyboard() });
-        }
-
-        if (state === "awaiting_task") {
-            const parts = text.split("|");
-            if (parts.length < 3) return ctx.reply("❌ Invalid format.");
-            db.prepare("INSERT INTO tasks (title, reward, link) VALUES (?, ?, ?)").run(parts[0].trim(), parseFloat(parts[1].trim()), parts[2].trim());
-            return ctx.reply("✅ Task created!");
-        }
-
-        if (state === "awaiting_giftcode") {
-            const args = text.split(" ");
-            db.prepare("INSERT INTO gift_codes (code, reward) VALUES (?, ?)").run(args[0].toUpperCase().trim(), parseFloat(args[1]));
-            return ctx.reply("✅ Gift code created!");
-        }
-
-        if (state === "awaiting_addbal") {
-            const args = text.split(" ");
-            updateBalance(parseInt(args[0]), parseFloat(args[1]));
-            return ctx.reply("✅ Balance added!");
-        }
-
-        if (state === "awaiting_rembal") {
-            const args = text.split(" ");
-            updateBalance(parseInt(args[0]), -parseFloat(args[1]));
-            return ctx.reply("✅ Balance deducted!");
-        }
-
-        if (state === "awaiting_broadcast") {
-            const users = db.prepare("SELECT user_id FROM users").all();
-            for (const u of users) {
-                try { await ctx.api.sendMessage(u.user_id, `📢 **Announcement:**\n\n${text}`, { parse_mode: "Markdown" }); } catch (e) {}
-            }
-            return ctx.reply("✅ Broadcast completed!");
-        }
+        if (state === "awaiting_support_link") { setSetting("support_username", text); return ctx.reply(`✅ Support Link Updated!`); }
+        if (state === "awaiting_task") { const p = text.split("|"); db.prepare("INSERT INTO tasks (title, reward, link) VALUES (?, ?, ?)").run(p[0].trim(), parseFloat(p[1].trim()), p[2].trim()); return ctx.reply("✅ Task created!"); }
+        if (state === "awaiting_giftcode") { const a = text.split(" "); db.prepare("INSERT INTO gift_codes (code, reward) VALUES (?, ?)").run(a[0].toUpperCase().trim(), parseFloat(a[1])); return ctx.reply("✅ Gift code created!"); }
+        if (state === "awaiting_addbal") { const a = text.split(" "); updateBalance(parseInt(a[0]), parseFloat(a[1])); return ctx.reply("✅ Balance added!"); }
+        if (state === "awaiting_rembal") { const a = text.split(" "); updateBalance(parseInt(a[0]), -parseFloat(a[1])); return ctx.reply("✅ Balance deducted!"); }
+        if (state === "awaiting_broadcast") { const users = db.prepare("SELECT user_id FROM users").all(); for (const u of users) { try { await ctx.api.sendMessage(u.user_id, `📢 ${text}`); } catch (e) {} } return ctx.reply("✅ Broadcast done!"); }
     }
 
+    // BUTTON HANDLERS
     const lblTasks = getButtonLabel("btn_tasks");
     const lblBal = getButtonLabel("btn_balance");
     const lblGift = getButtonLabel("btn_gift");
@@ -488,77 +384,40 @@ bot.on("message", async (ctx) => {
     const lblPayment = getButtonLabel("btn_payment");
 
     if (text === lblBal) {
-        const supportLink = getSetting("support_username") || "https://t.me/telegram";
-        const fundStatus = getSetting("show_live_fund");
-        const stmtStatus = getSetting("show_statement");
-
-        const balMsg = 
-            `💳 **Wallet Overview** 💳\n\n` +
-            `🌐 **Wallet ID** → \`${userId}\`\n` +
-            `💵 **Balance** → ₹${user.balance.toFixed(2)}\n\n` +
-            `*Built with security you can Trust. Support that responds promptly. ✅*`;
-
-        const balInline = new InlineKeyboard();
-
-        if (stmtStatus === "ON") {
-            balInline.text("📒 Balance Statement", "user_balance_statement").row();
-        }
-        if (fundStatus === "ON") {
-            balInline.text("💰 Live Bot Fund", "user_live_fund").row();
-        }
-
-        balInline.url("📣 Contact Support", supportLink);
-
-        await ctx.reply(balMsg, { parse_mode: "Markdown", reply_markup: balInline });
+        await ctx.reply(`💳 **Wallet Overview**\n\n🆔 User ID: \`${userId}\`\n💵 Balance: ₹${user.balance.toFixed(2)}`, { parse_mode: "Markdown" });
     } 
     else if (text === lblPayment) {
         const walletVal = user.mobile_no ? `\`${user.mobile_no}\`` : "*Not Set*";
         const upiVal = user.upi_id ? `\`${user.upi_id}\`` : "*Not Set*";
-        const bankVal = user.bank_acc ? `\`${user.bank_acc} (${user.bank_ifsc})\`` : "*Not Set*";
+        const bankVal = user.bank_acc ? `\`${user.bank_acc}\`` : "*Not Set*";
         const redeemVal = user.redeem_email ? `\`${user.redeem_email}\`` : "*Not Set*";
         const amazonVal = user.amazon_email ? `\`${user.amazon_email}\`` : "*Not Set*";
 
         const payMsg = 
-            `Choose Desired Payment Method From Below 👇\n\n` +
-            `Your Current Wallet - ${walletVal}\n` +
-            `Your Current UPI - ${upiVal}\n` +
-            `Your Current Bank - ${bankVal}\n` +
-            `Your Current Redeem Email - ${redeemVal}\n` +
-            `Your Current Amazon Email - ${amazonVal}`;
+            `**Choose Desired Payment Method From Below 👇**\n\n` +
+            `📱 **Wallet:** ${walletVal}\n` +
+            `💵 **UPI:** ${upiVal}\n` +
+            `🏦 **Bank:** ${bankVal}\n` +
+            `🎁 **Redeem Email:** ${redeemVal}\n` +
+            `🛒 **Amazon Email:** ${amazonVal}`;
 
-        const payInline = new InlineKeyboard()
-            .text("🔗 Set Wallet", "set_wallet_action").row()
-            .text("💵 Set UPI Address", "set_upi_action").row()
-            .text("🏦 Set Bank Account", "set_bank_action").row()
-            .text("🎁 Set Redeem Code Email", "set_redeem_action").row()
-            .text("🛒 Set Amazon Gift Card Email", "set_amazon_action");
-
-        await ctx.reply(payMsg, { parse_mode: "Markdown", reply_markup: payInline });
+        await ctx.reply(payMsg, { parse_mode: "Markdown", reply_markup: getPayoutMethodsInline() });
+    }
+    else if (text === lblWithdraw) {
+        await ctx.reply(`🏧 **Select Withdrawal Method:**\nYour Balance: ₹${user.balance.toFixed(2)}`, { parse_mode: "Markdown", reply_markup: getWithdrawInline() });
     }
     else if (text === lblTasks) {
         const tasks = db.prepare("SELECT * FROM tasks").all();
         if (tasks.length === 0) return ctx.reply("✨ No tasks available currently.");
-
-        await ctx.reply("🎯 **Available Tasks:**");
         for (const t of tasks) {
-            const taskInline = new InlineKeyboard().url("🔗 Open Link", t.link);
-            await ctx.reply(`📌 **${t.title}**\n💵 **Reward:** ₹${t.reward}`, { parse_mode: "Markdown", reply_markup: taskInline });
+            await ctx.reply(`📌 **${t.title}**\n💵 Reward: ₹${t.reward}`, { reply_markup: new InlineKeyboard().url("🔗 Open Link", t.link) });
         }
     } 
     else if (text === lblGift) {
         await ctx.reply("🎁 **Gift Code Enter**\n\nSend your code using: `/redeem CODE`", { parse_mode: "Markdown" });
-    } 
-    else if (text === lblP2p) {
-        await ctx.reply("💸 **P2P Transfer**\n\nUse command:\n`/p2p USER_ID AMOUNT`", { parse_mode: "Markdown" });
-    } 
-    else if (text === lblWithdraw) {
-        if (!user.upi_id && !user.mobile_no && !user.bank_acc && !user.redeem_email && !user.amazon_email) {
-            return ctx.reply("❌ Link at least one payment method first!");
-        }
-        await ctx.reply(`🏧 **Withdrawal Panel**\nBalance: ₹${user.balance.toFixed(2)}\n\nUse command:\n\`/withdraw AMOUNT\``, { parse_mode: "Markdown" });
     }
 });
 
 // START BOT
 bot.start();
-console.log("Bot updated with Bank Account, Redeem Email & Amazon Gift Card options!");
+console.log("Bot updated with clean 2-per-row layout!");
