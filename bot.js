@@ -24,7 +24,7 @@ const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", wi
 // User Activity / Balance History Schema for Tracking
 const balanceHistorySchema = new mongoose.Schema({
   userId: { type: Number, required: true },
-  action: { type: String, required: true }, // e.g. "Task Reward", "Gift Redeemed", "Admin Added", "Withdrawn"
+  action: { type: String, required: true }, 
   amount: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -331,6 +331,25 @@ async function checkForceJoin(ctx) {
   return true;
 }
 
+// Helper to generate User Tracker Details Text accurately using real linked data
+function generateTrackerText(targetUser) {
+  let linkedWalletInfo = targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : 
+                         (targetUser.upiId !== "Not Set" ? targetUser.upiId : 
+                         (targetUser.bankAccNo !== "Not Set" ? `${targetUser.bankAccNo} (${targetUser.bankIfsc})` : 
+                         (targetUser.amazonEmail !== "Not Set" ? targetUser.amazonEmail : 
+                         (targetUser.redeemCodeAddr !== "Not Set" ? targetUser.redeemCodeAddr : "Not Linked"))));
+
+  return `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
+         `🚻 Usᴇʀ : ${targetUser.userId}\n` +
+         `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
+         `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
+         `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
+         `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
+         `🔗 Rᴇғᴇʀʀᴀls Wɪɴ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
+         `🎴 Lɪɴᴋᴇᴅ Aᴄᴄᴏᴜɴᴛ / UPI : ${linkedWalletInfo}\n` +
+         `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+}
+
 // --- /start Command ---
 bot.command("start", async (ctx) => {
   try {
@@ -604,15 +623,7 @@ bot.callbackQuery(/^track_ref_/, async (ctx) => {
   let targetUser = await User.findOne({ userId: targetId });
   if (!targetUser) return ctx.answerCallbackQuery({ text: "User not found!", show_alert: true });
 
-  let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
-                   `🚻 Usᴇʀ : ${targetUser.userId}\n` +
-                   `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
-                   `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
-                   `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
-                   `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
-                   `🔗 Rᴇғᴇʀʀᴀʟs Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
-                   `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
-                   `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+  let trackerMsg = generateTrackerText(targetUser);
 
   let kb = new InlineKeyboard()
     .text("📜 User Balance Record", `track_bal_${targetId}`).row()
@@ -629,15 +640,7 @@ bot.callbackQuery(/^track_back_/, async (ctx) => {
   let targetUser = await User.findOne({ userId: targetId });
   if (!targetUser) return ctx.answerCallbackQuery({ text: "User not found!", show_alert: true });
 
-  let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
-                   `🚻 Usᴇʀ : ${targetUser.userId}\n` +
-                   `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
-                   `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
-                   `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
-                   `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
-                   `🔗 Rᴇғᴇʀʀᴀʟs Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
-                   `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
-                   `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+  let trackerMsg = generateTrackerText(targetUser);
 
   let kb = new InlineKeyboard()
     .text("📜 User Balance Record", `track_bal_${targetId}`).row()
@@ -789,15 +792,7 @@ bot.on("message:text", async (ctx, next) => {
         return ctx.reply(`❌ User with ID ${targetId} not found in database!`);
       }
 
-      let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
-                       `🚻 Usᴇʀ : ${targetUser.userId}\n` +
-                       `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
-                       `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
-                       `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
-                       `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
-                       `🔗 Rᴇғᴇʀʀᴀls Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
-                       `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
-                       `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+      let trackerMsg = generateTrackerText(targetUser);
 
       let kb = new InlineKeyboard()
         .text("📜 User Balance Record", `track_bal_${targetId}`).row()
@@ -1022,11 +1017,11 @@ bot.on("message:text", async (ctx, next) => {
         if (!line) continue;
         let parts = line.split("-");
         if (parts.length !== 2) continue;
-        let targetWallet = parts[0].trim();
+        let targetIdOrWallet = parts[0].trim();
         let amount = parseFloat(parts[1].trim());
-        if (!targetWallet || isNaN(amount) || amount <= 0) continue;
+        if (!targetIdOrWallet || isNaN(amount) || amount <= 0) continue;
         totalCost += amount;
-        transfers.push({ targetWallet, amount });
+        transfers.push({ targetIdOrWallet, amount });
       }
 
       if (transfers.length === 0) {
@@ -1043,14 +1038,34 @@ bot.on("message:text", async (ctx, next) => {
 
       let summary = "✅ P2P Transfer(s) Successful:\n";
       for (let t of transfers) {
-        let receiver = await User.findOne({ walletId: t.targetWallet });
+        // Search user by Wallet ID OR Telegram User ID
+        let receiver = await User.findOne({ 
+          $or: [
+            { walletId: t.targetIdOrWallet },
+            { userId: parseInt(t.targetIdOrWallet, 10) || 0 }
+          ]
+        });
+
         if (receiver) {
+          if (receiver.userId === sender.userId) {
+            summary += `⚠️ Cannot transfer to yourself (Amount refunded)\n`;
+            sender.balance += t.amount;
+            await sender.save();
+            continue;
+          }
           receiver.balance += t.amount;
           await receiver.save();
-          await logBalanceHistory(receiver.userId, "P2P Transfer Received", t.amount);
-          summary += `➡️ ₹${t.amount} sent to Wallet ID: ${t.targetWallet}\n`;
+          await logBalanceHistory(receiver.userId, `P2P Transfer Received from ${sender.userId}`, t.amount);
+          
+          summary += `➡️ ₹${t.amount} sent to Account: ${t.targetIdOrWallet}\n`;
+          
+          // Notify the receiver about received funds
+          try {
+            await ctx.api.sendMessage(receiver.userId, `🎉 You received **₹${t.amount}** via P2P Transfer from user ID \`${sender.userId}\`!`);
+          } catch (e) {}
+
         } else {
-          summary += `⚠️ Wallet ID ${t.targetWallet} not found (Amount refunded)\n`;
+          summary += `⚠️ Account / Wallet ID ${t.targetIdOrWallet} not found (Amount refunded)\n`;
           sender.balance += t.amount;
           await sender.save();
           await logBalanceHistory(userId, "P2P Transfer Refund", t.amount);
@@ -1124,8 +1139,9 @@ bot.on("message:text", async (ctx, next) => {
     userState[userId] = "WAITING_FOR_P2P";
     let msg = `💸 P2P Transfer\n\n` +
               `💡 Select a user from 'Select User' to make a Quick Payment to a Single user.\n\n` +
-              `You can also use the format below to process payments for one or multiple users:\n\n` +
+              `You can also send Wallet ID or Telegram User ID using the format below:\n\n` +
               `Format:\n` +
+              `WalletID_or_UserID-Amount\n` +
               `8061612500-1\n` +
               `1234567890-5`;
     let kb = new InlineKeyboard().text("👥 Select User", "p2p_select_user");
@@ -1322,7 +1338,7 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Connected Successfully!");
     bot.start({
-      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with User Tracker Records & Receipt Mini App Feature!`)
+      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with Working P2P Transfers & User IDs!`)
     });
   })
   .catch((err) => {
