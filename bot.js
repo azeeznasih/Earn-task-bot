@@ -21,7 +21,7 @@ const withdrawalSchema = new mongoose.Schema({
 });
 const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", withdrawalSchema);
 
-// Web App Receipt Route matching your screenshot design
+// Web App Receipt Route matching your exact screenshot design
 app.get("/receipt/:id", async (req, res) => {
   try {
     let wId = req.params.id;
@@ -527,6 +527,62 @@ bot.callbackQuery("adm_customize", async (ctx) => {
   });
 });
 
+// --- In-Bot User Confirmation Callbacks (Confirm / Cancel Withdrawal) ---
+bot.callbackQuery(/^conf_wd_/, async (ctx) => {
+  let dataParts = ctx.callbackQuery.data.replace("conf_wd_", "").split("_");
+  let method = dataParts[0];
+  let amount = parseFloat(dataParts[1]);
+  let userId = ctx.from.id;
+
+  let user = await getUser(userId);
+  if (user.balance < amount) {
+    return ctx.answerCallbackQuery({ text: "❌ Insufficient balance!", show_alert: true });
+  }
+
+  // Deduct balance now
+  user.balance -= amount;
+  await user.save();
+
+  let details = "";
+  if (method === "Wallet") details = user.walletAccount;
+  else if (method === "UPI") details = user.upiId;
+  else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`;
+  else if (method === "Amazon") details = user.amazonEmail;
+  else if (method === "Redeem Code") details = user.redeemCodeAddr;
+
+  let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
+  await Withdrawal.create({
+    withdrawalId,
+    userId,
+    amount,
+    method,
+    details
+  });
+
+  await ctx.answerCallbackQuery({ text: "Withdrawal Confirmed & Submitted!" });
+  await ctx.editMessageText(`✅ Withdrawal request of ₹${amount} via ${method} submitted successfully!\nRequest ID: #${withdrawalId}\nStatus: Pending Admin Approval.`);
+
+  // Send to payout/admin channel
+  let payoutChannel = await getConfig("payout_channel", null);
+  if (payoutChannel) {
+    let adminKb = new InlineKeyboard()
+      .text("✅ Approve", `wd_app_${withdrawalId}`)
+      .text("❌ Reject & Refund", `wd_rej_${withdrawalId}`);
+    try {
+      await ctx.api.sendMessage(payoutChannel, `🔔 New Withdrawal Request #${withdrawalId}\n\n` +
+                                               `👤 User ID: ${userId}\n` +
+                                               `💰 Amount: ₹${amount}\n` +
+                                               `💳 Method: ${method}\n` +
+                                               `📋 Details: ${details}`, { reply_markup: adminKb });
+    } catch (e) {}
+  }
+});
+
+bot.callbackQuery("canc_wd", async (ctx) => {
+  await ctx.answerCallbackQuery({ text: "Withdrawal Cancelled." });
+  await ctx.editMessageText("❌ Withdrawal request has been cancelled by you.");
+});
+
 // Admin Approve / Reject Withdrawal Callbacks (Channel Integration)
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
@@ -543,13 +599,13 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
     await ctx.editMessageText(`✅ Withdrawal Request #${wId} has been **APPROVED** by Admin (@${ctx.from.username || ctx.from.first_name}).`);
   } catch (e) {}
   
-  // Send notification to user with method name and Mini Web App Receipt button
+  // Send notification to user with method name and "🚀 Check Payment Status" Web App button
   try {
     let serverUrl = process.env.RENDER_EXTERNAL_URL || process.env.REPLIT_DEV_DOMAIN || `http://localhost:${PORT}`;
     if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
     let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
 
-    let userKb = new InlineKeyboard().web_app("💸 Payment Success Statement", receiptUrl);
+    let userKb = new InlineKeyboard().web_app("🚀 Check Payment Status", receiptUrl);
 
     let msg = `💸 Withdrawal Paid Successfully !! 💸\n\n` +
               `🎉 Check your ${wd.method} wallet 🎉\n\n` +
@@ -586,7 +642,7 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
     if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
     let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
 
-    let userKb = new InlineKeyboard().web_app("⚠️ Payment Failed Statement", receiptUrl);
+    let userKb = new InlineKeyboard().web_app("🚀 Check Payment Status", receiptUrl);
 
     await ctx.api.sendMessage(wd.userId, `❌ Your withdrawal request of ₹${wd.amount} via ${wd.method} was rejected and ₹${wd.amount} has been refunded to your wallet balance.`, { reply_markup: userKb });
   } catch (e) {}
@@ -758,15 +814,46 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Redeem code address updated to: ${text}`);
     }
 
-    // Withdrawal Amount Input Handlers
+    // Withdrawal Amount Input Handler -> Shows In-Bot Confirmation (Confirm / Cancel) instead of direct submit
     if (state && state.startsWith("WD_AMT_")) {
       let method = state.replace("WD_AMT_", "");
       delete userState[userId];
       let amount = parseFloat(text);
+      let user = await getUser(userId);
+      let minW = await getConfig("min_withdraw", 1);
+      let maxW = await getConfig("max_withdraw", 100);
+
       if (isNaN(amount) || amount <= 0) {
         return ctx.reply("❌ Invalid withdrawal amount entered!");
       }
-      return await executeWithdrawalRequest(ctx, method, amount);
+      if (amount < minW) {
+        return ctx.reply(`❌ Minimum withdrawal amount is ₹${minW}!`);
+      }
+      if (amount > maxW) {
+        return ctx.reply(`❌ Maximum withdrawal limit is ₹${maxW}!`);
+      }
+      if (user.balance < amount) {
+        return ctx.reply(`❌ Insufficient balance! You have only ₹${user.balance.toFixed(2)}`);
+      }
+
+      let details = "";
+      if (method === "Wallet") details = user.walletAccount;
+      else if (method === "UPI") details = user.upiId;
+      else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`;
+      else if (method === "Amazon") details = user.amazonEmail;
+      else if (method === "Redeem Code") details = user.redeemCodeAddr;
+
+      let confirmMsg = `📋 **Withdrawal Summary**\n\n` +
+                       `🔹 Method: ${method}\n` +
+                       `🔹 Details: ${details}\n` +
+                       `💰 Amount: ₹${amount}\n\n` +
+                       `Do you want to confirm this withdrawal?`;
+
+      let kb = new InlineKeyboard()
+        .text("✅ Confirm", `conf_wd_${method}_${amount}`)
+        .text("❌ Cancel", "canc_wd");
+
+      return ctx.reply(confirmMsg, { reply_markup: kb });
     }
 
     if (state === "WAITING_FOR_P2P") {
@@ -1020,7 +1107,7 @@ bot.callbackQuery("set_redeem", async (ctx) => {
   await ctx.reply("🎁 Send your Redeem code address / details:");
 });
 
-// Withdrawal Amount Request Handlers (Asking user how much to withdraw)
+// Prompt withdrawal amount helper
 async function promptWithdrawalAmount(ctx, method, details) {
   let user = await getUser(ctx.from.id);
   let minW = await getConfig("min_withdraw", 1);
@@ -1032,60 +1119,7 @@ async function promptWithdrawalAmount(ctx, method, details) {
 
   userState[ctx.from.id] = `WD_AMT_${method}`;
   await ctx.answerCallbackQuery();
-  await ctx.reply(`🏦 Withdraw via ${method}\n\nYour Current Balance: ₹${user.balance.toFixed(2)}\n📉 Min Withdraw: ₹${minW} | 📈 Max Withdraw: ₹${maxW}\n\n👉 Send the amount you want to withdraw:`);
-}
-
-async function executeWithdrawalRequest(ctx, method, amount) {
-  let user = await getUser(ctx.from.id);
-  let minW = await getConfig("min_withdraw", 1);
-  let maxW = await getConfig("max_withdraw", 100);
-
-  if (amount < minW) {
-    return ctx.reply(`❌ Minimum withdrawal amount is ₹${minW}!`);
-  }
-  if (amount > maxW) {
-    return ctx.reply(`❌ Maximum withdrawal limit is ₹${maxW}!`);
-  }
-  if (user.balance < amount) {
-    return ctx.reply(`❌ Insufficient balance! You have only ₹${user.balance.toFixed(2)}`);
-  }
-
-  // Deduct requested amount immediately
-  user.balance -= amount;
-  await user.save();
-
-  let details = "";
-  if (method === "Wallet") details = user.walletAccount;
-  else if (method === "UPI") details = user.upiId;
-  else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`;
-  else if (method === "Amazon") details = user.amazonEmail;
-  else if (method === "Redeem Code") details = user.redeemCodeAddr;
-
-  let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
-  await Withdrawal.create({
-    withdrawalId,
-    userId: ctx.from.id,
-    amount,
-    method,
-    details
-  });
-
-  await ctx.reply(`✅ Withdrawal request of ₹${amount} via ${method} submitted successfully!\nRequest ID: #${withdrawalId}\nStatus: Pending Admin Approval.`);
-
-  // Send to payout/admin notification channel if configured
-  let payoutChannel = await getConfig("payout_channel", null);
-  if (payoutChannel) {
-    let adminKb = new InlineKeyboard()
-      .text("✅ Approve", `wd_app_${withdrawalId}`)
-      .text("❌ Reject & Refund", `wd_rej_${withdrawalId}`);
-    try {
-      await ctx.api.sendMessage(payoutChannel, `🔔 New Withdrawal Request #${withdrawalId}\n\n` +
-                                               `👤 User ID: ${ctx.from.id}\n` +
-                                               `💰 Amount: ₹${amount}\n` +
-                                               `💳 Method: ${method}\n` +
-                                               `📋 Details: ${details}`, { reply_markup: adminKb });
-    } catch (e) {}
-  }
+  await ctx.reply(`🏦 Withdraw via ${method}\n\nYour Current Balance: ₹${user.balance.toFixed(2)}\n📉 Min Withdraw: ₹${minW} | 📈 Max Withdraw: ₹${maxW}\n\n👉 Send Total amount to withdraw:`);
 }
 
 bot.callbackQuery("wd_wallet", async (ctx) => {
