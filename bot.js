@@ -1,18 +1,29 @@
 const { Bot, InlineKeyboard, Keyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
+const axios = require("axios");
 
-// --- Express Server for Web & Render Port Binding ---
+// --- Express Server for 24/7 Render Uptime ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("Bot & Website Server is Live and Running!");
+  res.send("Bot & Website Server is Live and Running 24/7!");
 });
 
 app.listen(PORT, () => {
   console.log(`🌐 Server is running on port ${PORT}`);
 });
+
+// Self-ping to prevent Render from sleeping (Keeps Bot 24/7 Active)
+setInterval(() => {
+  const renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) {
+    axios.get(renderUrl).catch((err) => {
+      console.error("Keep-Alive Ping Error:", err.message);
+    });
+  }
+}, 300000); // Every 5 minutes
 
 // --- Environment Variables Check ---
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -20,7 +31,7 @@ const MONGO_URI = process.env.MONGO_URI;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || "0", 10);
 
 if (!BOT_TOKEN || !MONGO_URI) {
-  console.error("ERROR: BOT_TOKEN and MONGO_URI must be provided in Environment Variables!");
+  console.error("❌ ERROR: BOT_TOKEN and MONGO_URI must be provided in Environment Variables!");
   process.exit(1);
 }
 
@@ -31,8 +42,11 @@ const userSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   balance: { type: Number, default: 0 },
   referrals: { type: Number, default: 0 },
+  walletId: { type: String, default: "" },
   payoutUPI: { type: String, default: "" },
-  payoutBank: { type: String, default: "" },
+  payoutGatewayName: { type: String, default: "Not Set" },
+  payoutGatewayAccount: { type: String, default: "Not Set" },
+  bankAccount: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -52,11 +66,16 @@ const User = mongoose.model("User", userSchema);
 const GiftCode = mongoose.model("GiftCode", giftCodeSchema);
 const Config = mongoose.model("Config", configSchema);
 
+const userState = {};
+
 // --- Helper Functions ---
 async function getUser(userId) {
   let user = await User.findOne({ userId });
   if (!user) {
-    user = await User.create({ userId });
+    user = await User.create({ 
+      userId, 
+      walletId: Math.floor(1000000000 + Math.random() * 9000000000).toString() 
+    });
   }
   return user;
 }
@@ -66,152 +85,224 @@ async function getBotFund() {
   return fundConfig ? fundConfig.value : 1000;
 }
 
-// 1. Inline Keyboard (מലഞ്ചോടൊപ്പം വരുന്ന ബട്ടണുകൾ)
-function getInlineMenuKeyboard() {
-  return new InlineKeyboard()
-    .text("💰 My Balance", "btn_balance")
-    .text("🔄 Refresh", "btn_refresh")
-    .row()
-    .text("💸 Transfer (P2P)", "btn_p2p")
-    .text("🎁 Claim Gift Code", "btn_gift")
-    .row()
-    .text("⚙️ Payout Setup", "btn_payout_setup")
-    .text("🏦 Withdraw", "btn_withdraw");
-}
-
-// 2. Persistent Reply Keyboard (താഴെ കാണുന്ന 6 ബട്ടണുകൾ)
+// Bottom Persistent Reply Keyboard
 function getReplyKeyboard() {
   return new Keyboard()
-    .text("📋 Tasks").text("💰 My Balance").row()
+    .text("🚀 My Balance").text("📋 Tasks").row()
     .text("🎁 Gift Code").text("💸 P2P Transfer").row()
-    .text("🏦 Withdraw").text("💳 Payout Method")
+    .text("💳 Payout Method").text("🏦 Withdraw")
     .resized();
 }
 
 // --- Bot Commands & Handlers ---
 
-// /start Command
 bot.command("start", async (ctx) => {
+  delete userState[ctx.from.id];
   await getUser(ctx.from.id);
-  const welcomeText = `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the options below:`;
+  const welcomeText = `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the keyboard buttons below:`;
   
   await ctx.reply(welcomeText, {
     parse_mode: "Markdown",
-    reply_markup: getReplyKeyboard() // താഴെയുള്ള 6 ബട്ടണുകൾ വരാൻ
-  });
-
-  await ctx.reply("👇 Main Menu Options:", {
-    reply_markup: getInlineMenuKeyboard() // മെസ്സേജിനുള്ളിലെ ഇൻലൈൻ ബട്ടണുകൾ
+    reply_markup: getReplyKeyboard()
   });
 });
 
-// Balance & Refresh In-Place Update function
-async function renderBalance(ctx, isEdit = false) {
+// 1. MY BALANCE / WALLET OVERVIEW
+async function sendBalanceMessage(ctx) {
   const user = await getUser(ctx.from.id);
   const botFund = await getBotFund();
   
-  const text = `👤 *User Dashboard*\n\n` +
-               `🆔 **User ID:** \`${user.userId}\`\n` +
-               `💰 **Balance:** ₹${user.balance.toFixed(2)}\n` +
-               `👥 **Referrals:** ${user.referrals}\n\n` +
-               `🏦 **Bot Fund Balance:** ₹${botFund.toFixed(2)}`;
+  const text = `💳 **Wallet Overview** 💳\n\n` +
+               `🌐 **Wallet ID** → \`${user.walletId}\`\n` +
+               `💰 **Balance** → ₹${user.balance.toFixed(2)}\n\n` +
+               `Built with security you can Trust. Support that responds promptly. ✅`;
 
   const keyboard = new InlineKeyboard()
-    .text("🔄 Refresh Balance", "btn_refresh")
-    .row()
-    .text("🔙 Back to Main Menu", "btn_main_menu");
+    .text("📁 Balance Statement", "btn_statement").row()
+    .text("💰 Live Bot Fund", "btn_bot_fund").row()
+    .text("📢 Contact Support ↗", "btn_support");
 
-  if (isEdit) {
-    try {
-      await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: keyboard });
-    } catch (e) {}
-  } else {
-    await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
-  }
+  await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
 }
 
-// Inline Callback Queries
-bot.callbackQuery("btn_balance", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  await renderBalance(ctx, true);
+bot.hears("🚀 My Balance", async (ctx) => {
+  delete userState[ctx.from.id];
+  await sendBalanceMessage(ctx);
 });
 
-bot.callbackQuery("btn_refresh", async (ctx) => {
-  await ctx.answerCallbackQuery({ text: "🔄 Refreshed!" });
-  await renderBalance(ctx, true);
+bot.callbackQuery("btn_statement", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const user = await getUser(ctx.from.id);
+  await ctx.reply(`📁 *Balance Statement*\n\nUser ID: \`${user.userId}\`\nCurrent Balance: ₹${user.balance.toFixed(2)}`, { parse_mode: "Markdown" });
 });
 
-bot.callbackQuery("btn_main_menu", async (ctx) => {
+bot.callbackQuery("btn_bot_fund", async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText("👋 Returned to Main Menu!", {
+  const botFund = await getBotFund();
+  await ctx.reply(`💰 *Live Bot Fund Balance:* ₹${botFund.toFixed(2)}`, { parse_mode: "Markdown" });
+});
+
+bot.callbackQuery("btn_support", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.reply(`📢 For support, contact our admin team.`);
+});
+
+// 2. PAYOUT METHOD
+bot.hears("💳 Payout Method", async (ctx) => {
+  delete userState[ctx.from.id];
+  const user = await getUser(ctx.from.id);
+  
+  const text = `Choose Desired Payment Method From Below 👇\n\n` +
+               `Your Current Gateway Name - ${user.payoutGatewayName}\n` +
+               `Your Current Gateway Account/UPI - ${user.payoutGatewayAccount}\n` +
+               `Your Current Bank Account - ${user.bankAccount || "Not Set"}`;
+
+  const keyboard = new InlineKeyboard()
+    .text("🔗 Set Gateway Name", "set_gateway_name").row()
+    .text("💰 Set Gateway Account / UPI", "set_gateway_account").row()
+    .text("🏦 Set Bank Account", "set_bank_account");
+
+  await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
+});
+
+bot.callbackQuery("set_gateway_name", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = "WAITING_FOR_GATEWAY_NAME";
+  const keyboard = new InlineKeyboard().text("❌ Cancel", "cancel_action");
+  await ctx.editMessageText("🔗 Please send your **Gateway Name** (e.g., your custom gateway or wallet name) in the chat below:", {
     parse_mode: "Markdown",
-    reply_markup: getInlineMenuKeyboard()
+    reply_markup: keyboard
   });
 });
 
-bot.callbackQuery("btn_payout_setup", async (ctx) => {
+bot.callbackQuery("set_gateway_account", async (ctx) => {
   await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = "WAITING_FOR_GATEWAY_ACCOUNT";
+  const keyboard = new InlineKeyboard().text("❌ Cancel", "cancel_action");
+  await ctx.editMessageText("💰 Please send your **Gateway Account / UPI ID** in the chat below:", {
+    parse_mode: "Markdown",
+    reply_markup: keyboard
+  });
+});
+
+bot.callbackQuery("set_bank_account", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = "WAITING_FOR_BANK";
+  const keyboard = new InlineKeyboard().text("❌ Cancel", "cancel_action");
+  await ctx.editMessageText("🏦 Please send your **Bank Account Details** in the chat below:", {
+    parse_mode: "Markdown",
+    reply_markup: keyboard
+  });
+});
+
+bot.callbackQuery("cancel_action", async (ctx) => {
+  delete userState[ctx.from.id];
+  await ctx.answerCallbackQuery({ text: "Cancelled" });
+  await ctx.editMessageText("❌ Action cancelled.");
+});
+
+// 3. WITHDRAW METHOD
+bot.hears("🏦 Withdraw", async (ctx) => {
+  delete userState[ctx.from.id];
   const user = await getUser(ctx.from.id);
   
-  const text = `⚙️ *Payout Method Setup*\n\n` +
-               `📍 **Current UPI:** ${user.payoutUPI || "Not Set"}\n` +
-               `🏦 **Current Bank Details:** ${user.payoutBank || "Not Set"}\n\n` +
-               `To update, send command:\n👉 \`/setupi <Your_UPI_ID>\``;
+  const text = `✨ Choose Withdrawal Method:\n\n` +
+               `📌 Active Gateway: *${user.payoutGatewayName}*`;
 
-  const keyboard = new InlineKeyboard().text("🔙 Back to Main Menu", "btn_main_menu");
-  await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: keyboard });
+  const keyboard = new InlineKeyboard()
+    .text(`🟢 ${user.payoutGatewayName}`, "wd_gateway").row()
+    .text("💳 Bank Transfer", "wd_bank");
+
+  await ctx.reply(text, { parse_mode: "Markdown", reply_markup: keyboard });
 });
 
-bot.callbackQuery("btn_p2p", async (ctx) => {
+bot.callbackQuery("wd_gateway", async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.reply("💸 To transfer balance, use format:\n`/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
+  const user = await getUser(ctx.from.id);
+  await ctx.reply(`🟢 Withdrawal via *${user.payoutGatewayName}* selected. Account: \`${user.payoutGatewayAccount}\``, { parse_mode: "Markdown" });
 });
 
-bot.callbackQuery("btn_gift", async (ctx) => {
+bot.callbackQuery("wd_bank", async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.reply("🎁 To claim gift code, use format:\n`/claim <GIFT_CODE>`", { parse_mode: "Markdown" });
+  const user = await getUser(ctx.from.id);
+  await ctx.reply(`🏦 Bank withdrawal selected. Account: \`${user.bankAccount}\``, { parse_mode: "Markdown" });
 });
 
-bot.callbackQuery("btn_withdraw", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  await ctx.reply("🏦 Withdraw feature is coming soon!");
-});
-
-// Reply Keyboard Text Handlers (താഴെയുള്ള ബട്ടണുകൾ അമർത്തുമ്പോൾ പ്രവർത്തിക്കുന്നത്)
-bot.hears("💰 My Balance", async (ctx) => {
-  await renderBalance(ctx, false);
-});
-
+// Other features
 bot.hears("📋 Tasks", async (ctx) => {
-  await ctx.reply("📋 Available tasks will appear here soon!");
+  delete userState[ctx.from.id];
+  await ctx.reply("📋 Tasks feature is coming soon!");
 });
 
 bot.hears("🎁 Gift Code", async (ctx) => {
-  await ctx.reply("🎁 Send your gift code using: `/claim <code>`", { parse_mode: "Markdown" });
+  userState[ctx.from.id] = "WAITING_FOR_GIFT";
+  const keyboard = new InlineKeyboard().text("❌ Cancel", "cancel_action");
+  await ctx.reply("🎁 **Enter your Gift Code:**\n\nType and send your gift code in the chat below:", {
+    parse_mode: "Markdown",
+    reply_markup: keyboard
+  });
 });
 
 bot.hears("💸 P2P Transfer", async (ctx) => {
-  await ctx.reply("💸 To transfer funds, use: `/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
+  delete userState[ctx.from.id];
+  await ctx.reply("💸 To transfer balance, use command:\n`/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
 });
 
-bot.hears("🏦 Withdraw", async (ctx) => {
-  await ctx.reply("🏦 Withdraw requests are processed via your saved Payout Method.");
+// Handle Text Inputs
+bot.on("message:text", async (ctx) => {
+  const userId = ctx.from.id;
+  const text = ctx.text.trim();
+  const state = userState[userId];
+
+  if (!state) return;
+
+  if (state === "WAITING_FOR_GATEWAY_NAME") {
+    delete userState[userId];
+    await User.findOneAndUpdate({ userId }, { payoutGatewayName: text });
+    await ctx.reply(`✅ Gateway Name successfully saved as: \`${text}\``, { parse_mode: "Markdown" });
+  } 
+  else if (state === "WAITING_FOR_GATEWAY_ACCOUNT") {
+    delete userState[userId];
+    await User.findOneAndUpdate({ userId }, { payoutGatewayAccount: text });
+    await ctx.reply(`✅ Gateway Account / UPI successfully saved: \`${text}\``, { parse_mode: "Markdown" });
+  }
+  else if (state === "WAITING_FOR_BANK") {
+    delete userState[userId];
+    await User.findOneAndUpdate({ userId }, { bankAccount: text });
+    await ctx.reply(`✅ Bank Account details successfully saved!`, { parse_mode: "Markdown" });
+  } 
+  else if (state === "WAITING_FOR_GIFT") {
+    delete userState[userId];
+    
+    const gift = await GiftCode.findOne({ code: text });
+    if (!gift) {
+      const keyboard = new InlineKeyboard()
+        .text("🔄 Try Again", "retry_gift")
+        .row()
+        .text("🔙 Main Menu", "cancel_action");
+      return ctx.reply(`❌ Invalid Gift Code! The code you entered does not exist.`, { reply_markup: keyboard });
+    }
+    if (gift.isClaimed) {
+      return ctx.reply(`❌ This Gift Code has already been claimed!`);
+    }
+
+    gift.isClaimed = true;
+    gift.claimedBy = userId;
+    await gift.save();
+
+    await User.findOneAndUpdate({ userId }, { $inc: { balance: gift.amount } });
+    await ctx.reply(`🎉 Congratulations! ₹${gift.amount} added successfully to your balance!`);
+  }
 });
 
-bot.hears("💳 Payout Method", async (ctx) => {
-  const user = await getUser(ctx.from.id);
-  await ctx.reply(`💳 *Your Payout Details*\n\n📍 UPI: ${user.payoutUPI || "Not Set"}\n\nTo update, use: \`/setupi <UPI_ID>\``, { parse_mode: "Markdown" });
+bot.callbackQuery("retry_gift", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = "WAITING_FOR_GIFT";
+  const keyboard = new InlineKeyboard().text("❌ Cancel", "cancel_action");
+  await ctx.editMessageText("🎁 **Enter your Gift Code again:**", { parse_mode: "Markdown", reply_markup: keyboard });
 });
 
-// Bot Commands
-bot.command("setupi", async (ctx) => {
-  const upi = ctx.match.trim();
-  if (!upi) return ctx.reply("❌ Please provide UPI ID: `/setupi myname@upi`", { parse_mode: "Markdown" });
-  
-  await User.findOneAndUpdate({ userId: ctx.from.id }, { payoutUPI: upi });
-  await ctx.reply(`✅ UPI ID saved successfully: \`${upi}\``, { parse_mode: "Markdown" });
-});
-
+// Commands
 bot.command("transfer", async (ctx) => {
   const args = ctx.match.split(" ");
   if (args.length < 2) return ctx.reply("❌ Format: `/transfer <User_ID> <Amount>`", { parse_mode: "Markdown" });
@@ -235,27 +326,11 @@ bot.command("transfer", async (ctx) => {
   await ctx.reply(`✅ ₹${amount} transferred successfully!`);
 });
 
-bot.command("claim", async (ctx) => {
-  const codeInput = ctx.match.trim();
-  if (!codeInput) return ctx.reply("❌ Provide gift code: `/claim GIFT100`", { parse_mode: "Markdown" });
-
-  const gift = await GiftCode.findOne({ code: codeInput });
-  if (!gift) return ctx.reply("❌ Invalid Gift Code!");
-  if (gift.isClaimed) return ctx.reply("❌ Gift Code already claimed!");
-
-  gift.isClaimed = true;
-  gift.claimedBy = ctx.from.id;
-  await gift.save();
-
-  await User.findOneAndUpdate({ userId: ctx.from.id }, { $inc: { balance: gift.amount } });
-  await ctx.reply(`🎉 ₹${gift.amount} added to your balance!`);
-});
-
 bot.command("addbalance", async (ctx) => {
   if (ctx.from.id !== ADMIN_ID) return;
   const args = ctx.match.split(" ");
   const targetId = parseInt(args[0], 10);
-  const amount = parseFloat(args[1]);
+  const amount = parseFloat(args.id || args[1]); // Safe fallback
 
   if (isNaN(targetId) || isNaN(amount)) return ctx.reply("Admin: `/addbalance <User_ID> <Amount>`");
 
@@ -268,14 +343,29 @@ bot.command("addbalance", async (ctx) => {
   await ctx.reply(`✅ User \`${targetId}\` balance updated to ₹${updatedUser.balance.toFixed(2)}`);
 });
 
+// --- Detailed Error Handling (Logs on Render & Notifies User/Admin) ---
+bot.catch(async (err) => {
+  const ctx = err.ctx;
+  console.error(`❌ CRITICAL BOT ERROR [Update ID: ${ctx && ctx.update ? ctx.update.update_id : 'Unknown'}]:`, err.error || err);
+  
+  if (ctx && ctx.chat) {
+    try {
+      await ctx.reply("⚠️ An unexpected error occurred while processing your request. The developer has been notified via logs.");
+    } catch (e) {
+      console.error("Failed to send error message to user:", e);
+    }
+  }
+});
+
 // --- Database Connect & Bot Start ---
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Successfully Connected!");
     bot.start({
-      onStart: (botInfo) => console.log(`🚀 Bot @${botInfo.username} is running 24/7 on Render!`)
+      onStart: (botInfo) => console.log(`🚀 Bot @${botInfo.username} is running 24/7 seamlessly with Detailed Error Logging!`)
     });
   })
   .catch((err) => {
     console.error("❌ MongoDB Connection Error:", err);
+    process.exit(1);
   });
