@@ -1,11 +1,12 @@
 // ============================================================
-// 🤖 TELEGRAM PAYMENT TASK BOT - FULL WORKING VERSION
+// 🤖 TELEGRAM PAYMENT TASK BOT - FULL WITH API GATEWAY
 // grammy (latest) | mongoose ^8.13.0 | express ^4.21.2
-// Telegram Bot API 9.4+ with reply & inline style support
 // ============================================================
 const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
+const axios = require("axios"); // ⚡ NEW: for HTTP requests
+const { v4: uuidv4 } = require("uuid"); // ⚡ NEW: for unique IDs
 
 // ============================================================
 // 🌐 EXPRESS SERVER
@@ -21,7 +22,12 @@ const withdrawalSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, required: true },
   details: { type: String, required: true },
-  status: { type: String, default: "Pending" },
+  taxId: { type: String, default: "Not Set" },
+  gatewayName: { type: String, default: "" },
+  gatewayRef: { type: String, default: "" },
+  gatewayResponse: { type: mongoose.Schema.Types.Mixed },
+  status: { type: String, default: "Pending" }, // Pending | Approved | Rejected | AutoSuccess | AutoFailed
+  autoPaid: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", withdrawalSchema);
@@ -45,8 +51,8 @@ app.get("/receipt/:id", async (req, res) => {
   try {
     let wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
     if (!wd) return res.status(404).send("<h2 style='color:white;background:#111;text-align:center;padding:50px;'>Receipt not found!</h2>");
-    let isSuccess = wd.status === "Approved";
-    let isFailed = wd.status === "Rejected";
+    let isSuccess = ["Approved", "AutoSuccess"].includes(wd.status);
+    let isFailed = ["Rejected", "AutoFailed"].includes(wd.status);
     let statusTitle = isSuccess ? "TRANSFER COMPLETE" : (isFailed ? "TRANSFER FAILED" : "TRANSFER PENDING");
     let statusSubtitle = isSuccess ? "FUNDS CREDITED" : (isFailed ? "TRANSACTION REJECTED" : "PROCESSING PAYMENT");
     let accentColor = isSuccess ? "#00ffcc" : (isFailed ? "#ff4d4d" : "#ffa500");
@@ -69,7 +75,7 @@ app.get("/receipt/:id", async (req, res) => {
       <div class="icon-box">${iconSvg}</div>
       <div class="title">${statusTitle}</div>
       <div class="subtitle">${statusSubtitle}</div>
-      <div class="card-box"><div class="amount-label">WITHDRAWAL AMOUNT</div><div class="amount-val">₹ ${wd.amount.toFixed(1)}</div></div>
+      <div class="card-box"><div class="amount-label">AMOUNT</div><div class="amount-val">₹ ${wd.amount.toFixed(1)}</div></div>
       <div class="info-row"><span class="info-title">METHOD</span><span class="info-value">${wd.method.toUpperCase()}</span></div>
       <div class="info-row"><span class="info-title">REF NO</span><span class="info-value">TXN${wd.withdrawalId}</span></div>
       <div class="info-row"><span class="info-title">DATE</span><span class="info-value">${new Date(wd.createdAt).toLocaleString('en-IN')}</span></div>
@@ -116,6 +122,7 @@ const userSchema = new mongoose.Schema({
   bankName: { type: String, default: "Not Set" },
   amazonEmail: { type: String, default: "Not Set" },
   redeemCodeAddr: { type: String, default: "Not Set" },
+  taxId: { type: String, default: "Not Set" }, // ⚡ NEW: Tax ID
   withdrawnTotal: { type: Number, default: 0 },
   blockedRefs: { type: Number, default: 0 },
   referralsWithLinkWallet: { type: Number, default: 0 },
@@ -159,6 +166,25 @@ const configSchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed }
 });
 
+// ⚡ NEW: API Gateway Schema
+const gatewaySchema = new mongoose.Schema({
+  gatewayId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  url: { type: String, required: true },
+  apiKey: { type: String, default: "" },
+  authType: { type: String, default: "none" }, // none | bearer | basic | apikey_header
+  authHeader: { type: String, default: "Authorization" },
+  merchantId: { type: String, default: "" },
+  method: { type: String, default: "POST" },
+  customHeaders: { type: String, default: "" }, // JSON string
+  bodyTemplate: { type: String, default: "" },  // JSON string with placeholders
+  successField: { type: String, default: "status" },
+  successValue: { type: String, default: "SUCCESS" },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const Gateway = mongoose.models.Gateway || mongoose.model("Gateway", gatewaySchema);
+
 // ⌨️ Reply keyboard layout
 const keyboardLayoutSchema = new mongoose.Schema({
   buttonKey: { type: String, required: true, unique: true },
@@ -170,7 +196,7 @@ const keyboardLayoutSchema = new mongoose.Schema({
 // 🎨 Reply keyboard styles
 const keyboardStyleSchema = new mongoose.Schema({
   buttonKey: { type: String, required: true, unique: true },
-  style: { type: String, default: null } // primary | success | danger | default(null)
+  style: { type: String, default: null }
 });
 
 // 🎨 Inline button styles
@@ -273,14 +299,188 @@ function maskDetails(method, details) {
   if (method === "UPI") return maskUPI(details);
   if (method === "Amazon") return maskEmail(details);
   if (method === "Bank") {
-    // details = "bankAccNo, ifsc"
     let parts = details.split(",");
     if (parts.length >= 1) return `${maskBank(parts[0].trim())}${parts[1] ? ", " + parts[1].trim() : ""}`;
     return details;
   }
   if (method === "Wallet") return maskWallet(details);
-  if (method === "Redeem Code") return details;
   return details;
+}
+
+// ============================================================
+// ⚡ API GATEWAY SYSTEM (AUTO PAYMENT)
+// ============================================================
+async function getActiveGateways() {
+  return await Gateway.find({ active: true }).sort({ createdAt: 1 });
+}
+async function getGatewayById(gatewayId) {
+  return await Gateway.findOne({ gatewayId });
+}
+async function getActiveGateway() {
+  return await Gateway.findOne({ active: true }).sort({ createdAt: 1 });
+}
+
+// ⚡ Replace placeholders in body template
+function replacePlaceholders(template, data) {
+  let result = template;
+  for (let [key, value] of Object.entries(data)) {
+    let regex = new RegExp(`\\{${key}\\}`, "g");
+    result = result.replace(regex, String(value));
+  }
+  return result;
+}
+
+// ⚡ Send payment request to gateway
+async function sendPaymentToGateway(gateway, paymentData) {
+  try {
+    // Build headers
+    let headers = { "Content-Type": "application/json" };
+
+    // Auth type
+    if (gateway.authType === "bearer" && gateway.apiKey) {
+      headers["Authorization"] = `Bearer ${gateway.apiKey}`;
+    } else if (gateway.authType === "basic" && gateway.apiKey) {
+      let encoded = Buffer.from(gateway.apiKey).toString("base64");
+      headers["Authorization"] = `Basic ${encoded}`;
+    } else if (gateway.authType === "apikey_header" && gateway.apiKey) {
+      headers[gateway.authHeader || "X-API-Key"] = gateway.apiKey;
+    }
+
+    // Custom headers
+    if (gateway.customHeaders) {
+      try {
+        let custom = JSON.parse(gateway.customHeaders);
+        Object.assign(headers, custom);
+      } catch (e) { console.error("Custom headers parse error:", e); }
+    }
+
+    // Build body
+    let body = {};
+    let defaultBody = {
+      amount: paymentData.amount,
+      upi: paymentData.details,
+      userId: paymentData.userId,
+      orderId: paymentData.orderId,
+      taxId: paymentData.taxId || "",
+      apiKey: gateway.apiKey,
+      merchantId: gateway.merchantId
+    };
+
+    if (gateway.bodyTemplate && gateway.bodyTemplate.trim() !== "") {
+      // Custom template
+      let templateStr = replacePlaceholders(gateway.bodyTemplate, defaultBody);
+      try {
+        body = JSON.parse(templateStr);
+      } catch (e) {
+        // If not valid JSON, send as string
+        body = templateStr;
+      }
+    } else {
+      // Default body
+      body = defaultBody;
+    }
+
+    // Send request
+    let config = {
+      method: gateway.method || "POST",
+      url: gateway.url,
+      headers,
+      timeout: 30000,
+      validateStatus: () => true
+    };
+    if ((gateway.method || "POST").toUpperCase() === "POST") {
+      config.data = body;
+    } else {
+      config.params = body;
+    }
+
+    let response = await axios(config);
+    let data = response.data;
+    let httpOk = response.status >= 200 && response.status < 300;
+
+    // Detect success
+    let isSuccess = false;
+    if (gateway.successField && gateway.successValue) {
+      let fieldValue = getNestedField(data, gateway.successField);
+      if (fieldValue !== undefined) {
+        isSuccess = String(fieldValue).toLowerCase() === String(gateway.successValue).toLowerCase();
+      }
+    }
+    // Fallback: HTTP 2xx = success
+    if (!isSuccess && httpOk && (!gateway.successField || !gateway.successValue)) {
+      isSuccess = true;
+    }
+    // If HTTP error → failure
+    if (!httpOk) isSuccess = false;
+
+    // Extract reference
+    let ref = "";
+    if (data) {
+      ref = data.referenceId || data.refId || data.transactionId || data.orderId || data.txnId || data.id || "";
+    }
+
+    return {
+      success: isSuccess,
+      httpStatus: response.status,
+      data,
+      ref: String(ref),
+      error: null
+    };
+  } catch (err) {
+    return {
+      success: false,
+      httpStatus: 0,
+      data: null,
+      ref: "",
+      error: err.message || String(err)
+    };
+  }
+}
+
+function getNestedField(obj, path) {
+  if (!obj || !path) return undefined;
+  let parts = path.split(".");
+  let cur = obj;
+  for (let p of parts) {
+    if (cur === undefined || cur === null) return undefined;
+    cur = cur[p];
+  }
+  return cur;
+}
+
+// ⚡ Send notification to payout channel (auto success/fail)
+async function sendPayoutChannelNotification(ctx, withdrawal, gateway, autoResult) {
+  let pChannel = await getConfig("payout_channel", null);
+  if (!pChannel) return;
+
+  let targetUser = await User.findOne({ userId: withdrawal.userId });
+  let userMention = targetUser ? `[${withdrawal.userId}](tg://user?id=${withdrawal.userId})` : `\`${withdrawal.userId}\``;
+  let maskedDetails = maskDetails(withdrawal.method, withdrawal.details);
+
+  let statusIcon = autoResult.success ? "✅" : "❌";
+  let statusText = autoResult.success ? "PAYMENT SUCCESSFUL" : "PAYMENT FAILED";
+  let statusColor = autoResult.success ? "🟢" : "🔴";
+
+  let msg =
+    `${statusIcon} *${statusText}*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👤 *User:* ${userMention}\n` +
+    `🆔 *User ID:* \`${withdrawal.userId}\`\n` +
+    `💰 *Amount:* ₹${withdrawal.amount.toFixed(2)}\n` +
+    `💳 *Method:* ${withdrawal.method}\n` +
+    `🏦 *Details:* \`${maskedDetails}\`\n` +
+    `🧾 *Tax ID:* \`${withdrawal.taxId || "Not Set"}\`\n` +
+    `🔌 *Gateway:* ${gateway ? gateway.name : "N/A"}\n` +
+    `📋 *Ref:* \`${withdrawal.withdrawalId}\`\n` +
+    `🔗 *Gateway Ref:* \`${autoResult.ref || "N/A"}\`\n` +
+    `🕐 *Time:* ${new Date().toLocaleString('en-IN')}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `${statusColor} *${autoResult.success ? "Auto-paid via gateway" : "Gateway returned failure"}*\n` +
+    `${autoResult.error ? `⚠️ *Error:* \`${autoResult.error}\`` : ""}`;
+
+  try {
+    await ctx.api.sendMessage(pChannel, msg, { parse_mode: "Markdown" });
+  } catch (e) { console.error("Payout notify failed:", e); }
 }
 
 // ============================================================
@@ -295,7 +495,6 @@ const DEFAULT_LAYOUT = [
   { buttonKey: "btn_withdraw", name: "🚀 Withdraw",       row: 3, position: 0 }
 ];
 
-// 🎨 Default reply button styles
 const DEFAULT_REPLY_STYLES = {
   "btn_task": "primary",
   "btn_balance": "success",
@@ -317,35 +516,23 @@ async function getKeyboardLayout() {
   return layout;
 }
 
-// ⚡ Get reply button style — with DEFAULT override support
 async function getReplyStyle(buttonKey) {
   let rec = await KeyboardStyle.findOne({ buttonKey });
   if (rec) {
-    // explicit "default" = null (no style)
     if (rec.style === "default" || rec.style === null) return null;
     return rec.style;
   }
   return DEFAULT_REPLY_STYLES[buttonKey] || null;
 }
 
-// ⚡ Set reply button style — "default" saves explicit null-like marker
 async function setReplyStyle(buttonKey, style) {
   if (style === "default" || style === null) {
-    await KeyboardStyle.findOneAndUpdate(
-      { buttonKey },
-      { buttonKey, style: "default" },
-      { upsert: true }
-    );
+    await KeyboardStyle.findOneAndUpdate({ buttonKey }, { buttonKey, style: "default" }, { upsert: true });
   } else {
-    await KeyboardStyle.findOneAndUpdate(
-      { buttonKey },
-      { buttonKey, style },
-      { upsert: true }
-    );
+    await KeyboardStyle.findOneAndUpdate({ buttonKey }, { buttonKey, style }, { upsert: true });
   }
 }
 
-// Reset reply button to default preset
 async function resetReplyStyle(buttonKey) {
   await KeyboardStyle.findOneAndDelete({ buttonKey });
 }
@@ -390,7 +577,6 @@ async function getKeyboardManageKeyboard() {
   let kb = new InlineKeyboard();
   let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
 
-  // ROW LEVEL
   for (let r = 0; r <= maxRow; r++) {
     let rowBtns = layout.filter(b => b.row === r).sort((a, b) => a.position - b.position);
     if (rowBtns.length === 0) continue;
@@ -400,7 +586,6 @@ async function getKeyboardManageKeyboard() {
            .text("⬇️ Row", `kbd_rowdown_${r}`).row();
   }
 
-  // BUTTON LEVEL
   for (let btn of layout) {
     let style = await getReplyStyle(btn.buttonKey);
     let emoji = STYLE_EMOJI[style || "default"];
@@ -418,16 +603,14 @@ async function getKeyboardManageKeyboard() {
 }
 
 // ============================================================
-// 🎨 INLINE BUTTON STYLE SYSTEM — with DEFAULT override FIX
+// 🎨 INLINE BUTTON STYLE SYSTEM
 // ============================================================
 const INLINE_BUTTONS_REGISTRY = [
-  // 💰 Balance
   { id: "balance_statement",     label: "📊 Balance Statement",  screen: "💰 Wallet" },
   { id: "customer_support",      label: "💬 Customer Support",   screen: "💰 Wallet" },
   { id: "refresh_balance_only",  label: "🔄 Refresh Balance",    screen: "💰 Wallet" },
   { id: "live_fund",             label: "💰 Live Fund",          screen: "💰 Wallet" },
   { id: "back_to_balance",       label: "🔙 Back to Balance",    screen: "💰 Wallet" },
-  // 🏦 Withdraw
   { id: "wd_wallet",             label: "🌐 Wallet",             screen: "🏦 Withdraw" },
   { id: "wd_upi",                label: "⚡ UPI",                 screen: "🏦 Withdraw" },
   { id: "wd_bank",               label: "🏦 Bank",               screen: "🏦 Withdraw" },
@@ -435,26 +618,19 @@ const INLINE_BUTTONS_REGISTRY = [
   { id: "wd_redeem",             label: "🎁 Redeem Code",        screen: "🏦 Withdraw" },
   { id: "confirm_wd",            label: "✅ Confirm Withdraw",    screen: "🏦 Withdraw" },
   { id: "cancel_wd",             label: "❌ Cancel Withdraw",     screen: "🏦 Withdraw" },
-  // 💳 Payment
   { id: "set_wallet",            label: "🌐 Set Wallet",         screen: "💳 Payment" },
   { id: "set_upi",               label: "⚡ Set UPI",              screen: "💳 Payment" },
   { id: "set_bank",              label: "🏦 Set Bank",           screen: "💳 Payment" },
   { id: "set_amazon",            label: "📧 Set Amazon",         screen: "💳 Payment" },
   { id: "set_redeem",            label: "🎁 Set Redeem",         screen: "💳 Payment" },
-  // 📋 Task
+  { id: "set_taxid",             label: "🧾 Set Tax ID",          screen: "💳 Payment" },
   { id: "task_approve",          label: "✅ Approve Task",       screen: "📋 Task" },
   { id: "task_reject",           label: "❌ Reject Task",        screen: "📋 Task" },
   { id: "cancel_task",           label: "❌ Cancel Task",        screen: "📋 Task" },
   { id: "open_task_link",        label: "🔗 Open Task Link",     screen: "📋 Task" },
-  // 📢 Force Join
   { id: "join_channel",          label: "📢 Join Channel",       screen: "📢 Force Join" },
   { id: "joined_verify",         label: "✅ I have Joined",       screen: "📢 Force Join" },
-  // 👑 Admin
-  { id: "adm_back",              label: "🔙 Back (Admin)",       screen: "👑 Admin" },
-  { id: "adm_refresh",           label: "🔄 Refresh Panel",      screen: "👑 Admin" },
-  // 🏧 Withdrawal approval
-  { id: "wd_approve",            label: "✅ Approve Withdrawal",  screen: "🏧 Withdrawal" },
-  { id: "wd_reject",             label: "❌ Reject Withdrawal",   screen: "🏧 Withdrawal" }
+  { id: "adm_back",              label: "🔙 Back (Admin)",       screen: "👑 Admin" }
 ];
 
 const DEFAULT_INLINE_STYLES = {
@@ -465,15 +641,13 @@ const DEFAULT_INLINE_STYLES = {
   "wd_amazon": "primary", "wd_redeem": "primary",
   "confirm_wd": "success", "cancel_wd": "danger",
   "set_wallet": "primary", "set_upi": "primary", "set_bank": "primary",
-  "set_amazon": "primary", "set_redeem": "primary",
+  "set_amazon": "primary", "set_redeem": "primary", "set_taxid": "primary",
   "task_approve": "success", "task_reject": "danger",
   "cancel_task": "danger", "open_task_link": "primary",
   "join_channel": "primary", "joined_verify": "success",
-  "adm_back": "primary", "adm_refresh": "primary",
-  "wd_approve": "success", "wd_reject": "danger"
+  "adm_back": "primary"
 };
 
-// ⚡ Get inline style — FIXED default override
 async function getInlineStyle(buttonId) {
   let rec = await InlineStyle.findOne({ buttonId });
   if (rec) {
@@ -483,20 +657,11 @@ async function getInlineStyle(buttonId) {
   return DEFAULT_INLINE_STYLES[buttonId] || null;
 }
 
-// ⚡ Set inline style — "default" saves explicit marker
 async function setInlineStyle(buttonId, style) {
   if (style === "default" || style === null) {
-    await InlineStyle.findOneAndUpdate(
-      { buttonId },
-      { buttonId, style: "default" },
-      { upsert: true }
-    );
+    await InlineStyle.findOneAndUpdate({ buttonId }, { buttonId, style: "default" }, { upsert: true });
   } else {
-    await InlineStyle.findOneAndUpdate(
-      { buttonId },
-      { buttonId, style },
-      { upsert: true }
-    );
+    await InlineStyle.findOneAndUpdate({ buttonId }, { buttonId, style }, { upsert: true });
   }
 }
 
@@ -555,6 +720,42 @@ async function getScreenKeyboard(screen) {
     kb = kb.text(`${STYLE_EMOJI[style || "default"]} ${b.label}`, `inline_btn_${b.id}`).row();
   }
   kb = kb.text("🔙 Back", "adm_edit_inline_styles");
+  return kb;
+}
+
+// ============================================================
+// 🔌 GATEWAY MANAGEMENT (Admin Panel)
+// ============================================================
+async function getGatewayListText() {
+  let gateways = await Gateway.find({}).sort({ createdAt: 1 });
+  let text = "🔌 *API Gateways — Auto Payment*\n\n";
+  text += "━━━━━━━━━━━━━━━━━━━━\n\n";
+  if (gateways.length === 0) {
+    text += "📭 No gateways added yet.\n\n";
+    text += "Tap *➕ Add New Gateway* below to add one.";
+  } else {
+    gateways.forEach((g, i) => {
+      let statusIcon = g.active ? "🟢" : "⚪";
+      text += `${i + 1}. ${statusIcon} *${g.name}*\n`;
+      text += `   🔗 \`${g.url.substring(0, 40)}${g.url.length > 40 ? "..." : ""}\`\n`;
+      text += `   🔑 Key: \`${g.apiKey ? "Set" : "Empty"}\`\n`;
+      text += `   📋 Method: ${g.method} | Auth: ${g.authType}\n\n`;
+    });
+  }
+  text += "━━━━━━━━━━━━━━━━━━━━\n";
+  text += "💡 Tap a gateway to Edit / Delete / Toggle.";
+  return text;
+}
+
+async function getGatewayListKeyboard() {
+  let gateways = await Gateway.find({}).sort({ createdAt: 1 });
+  let kb = new InlineKeyboard();
+  gateways.forEach(g => {
+    let statusIcon = g.active ? "🟢" : "⚪";
+    kb = kb.text(`${statusIcon} ${g.name}`, `gw_view_${g.gatewayId}`).row();
+  });
+  kb = kb.text("➕ Add New Gateway", "gw_add_new").row();
+  kb = kb.text("⬅️ Back to Admin", "admin");
   return kb;
 }
 
@@ -625,13 +826,15 @@ async function sendAdminPanel(ctx, edit = true) {
   let maxW = await getConfig("max_withdraw", 100);
   let pChannel = await getConfig("payout_channel", "Not Set");
   let supportId = await getConfig("support_username", "Not Set");
+  let gwCount = await Gateway.countDocuments({});
 
   let panelText = `👑 *Admin Panel*\n\n` +
                   `👨‍💻 Owner: ${ownerId}\n` +
                   `💸 Min Withdraw: ₹${minW}\n` +
                   `💰 Max Withdraw: ₹${maxW}\n` +
                   `📢 Payout Channel: ${pChannel}\n` +
-                  `💬 Support: ${supportId}`;
+                  `💬 Support: ${supportId}\n` +
+                  `🔌 Gateways: ${gwCount}`;
 
   let kb = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
@@ -641,6 +844,7 @@ async function sendAdminPanel(ctx, edit = true) {
     .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Manage Tasks", "adm_tasks_manager").row()
     .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
     .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
+    .text("🔌 Setup Gateway", "adm_gateway_list").row()
     .text("🎨 Customize Keyboard", "adm_customize_keyboard").row()
     .text("🖌️ Edit Inline Styles", "adm_edit_inline_styles").row()
     .text("💬 Set Support ID", "adm_set_support").text("🔄 Refresh", "admin");
@@ -656,6 +860,210 @@ bot.callbackQuery("admin", async (ctx) => {
 });
 
 // ============================================================
+// 🔌 GATEWAY MANAGEMENT CALLBACKS
+// ============================================================
+bot.callbackQuery("adm_gateway_list", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(await getGatewayListText(), {
+    reply_markup: await getGatewayListKeyboard(),
+    parse_mode: "Markdown"
+  }).catch(() => {});
+});
+
+// View single gateway
+bot.callbackQuery(/^gw_view_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_view_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  await ctx.answerCallbackQuery();
+
+  let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `📛 *Name:* ${gw.name}\n`;
+  text += `🔗 *URL:* \`${gw.url}\`\n`;
+  text += `🔑 *API Key:* \`${gw.apiKey ? "Set" : "Empty"}\`\n`;
+  text += `🔐 *Auth Type:* ${gw.authType}\n`;
+  text += `📋 *Method:* ${gw.method}\n`;
+  text += `🏪 *Merchant ID:* ${gw.merchantId || "Not Set"}\n`;
+  text += `✅ *Success Field:* \`${gw.successField}\` = \`${gw.successValue}\`\n`;
+  text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━`;
+
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
+    .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
+    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
+    .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
+    .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
+    .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
+    .text("🗑️ Delete Gateway", `gw_delete_${gwId}`).row()
+    .text("🔙 Back", "adm_gateway_list");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+// Add new gateway — start
+bot.callbackQuery("gw_add_new", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = "GW_ADD_NAME";
+  await ctx.editMessageText(
+    `🔌 *Add New Gateway — Step 1/5*\n\n` +
+    `📛 Send the *Gateway Name*\n\n` +
+    `Example: \`Paytm\` or \`Vsv\` or \`Cashfree\``,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+  ).catch(() => {});
+});
+
+// Toggle active/inactive
+bot.callbackQuery(/^gw_toggle_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_toggle_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  gw.active = !gw.active;
+  await gw.save();
+  await ctx.answerCallbackQuery({ text: gw.active ? "🟢 Activated!" : "⚪ Deactivated!" });
+  // Re-show view
+  ctx.callbackQuery.data = `gw_view_${gwId}`;
+  await bot.handleUpdate({ ...ctx.update, callback_query: { ...ctx.update.callback_query, data: `gw_view_${gwId}` } }).catch(() => {});
+  // Fallback: manually call view handler
+  let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `📛 *Name:* ${gw.name}\n`;
+  text += `🔗 *URL:* \`${gw.url}\`\n`;
+  text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n━━━━━━━━━━━━━━━━━━━━`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
+    .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
+    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
+    .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
+    .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
+    .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
+    .text("🗑️ Delete Gateway", `gw_delete_${gwId}`).row()
+    .text("🔙 Back", "adm_gateway_list");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+// Delete gateway
+bot.callbackQuery(/^gw_delete_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_delete_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(
+    `🗑️ *Delete Gateway?*\n\n📛 Name: *${gw.name}*\n🔗 URL: \`${gw.url}\`\n\n⚠️ This cannot be undone!`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard()
+        .text("✅ Yes, Delete", `gw_confirmdel_${gwId}`).row()
+        .text("❌ Cancel", `gw_view_${gwId}`)
+    }
+  ).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_confirmdel_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_confirmdel_", "");
+  await Gateway.deleteOne({ gatewayId: gwId });
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!", show_alert: true });
+  await ctx.editMessageText(await getGatewayListText(), {
+    reply_markup: await getGatewayListKeyboard(),
+    parse_mode: "Markdown"
+  }).catch(() => {});
+});
+
+// Edit gateway fields — prompt
+bot.callbackQuery(/^gw_edit_name_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_name_", "");
+  userState[ctx.from.id] = `GW_EDIT_NAME_${gwId}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(`📛 Send new *Gateway Name*:`, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+  }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_edit_url_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_url_", "");
+  userState[ctx.from.id] = `GW_EDIT_URL_${gwId}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(`🔗 Send new *API URL*:\n\nExample: \`https://api.gateway.com/pay\``, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+  }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_edit_key_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_key_", "");
+  userState[ctx.from.id] = `GW_EDIT_KEY_${gwId}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(`🔑 Send new *API Key*:\n\n(send \`none\` to remove)`, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+  }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_edit_auth_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_auth_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  await ctx.answerCallbackQuery();
+  let kb = new InlineKeyboard()
+    .text(gw.authType === "none" ? "✅ None" : "None", `gw_setauth_${gwId}_none`).row()
+    .text(gw.authType === "bearer" ? "✅ Bearer" : "Bearer", `gw_setauth_${gwId}_bearer`).row()
+    .text(gw.authType === "basic" ? "✅ Basic" : "Basic", `gw_setauth_${gwId}_basic`).row()
+    .text(gw.authType === "apikey_header" ? "✅ API Key Header" : "API Key Header", `gw_setauth_${gwId}_apikey_header`).row()
+    .text("🔙 Back", `gw_view_${gwId}`);
+  await ctx.editMessageText(`🔐 *Choose Auth Type:*\n\nCurrent: \`${gw.authType}\``, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_setauth_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let raw = ctx.callbackQuery.data.replace("gw_setauth_", "");
+  let lastIdx = raw.lastIndexOf("_");
+  let gwId = raw.substring(0, lastIdx);
+  let authType = raw.substring(lastIdx + 1);
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  gw.authType = authType;
+  await gw.save();
+  await ctx.answerCallbackQuery({ text: "✅ Auth updated!" });
+  // Re-render view
+  let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `📛 *Name:* ${gw.name}\n`;
+  text += `🔗 *URL:* \`${gw.url}\`\n`;
+  text += `🔐 *Auth Type:* ${gw.authType}\n`;
+  text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n━━━━━━━━━━━━━━━━━━━━`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
+    .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
+    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
+    .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
+    .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
+    .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
+    .text("🗑️ Delete Gateway", `gw_delete_${gwId}`).row()
+    .text("🔙 Back", "adm_gateway_list");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_edit_success_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_success_", "");
+  userState[ctx.from.id] = `GW_EDIT_SUCCESS_${gwId}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(
+    `✅ *Set Success Detection*\n\nSend in format:\n\n\`field=value\`\n\n` +
+    `Examples:\n• \`status=SUCCESS\`\n• \`success=true\`\n• \`code=200\`\n• \`data.status=success\``,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`) }
+  ).catch(() => {});
+});
+
+// ============================================================
 // ⌨️ CUSTOMIZE KEYBOARD CALLBACKS
 // ============================================================
 bot.callbackQuery("adm_customize_keyboard", async (ctx) => {
@@ -664,7 +1072,6 @@ bot.callbackQuery("adm_customize_keyboard", async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Row view
 bot.callbackQuery(/^kbd_rowview_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let row = parseInt(ctx.callbackQuery.data.replace("kbd_rowview_", ""), 10);
@@ -672,14 +1079,12 @@ bot.callbackQuery(/^kbd_rowview_/, async (ctx) => {
   await ctx.answerCallbackQuery({ text: `Row ${row + 1}: ${rowBtns.map(b => b.name).join(", ")}`, show_alert: true });
 });
 
-// Button edit page
 bot.callbackQuery(/^kbd_edit_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_edit_", "");
   let btn = await KeyboardLayout.findOne({ buttonKey: btnKey });
   if (!btn) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
   await ctx.answerCallbackQuery();
-
   let style = await getReplyStyle(btnKey);
   let emoji = STYLE_EMOJI[style || "default"];
   let label = STYLE_LABEL[style || "default"];
@@ -692,7 +1097,6 @@ bot.callbackQuery(/^kbd_edit_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Rename prompt
 bot.callbackQuery(/^kbd_rename_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_rename_", "");
@@ -704,7 +1108,6 @@ bot.callbackQuery(/^kbd_rename_/, async (ctx) => {
   }).catch(() => {});
 });
 
-// Set style picker
 bot.callbackQuery(/^kbd_style_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_style_", "");
@@ -728,9 +1131,8 @@ bot.callbackQuery(/^kbd_setstyle_/, async (ctx) => {
   let lastIdx = raw.lastIndexOf("_");
   let btnKey = raw.substring(0, lastIdx);
   let style = raw.substring(lastIdx + 1);
-
   let btn = await KeyboardLayout.findOne({ buttonKey: btnKey });
-  if (!btn) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+  if (!btn) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
 
   if (style === "default") {
     await setReplyStyle(btnKey, "default");
@@ -739,7 +1141,7 @@ bot.callbackQuery(/^kbd_setstyle_/, async (ctx) => {
     await setReplyStyle(btnKey, style);
     await ctx.answerCallbackQuery({ text: `${STYLE_EMOJI[style]} ${STYLE_LABEL[style]} applied!` });
   } else {
-    return ctx.answerCallbackQuery({ text: "❌ Invalid style!", show_alert: true });
+    return ctx.answerCallbackQuery({ text: "❌ Invalid!", show_alert: true });
   }
 
   let current = await getReplyStyle(btnKey) || "default";
@@ -752,22 +1154,16 @@ bot.callbackQuery(/^kbd_setstyle_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Reset single button style
 bot.callbackQuery(/^kbd_resetbtn_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_resetbtn_", "");
   let btn = await KeyboardLayout.findOne({ buttonKey: btnKey });
-  if (!btn) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
-
+  if (!btn) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
   let currentStyle = await getReplyStyle(btnKey);
   let defaultStyle = DEFAULT_REPLY_STYLES[btnKey] || null;
-
-  if (currentStyle === defaultStyle) {
-    return ctx.answerCallbackQuery({ text: "ℹ️ Already default!", show_alert: true });
-  }
+  if (currentStyle === defaultStyle) return ctx.answerCallbackQuery({ text: "ℹ️ Already default!", show_alert: true });
   await resetReplyStyle(btnKey);
   await ctx.answerCallbackQuery({ text: "✅ Reset to default!", show_alert: true });
-
   let newStyle = await getReplyStyle(btnKey);
   let text = `✏️ *Edit Button*\n\n━━━━━━━━━━━━━━━━━━━━\n\n📝 Name: *${btn.name}*\n🎨 Style: ${STYLE_EMOJI[newStyle || "default"]} \`${STYLE_LABEL[newStyle || "default"]}\`\n📍 Row: ${btn.row + 1}\n\n━━━━━━━━━━━━━━━━━━━━`;
   let kb = new InlineKeyboard()
@@ -778,7 +1174,6 @@ bot.callbackQuery(/^kbd_resetbtn_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Row up
 bot.callbackQuery(/^kbd_rowup_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let row = parseInt(ctx.callbackQuery.data.replace("kbd_rowup_", ""), 10);
@@ -791,7 +1186,6 @@ bot.callbackQuery(/^kbd_rowup_/, async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Row down
 bot.callbackQuery(/^kbd_rowdown_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let row = parseInt(ctx.callbackQuery.data.replace("kbd_rowdown_", ""), 10);
@@ -806,7 +1200,6 @@ bot.callbackQuery(/^kbd_rowdown_/, async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Button up within row
 bot.callbackQuery(/^kbd_btnup_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_btnup_", "");
@@ -822,7 +1215,6 @@ bot.callbackQuery(/^kbd_btnup_/, async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Button down
 bot.callbackQuery(/^kbd_btndown_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_btndown_", "");
@@ -838,7 +1230,6 @@ bot.callbackQuery(/^kbd_btndown_/, async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Button move (change row)
 bot.callbackQuery(/^kbd_move_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let btnKey = ctx.callbackQuery.data.replace("kbd_move_", "");
@@ -872,7 +1263,6 @@ bot.callbackQuery(/^kbd_moveto_/, async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Reset entire keyboard
 bot.callbackQuery("kbd_reset", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   await KeyboardLayout.deleteMany({});
@@ -882,7 +1272,6 @@ bot.callbackQuery("kbd_reset", async (ctx) => {
   await ctx.editMessageText(await getKeyboardManageText(), { reply_markup: await getKeyboardManageKeyboard() }).catch(() => {});
 });
 
-// Update keyboard for all users
 bot.callbackQuery("kbd_update_all", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   await ctx.answerCallbackQuery({ text: "⏳ Updating..." });
@@ -1053,7 +1442,7 @@ bot.callbackQuery("adm_set_support", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return;
   let cur = await getConfig("support_username", "Not Set");
   userState[ctx.from.id] = "WAITING_FOR_SUPPORT_ID";
-  await ctx.editMessageText(`💬 Current: \`${cur}\`\n\nSend new support (username or ID):`, { reply_markup: new InlineKeyboard().text("🔙 Back", "admin"), parse_mode: "Markdown" });
+  await ctx.editMessageText(`💬 Current: \`${cur}\`\n\nSend new support:`, { reply_markup: new InlineKeyboard().text("🔙 Back", "admin"), parse_mode: "Markdown" });
 });
 
 bot.callbackQuery("adm_all_balances", async (ctx) => {
@@ -1197,7 +1586,7 @@ bot.callbackQuery(/^track_back_/, async (ctx) => {
 });
 
 // ============================================================
-// 🏧 WITHDRAWAL — With Privacy Masking + Buttons Remove on Approve/Reject
+// 🏧 WITHDRAWAL — AUTO PAYMENT VIA GATEWAY
 // ============================================================
 bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let parts = ctx.callbackQuery.data.replace("conf_wd_", "").split("_");
@@ -1206,42 +1595,105 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let userId = ctx.from.id;
   let user = await getUser(userId);
   if (user.balance < amount) return ctx.answerCallbackQuery({ text: "❌ Insufficient!", show_alert: true });
+
+  // Deduct balance
   user.balance -= amount;
   user.withdrawnTotal = (user.withdrawnTotal || 0) + amount;
   await user.save();
-  await logBalanceHistory(userId, `Withdrawn via ${method}`, -amount);
+  await logBalanceHistory(userId, `Withdrawal via ${method}`, -amount);
+
+  // Get details
   let details = method === "Wallet" ? user.walletAccount : method === "UPI" ? user.upiId :
                 method === "Bank" ? `${user.bankAccNo}, ${user.bankIfsc}` :
                 method === "Amazon" ? user.amazonEmail : user.redeemCodeAddr;
-  let wId = Math.floor(100000 + Math.random() * 900000).toString();
-  await Withdrawal.create({ withdrawalId: wId, userId, amount, method, details });
-  await ctx.answerCallbackQuery({ text: "Submitted!" });
-  await ctx.editMessageText(`✅ Withdrawal of ₹${amount} submitted!\nID: #${wId}\nStatus: Pending.`);
 
-  let pChannel = await getConfig("payout_channel", null);
-  if (pChannel) {
-    // 🔒 Masked details for privacy
-    let maskedDetails = maskDetails(method, details);
-    let approveBtn = await ibtn("wd_approve", "✅ Approve", `wd_app_${wId}`);
-    let rejectBtn  = await ibtn("wd_reject",  "❌ Reject",  `wd_rej_${wId}`);
-    let userMention = `[${userId}](tg://user?id=${userId})`;
-    let notificationText =
-      `🔔 *New Withdrawal Request*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `👤 *User:* ${userMention}\n` +
-      `🆔 *User ID:* \`${userId}\`\n` +
-      `💰 *Amount:* ₹${amount.toFixed(2)}\n` +
-      `💳 *Method:* ${method}\n` +
-      `🏦 *Details:* \`${maskedDetails}\`\n` +
-      `🕐 *Time:* ${new Date().toLocaleString('en-IN')}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `👇 *Action Required:*`;
-    try {
-      await ctx.api.sendMessage(pChannel, notificationText, {
-        parse_mode: "Markdown",
-        reply_markup: buildIKB([[approveBtn, rejectBtn]])
-      });
-    } catch (e) { console.error("Payout notify failed:", e); }
+  let wId = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Create withdrawal record
+  let wd = await Withdrawal.create({
+    withdrawalId: wId, userId, amount, method, details,
+    taxId: user.taxId || "Not Set",
+    status: "Pending", autoPaid: false
+  });
+
+  await ctx.answerCallbackQuery({ text: "⏳ Processing..." });
+  await ctx.editMessageText(`⏳ *Processing Withdrawal...*\n\n💰 Amount: ₹${amount}\n💳 Method: ${method}\n\n_Please wait while we process your payment._`, { parse_mode: "Markdown" });
+
+  // ⚡ AUTO PAYMENT VIA GATEWAY
+  let activeGateway = await getActiveGateway();
+  if (!activeGateway) {
+    // No gateway set — mark as pending for manual approval
+    let pChannel = await getConfig("payout_channel", null);
+    if (pChannel) {
+      let maskedDetails = maskDetails(method, details);
+      let approveBtn = await ibtn("task_approve", "✅ Approve", `wd_app_${wId}`);
+      let rejectBtn  = await ibtn("task_reject",  "❌ Reject",  `wd_rej_${wId}`);
+      let userMention = `[${userId}](tg://user?id=${userId})`;
+      let msg = `🔔 *New Withdrawal Request*\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `👤 *User:* ${userMention}\n🆔 *User ID:* \`${userId}\`\n` +
+                `💰 *Amount:* ₹${amount.toFixed(2)}\n💳 *Method:* ${method}\n` +
+                `🏦 *Details:* \`${maskedDetails}\`\n🧾 *Tax ID:* \`${user.taxId || "Not Set"}\`\n` +
+                `⚠️ *No gateway configured — Manual approval needed*\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n👇 *Action:*`;
+      try {
+        await ctx.api.sendMessage(pChannel, msg, { parse_mode: "Markdown", reply_markup: buildIKB([[approveBtn, rejectBtn]]) });
+      } catch (e) {}
+    }
+    await ctx.editMessageText(`✅ *Withdrawal Submitted!*\n\n💰 ₹${amount}\n💳 ${method}\n\n🕐 Status: *Pending* (Manual approval)`, { parse_mode: "Markdown" });
+    return;
+  }
+
+  // Send to gateway
+  let paymentData = {
+    amount,
+    details,
+    userId,
+    orderId: wId,
+    taxId: user.taxId || ""
+  };
+
+  let result = await sendPaymentToGateway(activeGateway, paymentData);
+
+  // Update withdrawal record
+  wd.gatewayName = activeGateway.name;
+  wd.gatewayRef = result.ref || "";
+  wd.gatewayResponse = result.data;
+  wd.autoPaid = true;
+
+  if (result.success) {
+    wd.status = "AutoSuccess";
+    await wd.save();
+    await ctx.editMessageText(
+      `✅ *PAYMENT SUCCESSFUL*\n\n` +
+      `💰 Amount: ₹${amount.toFixed(2)}\n` +
+      `💳 Method: ${method}\n` +
+      `🔌 Gateway: ${activeGateway.name}\n` +
+      `📋 Ref: #${wId}\n` +
+      `🔗 Gateway Ref: \`${result.ref || "N/A"}\`\n\n` +
+      `🎉 _Funds will be credited shortly._`,
+      { parse_mode: "Markdown" }
+    );
+    // Notify payout channel
+    await sendPayoutChannelNotification(ctx, wd, activeGateway, result);
+  } else {
+    wd.status = "AutoFailed";
+    await wd.save();
+    // Refund balance
+    user.balance += amount;
+    user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amount);
+    await user.save();
+    await logBalanceHistory(userId, `Auto-Failed Refund`, amount);
+    await ctx.editMessageText(
+      `❌ *PAYMENT FAILED*\n\n` +
+      `💰 Amount: ₹${amount.toFixed(2)}\n` +
+      `💳 Method: ${method}\n` +
+      `🔌 Gateway: ${activeGateway.name}\n\n` +
+      `💵 *Amount refunded to your balance.*\n\n` +
+      `${result.error ? `⚠️ _${result.error}_` : ""}`,
+      { parse_mode: "Markdown" }
+    );
+    // Notify payout channel
+    await sendPayoutChannelNotification(ctx, wd, activeGateway, result);
   }
 });
 
@@ -1250,7 +1702,7 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.");
 });
 
-// ✅ APPROVE — Remove buttons and show APPROVED text
+// Manual approve/reject (for no-gateway case)
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_app_", "");
@@ -1258,45 +1710,26 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!wd || wd.status !== "Pending") return ctx.answerCallbackQuery({ text: "Already processed!", show_alert: true });
   wd.status = "Approved"; await wd.save();
   await ctx.answerCallbackQuery({ text: "✅ Approved!" });
-
-  // Get user for mention
   let targetUser = await User.findOne({ userId: wd.userId });
   let userMention = targetUser ? `[${wd.userId}](tg://user?id=${wd.userId})` : `\`${wd.userId}\``;
   let maskedDetails = maskDetails(wd.method, wd.details);
   let adminName = ctx.from.first_name || "Admin";
-
-  // Rebuild message WITHOUT buttons, with APPROVED status
-  let newText =
-    `✅ *WITHDRAWAL APPROVED*\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `👤 *User:* ${userMention}\n` +
-    `🆔 *User ID:* \`${wd.userId}\`\n` +
-    `💰 *Amount:* ₹${wd.amount.toFixed(2)}\n` +
-    `💳 *Method:* ${wd.method}\n` +
-    `🏦 *Details:* \`${maskedDetails}\`\n` +
-    `🕐 *Processed:* ${new Date().toLocaleString('en-IN')}\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `✅ *APPROVED* by ${adminName}`;
-
-  try {
-    // editMessageText removes inline buttons (no reply_markup passed)
-    await ctx.editMessageText(newText, { parse_mode: "Markdown" });
-  } catch (e) { console.error("Edit approve msg failed:", e); }
-
-  // Notify user
+  let newText = `✅ *WITHDRAWAL APPROVED*\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `👤 *User:* ${userMention}\n🆔 *User ID:* \`${wd.userId}\`\n` +
+                `💰 *Amount:* ₹${wd.amount.toFixed(2)}\n💳 *Method:* ${wd.method}\n` +
+                `🏦 *Details:* \`${maskedDetails}\`\n🧾 *Tax ID:* \`${wd.taxId || "Not Set"}\`\n` +
+                `🕐 *Processed:* ${new Date().toLocaleString('en-IN')}\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n✅ *APPROVED* by ${adminName}`;
+  try { await ctx.editMessageText(newText, { parse_mode: "Markdown" }); } catch (e) {}
   try {
     let url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-    await ctx.api.sendMessage(wd.userId,
-      `💸 *Payment Successful!*\n\n💰 Amount: ₹${wd.amount.toFixed(2)}\n💳 Method: ${wd.method}\n\n✅ Status: *Approved*`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: new InlineKeyboard().webApp("🚀 Check Status", `${url}/receipt/${wd.withdrawalId}`)
-      }
-    );
+    await ctx.api.sendMessage(wd.userId, `💸 *Payment Successful!*\n\n💰 ₹${wd.amount.toFixed(2)}\n💳 ${wd.method}`, {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().webApp("🚀 Check Status", `${url}/receipt/${wd.withdrawalId}`)
+    });
   } catch (e) {}
 });
 
-// ❌ REJECT — Remove buttons and show REJECTED text
 bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_rej_", "");
@@ -1307,32 +1740,20 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   user.balance += wd.amount;
   user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
   await user.save();
-  await logBalanceHistory(wd.userId, `Withdrawal Refunded`, wd.amount);
+  await logBalanceHistory(wd.userId, `Refunded`, wd.amount);
   await ctx.answerCallbackQuery({ text: "❌ Rejected & Refunded!" });
-
   let targetUser = await User.findOne({ userId: wd.userId });
   let userMention = targetUser ? `[${wd.userId}](tg://user?id=${wd.userId})` : `\`${wd.userId}\``;
   let maskedDetails = maskDetails(wd.method, wd.details);
   let adminName = ctx.from.first_name || "Admin";
-
-  let newText =
-    `❌ *WITHDRAWAL REJECTED*\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `👤 *User:* ${userMention}\n` +
-    `🆔 *User ID:* \`${wd.userId}\`\n` +
-    `💰 *Amount:* ₹${wd.amount.toFixed(2)}\n` +
-    `💳 *Method:* ${wd.method}\n` +
-    `🏦 *Details:* \`${maskedDetails}\`\n` +
-    `🕐 *Processed:* ${new Date().toLocaleString('en-IN')}\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `❌ *REJECTED* by ${adminName}\n` +
-    `💵 *Amount Refunded to User*`;
-
-  try {
-    await ctx.editMessageText(newText, { parse_mode: "Markdown" });
-  } catch (e) { console.error("Edit reject msg failed:", e); }
-
-  try { await ctx.api.sendMessage(wd.userId, `❌ Withdrawal of ₹${wd.amount} rejected. Amount has been refunded to your balance.`); } catch (e) {}
+  let newText = `❌ *WITHDRAWAL REJECTED*\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `👤 *User:* ${userMention}\n🆔 *User ID:* \`${wd.userId}\`\n` +
+                `💰 *Amount:* ₹${wd.amount.toFixed(2)}\n💳 *Method:* ${wd.method}\n` +
+                `🏦 *Details:* \`${maskedDetails}\`\n🧾 *Tax ID:* \`${wd.taxId || "Not Set"}\`\n` +
+                `🕐 *Processed:* ${new Date().toLocaleString('en-IN')}\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n❌ *REJECTED* by ${adminName}\n💵 *Amount Refunded*`;
+  try { await ctx.editMessageText(newText, { parse_mode: "Markdown" }); } catch (e) {}
+  try { await ctx.api.sendMessage(wd.userId, `❌ Withdrawal of ₹${wd.amount} rejected. Amount refunded.`); } catch (e) {}
 });
 
 // ============================================================
@@ -1391,14 +1812,106 @@ bot.on("message:text", async (ctx, next) => {
       return;
     }
 
+    // ===== GATEWAY SETUP STATE MACHINE =====
+    if (state === "GW_ADD_NAME" && (await isAdmin(userId))) {
+      userState[userId] = `GW_ADD_URL_${text}`;
+      return ctx.reply(`✅ Name: *${text}*\n\n🔗 Now send the *API URL*:\n\nExample: \`https://api.gateway.com/pay\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") });
+    }
+    if (state.startsWith("GW_ADD_URL_") && (await isAdmin(userId))) {
+      let name = state.replace("GW_ADD_URL_", "");
+      userState[userId] = `GW_ADD_KEY_${name}__${text}`;
+      return ctx.reply(`✅ URL: \`${text}\`\n\n🔑 Now send the *API Key*:\n\n(send \`none\` if not needed)`, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") });
+    }
+    if (state.startsWith("GW_ADD_KEY_") && (await isAdmin(userId))) {
+      let rest = state.replace("GW_ADD_KEY_", "");
+      let idx = rest.indexOf("__");
+      let name = rest.substring(0, idx);
+      let url = rest.substring(idx + 2);
+      let apiKey = text.toLowerCase() === "none" ? "" : text;
+      userState[userId] = `GW_ADD_AUTH_${name}__${url}__${apiKey}`;
+      let kb = new InlineKeyboard()
+        .text("None", "gwpickauth_none").row()
+        .text("Bearer", "gwpickauth_bearer").row()
+        .text("Basic", "gwpickauth_basic").row()
+        .text("API Key Header", "gwpickauth_apikey_header").row()
+        .text("❌ Cancel", "adm_gateway_list");
+      return ctx.reply(`✅ API Key saved.\n\n🔐 Choose *Auth Type*:`, { reply_markup: kb, parse_mode: "Markdown" });
+    }
+    if (state.startsWith("GW_ADD_SUCCESS_") && (await isAdmin(userId))) {
+      // Format: GW_ADD_SUCCESS_name__url__apiKey__authType
+      let rest = state.replace("GW_ADD_SUCCESS_", "");
+      let parts = rest.split("__");
+      let name = parts[0], url = parts[1], apiKey = parts[2], authType = parts[3];
+      // Parse success field=value
+      let successField = "status", successValue = "SUCCESS";
+      let sep = text.indexOf("=");
+      if (sep > 0) {
+        successField = text.substring(0, sep).trim();
+        successValue = text.substring(sep + 1).trim();
+      }
+      delete userState[userId];
+
+      let gwId = "gw_" + uuidv4().replace(/-/g, "").substring(0, 12);
+      await Gateway.create({
+        gatewayId: gwId,
+        name, url, apiKey,
+        authType,
+        successField, successValue,
+        method: "POST",
+        active: true
+      });
+      return ctx.reply(`🎉 *Gateway Added!*\n\n📛 ${name}\n🔗 ${url}\n🔐 Auth: ${authType}\n✅ Success: ${successField}=${successValue}`, {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard().text("🔌 View Gateways", "adm_gateway_list")
+      });
+    }
+
+    // Edit gateway name
+    if (state.startsWith("GW_EDIT_NAME_") && (await isAdmin(userId))) {
+      let gwId = state.replace("GW_EDIT_NAME_", "");
+      delete userState[userId];
+      let gw = await getGatewayById(gwId);
+      if (!gw) return ctx.reply("❌ Not found!");
+      gw.name = text; await gw.save();
+      return ctx.reply(`✅ Name updated to: ${text}`);
+    }
+    if (state.startsWith("GW_EDIT_URL_") && (await isAdmin(userId))) {
+      let gwId = state.replace("GW_EDIT_URL_", "");
+      delete userState[userId];
+      let gw = await getGatewayById(gwId);
+      if (!gw) return ctx.reply("❌ Not found!");
+      gw.url = text; await gw.save();
+      return ctx.reply(`✅ URL updated!`);
+    }
+    if (state.startsWith("GW_EDIT_KEY_") && (await isAdmin(userId))) {
+      let gwId = state.replace("GW_EDIT_KEY_", "");
+      delete userState[userId];
+      let gw = await getGatewayById(gwId);
+      if (!gw) return ctx.reply("❌ Not found!");
+      gw.apiKey = text.toLowerCase() === "none" ? "" : text;
+      await gw.save();
+      return ctx.reply(`✅ API Key updated!`);
+    }
+    if (state.startsWith("GW_EDIT_SUCCESS_") && (await isAdmin(userId))) {
+      let gwId = state.replace("GW_EDIT_SUCCESS_", "");
+      delete userState[userId];
+      let gw = await getGatewayById(gwId);
+      if (!gw) return ctx.reply("❌ Not found!");
+      let sep = text.indexOf("=");
+      if (sep <= 0) return ctx.reply("❌ Use format: field=value");
+      gw.successField = text.substring(0, sep).trim();
+      gw.successValue = text.substring(sep + 1).trim();
+      await gw.save();
+      return ctx.reply(`✅ Success detection updated!`);
+    }
+
     // Keyboard rename
     if (state.startsWith("KBD_RENAME_") && (await isAdmin(userId))) {
       let btnKey = state.replace("KBD_RENAME_", "");
       delete userState[userId];
       let btn = await KeyboardLayout.findOne({ buttonKey: btnKey });
       if (!btn) return ctx.reply("❌ Not found!");
-      btn.name = text;
-      await btn.save();
+      btn.name = text; await btn.save();
       return ctx.reply(`✅ Renamed to: ${text}`);
     }
 
@@ -1537,6 +2050,7 @@ bot.on("message:text", async (ctx, next) => {
     }
     if (state === "SET_AMAZON_ACC") { delete userState[userId]; await User.findOneAndUpdate({ userId }, { amazonEmail: text }); return ctx.reply(`✅ Amazon: ${text}`); }
     if (state === "SET_REDEEM_ACC") { delete userState[userId]; await User.findOneAndUpdate({ userId }, { redeemCodeAddr: text }); return ctx.reply(`✅ Redeem: ${text}`); }
+    if (state === "SET_TAXID_ACC") { delete userState[userId]; await User.findOneAndUpdate({ userId }, { taxId: text }); return ctx.reply(`✅ Tax ID: ${text}`); }
 
     if (state.startsWith("WD_AMT_")) {
       let method = state.replace("WD_AMT_", "");
@@ -1634,24 +2148,35 @@ bot.on("message:text", async (ctx, next) => {
     return ctx.reply("💸 Quick Pay\n\nFormat:\nWalletID_or_UserID-Amount");
   }
   else if (key === "btn_payout") {
-    let msg = `💳 Payment Method\n\nWallet: ${user.walletAccount}\nUPI: ${user.upiId}\nBank: ${user.bankAccNo !== "Not Set" ? `${user.bankAccNo}, ${user.bankIfsc}` : "Not Set"}\nAmazon: ${user.amazonEmail}\nRedeem: ${user.redeemCodeAddr}`;
+    let msg = `💳 Payment Method\n\nWallet: ${user.walletAccount}\nUPI: ${user.upiId}\nBank: ${user.bankAccNo !== "Not Set" ? `${user.bankAccNo}, ${user.bankIfsc}` : "Not Set"}\nAmazon: ${user.amazonEmail}\nRedeem: ${user.redeemCodeAddr}\nTax ID: ${user.taxId || "Not Set"}`;
     let sw = await ibtn("set_wallet", "🌐 Set Wallet", "set_wallet");
     let su = await ibtn("set_upi", "⚡ Set UPI", "set_upi");
     let sb = await ibtn("set_bank", "🏦 Set Bank", "set_bank");
     let sa = await ibtn("set_amazon", "📧 Set Amazon", "set_amazon");
     let sr = await ibtn("set_redeem", "🎁 Set Redeem", "set_redeem");
-    return ctx.reply(msg, { reply_markup: buildIKB([[sw], [su], [sb], [sa], [sr]]) });
+    let st = await ibtn("set_taxid", "🧾 Set Tax ID", "set_taxid");
+    return ctx.reply(msg, { reply_markup: buildIKB([[sw], [su], [sb], [sa], [sr], [st]]) });
   }
   else if (key === "btn_withdraw") {
     let minW = await getConfig("min_withdraw", 1);
     let maxW = await getConfig("max_withdraw", 100);
     let msg = `🏦 Withdraw\n\nBalance: ₹${user.balance.toFixed(2)}\nMin: ₹${minW} | Max: ₹${maxW}`;
-    let ww = await ibtn("wd_wallet", "🌐 Wallet", "wd_wallet");
+    // ⚡ Gateway names from DB
+    let gateways = await getActiveGateways();
+    let rows = [];
+    let gatewayRow = [];
+    for (let gw of gateways) {
+      let btn = await ibtn("wd_wallet", `🌐 ${gw.name}`, `wd_gateway_${gw.gatewayId}`);
+      gatewayRow.push(btn);
+    }
+    if (gatewayRow.length > 0) rows.push(gatewayRow);
     let wu = await ibtn("wd_upi", "⚡ UPI", "wd_upi");
     let wb = await ibtn("wd_bank", "🏦 Bank", "wd_bank");
+    rows.push([wu, wb]);
     let wa = await ibtn("wd_amazon", "📧 Amazon", "wd_amazon");
     let wr = await ibtn("wd_redeem", "🎁 Redeem Code", "wd_redeem");
-    return ctx.reply(msg, { reply_markup: buildIKB([[ww, wu], [wb, wa], [wr]]) });
+    rows.push([wa, wr]);
+    return ctx.reply(msg, { reply_markup: buildIKB(rows) });
   }
   else {
     let g = await GiftCode.findOne({ code: text });
@@ -1665,6 +2190,24 @@ bot.on("message:text", async (ctx, next) => {
     }
     return next();
   }
+});
+
+// Gateway name input handler (when GW_ADD_AUTH step)
+bot.callbackQuery(/^gwpickauth_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let authType = ctx.callbackQuery.data.replace("gwpickauth_", "");
+  let state = userState[ctx.from.id];
+  if (!state || !state.startsWith("GW_ADD_AUTH_")) return ctx.answerCallbackQuery({ text: "Session expired!", show_alert: true });
+  let rest = state.replace("GW_ADD_AUTH_", "");
+  userState[ctx.from.id] = `GW_ADD_SUCCESS_${rest}__${authType}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(
+    `✅ Auth Type: *${authType}*\n\n` +
+    `✅ Now set *Success Detection*:\n\n` +
+    `Send in format: \`field=value\`\n\n` +
+    `Examples:\n• \`status=SUCCESS\`\n• \`success=true\`\n• \`code=200\``,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+  ).catch(() => {});
 });
 
 // ============================================================
@@ -1815,6 +2358,20 @@ bot.callbackQuery("set_upi", async (ctx) => { userState[ctx.from.id] = "SET_UPI_
 bot.callbackQuery("set_bank", async (ctx) => { userState[ctx.from.id] = "SET_BANK_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🏦 Format: AccNo | IFSC | BankName"); });
 bot.callbackQuery("set_amazon", async (ctx) => { userState[ctx.from.id] = "SET_AMAZON_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("📧 Send Amazon email:"); });
 bot.callbackQuery("set_redeem", async (ctx) => { userState[ctx.from.id] = "SET_REDEEM_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🎁 Send Redeem address:"); });
+bot.callbackQuery("set_taxid", async (ctx) => { userState[ctx.from.id] = "SET_TAXID_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🧾 Send Tax ID (PAN/Aadhaar/etc.):"); });
+
+// Gateway withdraw method
+bot.callbackQuery(/^wd_gateway_/, async (ctx) => {
+  let gwId = ctx.callbackQuery.data.replace("wd_gateway_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Gateway not found!", show_alert: true });
+  let user = await getUser(ctx.from.id);
+  let minW = await getConfig("min_withdraw", 1);
+  if (user.balance < minW) return ctx.answerCallbackQuery({ text: `❌ Min ₹${minW}!`, show_alert: true });
+  await ctx.answerCallbackQuery();
+  userState[ctx.from.id] = `WD_AMT_Wallet|${gw.name}`;
+  await ctx.reply(`🏦 Withdraw via *${gw.name}*\n\n💰 Balance: ₹${user.balance.toFixed(2)}\n👉 Send amount:`, { parse_mode: "Markdown" });
+});
 
 async function promptWD(ctx, method) {
   let user = await getUser(ctx.from.id);
