@@ -2,23 +2,202 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
 
-// --- Express Server for 24/7 Render / Replit Uptime ---
+// --- Express Server for 24/7 Render / Replit Uptime & Web App Receipt ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// MongoDB Schemas needed for Express Web App endpoint
+const withdrawalSchema = new mongoose.Schema({
+  withdrawalId: { type: String, required: true, unique: true },
+  userId: { type: Number, required: true },
+  amount: { type: Number, required: true },
+  method: { type: String, required: true },
+  details: { type: String, required: true },
+  status: { type: String, default: "Pending" },
+  createdAt: { type: Date, default: Date.now }
+});
+const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", withdrawalSchema);
+
+// Web App Receipt Route matching your screenshot design
+app.get("/receipt/:id", async (req, res) => {
+  try {
+    let wId = req.params.id;
+    let wd = await Withdrawal.findOne({ withdrawalId: wId });
+    if (!wd) {
+      return res.status(404).send("<h2 style='color:white; background:#111; text-align:center; padding:50px;'>Receipt not found!</h2>");
+    }
+
+    let isSuccess = wd.status === "Approved";
+    let isFailed = wd.status === "Rejected";
+
+    let statusTitle = isSuccess ? "TRANSFER COMPLETE" : (isFailed ? "TRANSFER FAILED" : "TRANSFER PENDING");
+    let statusSubtitle = isSuccess ? "FUNDS CREDITED" : (isFailed ? "TRANSACTION REJECTED" : "PROCESSING PAYMENT");
+    let accentColor = isSuccess ? "#00ffcc" : (isFailed ? "#ff4d4d" : "#ffa500");
+    let iconSvg = isSuccess ? "&#10003;" : (isFailed ? "&#10005;" : "&#8943;");
+
+    let html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Receipt - #${wd.withdrawalId}</title>
+        <style>
+            body {
+                background-color: #0b0e14;
+                color: #ffffff;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+            }
+            .container {
+                background: #151a21;
+                border-radius: 20px;
+                padding: 30px;
+                width: 100%;
+                max-width: 400px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                text-align: center;
+                border: 1px solid #222c37;
+            }
+            .icon-box {
+                width: 70px;
+                height: 70px;
+                background: rgba(0, 255, 204, 0.1);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px auto;
+                font-size: 32px;
+                color: ${accentColor};
+                border: 2px solid ${accentColor};
+            }
+            .title {
+                font-size: 20px;
+                font-weight: bold;
+                color: ${accentColor};
+                letter-spacing: 1px;
+            }
+            .subtitle {
+                font-size: 12px;
+                color: #8a9ba8;
+                margin-top: 5px;
+                margin-bottom: 25px;
+                letter-spacing: 0.5px;
+            }
+            .card-box {
+                background: #1e2530;
+                border-radius: 15px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            .amount-label {
+                font-size: 11px;
+                color: #8a9ba8;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .amount-val {
+                font-size: 32px;
+                font-weight: bold;
+                margin-top: 8px;
+                color: #ffffff;
+            }
+            .info-row {
+                background: #151a21;
+                border-radius: 10px;
+                padding: 12px 15px;
+                margin-top: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+            }
+            .info-title {
+                color: #8a9ba8;
+                text-align: left;
+            }
+            .info-value {
+                color: #ffffff;
+                font-weight: 500;
+                text-align: right;
+                word-break: break-all;
+                max-width: 60%;
+            }
+            .close-btn {
+                background: #2a3443;
+                color: #ffffff;
+                border: none;
+                width: 100%;
+                padding: 14px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            .close-btn:hover {
+                background: #354256;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon-box">${iconSvg}</div>
+            <div class="title">${statusTitle}</div>
+            <div class="subtitle">${statusSubtitle}</div>
+
+            <div class="card-box">
+                <div class="amount-label">WITHDRAWAL AMOUNT</div>
+                <div class="amount-val">₹ ${wd.amount.toFixed(1)}</div>
+            </div>
+
+            <div class="info-row">
+                <span class="info-title">METHOD / ${wd.method.toUpperCase()}</span>
+                <span class="info-value">${wd.details}</span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-title">REF NO</span>
+                <span class="info-value">TXN${wd.withdrawalId}</span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-title">DATE</span>
+                <span class="info-value">${new Date(wd.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+
+            <button class="close-btn" onclick="window.close()">CLOSE & RETURN</button>
+        </div>
+    </body>
+    </html>
+    `;
+    res.send(html);
+  } catch (e) {
+    res.status(500).send("Error generating receipt");
+  }
+});
+
 app.get("/", (req, res) => {
-  res.send("Bot & Website Server is Live and Running 24/7!");
+  res.send("Bot & Payout Receipt Server is Live!");
 });
 
 app.listen(PORT, () => {
-  console.log(`🌐 Server is running on port ${PORT}`);
+  console.log(`🌐 Server running on port ${PORT}`);
 });
 
 setInterval(() => {
-  const renderUrl = process.env.RENDER_EXTERNAL_URL;
-  if (renderUrl) {
-    fetch(renderUrl).catch(() => {});
-  }
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
 }, 300000);
 
 // --- Environment Variables & Config ---
@@ -65,16 +244,6 @@ const giftCodeSchema = new mongoose.Schema({
   usedUsers: { type: [Number], default: [] }
 });
 
-const withdrawalSchema = new mongoose.Schema({
-  withdrawalId: { type: String, required: true, unique: true },
-  userId: { type: Number, required: true },
-  amount: { type: Number, required: true },
-  method: { type: String, required: true },
-  details: { type: String, required: true },
-  status: { type: String, default: "Pending" },
-  createdAt: { type: Date, default: Date.now }
-});
-
 const configSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: mongoose.Schema.Types.Mixed }
@@ -83,7 +252,6 @@ const configSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 const Task = mongoose.model("Task", taskSchema);
 const GiftCode = mongoose.model("GiftCode", giftCodeSchema);
-const Withdrawal = mongoose.model("Withdrawal", withdrawalSchema);
 const Config = mongoose.model("Config", configSchema);
 
 // --- Helper Functions ---
@@ -375,8 +543,21 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
     await ctx.editMessageText(`✅ Withdrawal Request #${wId} has been **APPROVED** by Admin (@${ctx.from.username || ctx.from.first_name}).`);
   } catch (e) {}
   
+  // Send notification to user with method name and Mini Web App Receipt button
   try {
-    await ctx.api.sendMessage(wd.userId, `✅ Check your ${wd.method}! Your payment of ₹${wd.amount} has been approved.`);
+    let serverUrl = process.env.RENDER_EXTERNAL_URL || process.env.REPLIT_DEV_DOMAIN || `http://localhost:${PORT}`;
+    if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
+    let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
+
+    let userKb = new InlineKeyboard().web_app("💸 Payment Success Statement", receiptUrl);
+
+    let msg = `💸 Withdrawal Paid Successfully !! 💸\n\n` +
+              `🎉 Check your ${wd.method} wallet 🎉\n\n` +
+              `Amount: ₹${wd.amount.toFixed(1)}\n` +
+              `Method: ${wd.method}\n` +
+              `Details: ${wd.details}`;
+
+    await ctx.api.sendMessage(wd.userId, msg, { reply_markup: userKb });
   } catch (e) {}
 });
 
@@ -401,7 +582,13 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   } catch (e) {}
 
   try {
-    await ctx.api.sendMessage(wd.userId, `❌ Your withdrawal request of ₹${wd.amount} was rejected. ₹${wd.amount} has been refunded to your wallet balance.`);
+    let serverUrl = process.env.RENDER_EXTERNAL_URL || process.env.REPLIT_DEV_DOMAIN || `http://localhost:${PORT}`;
+    if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
+    let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
+
+    let userKb = new InlineKeyboard().web_app("⚠️ Payment Failed Statement", receiptUrl);
+
+    await ctx.api.sendMessage(wd.userId, `❌ Your withdrawal request of ₹${wd.amount} via ${wd.method} was rejected and ₹${wd.amount} has been refunded to your wallet balance.`, { reply_markup: userKb });
   } catch (e) {}
 });
 
@@ -941,7 +1128,7 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Connected Successfully!");
     bot.start({
-      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with All Requested Features & Admin Payout Channel!`)
+      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with Receipt Mini App Feature!`)
     });
   })
   .catch((err) => {
