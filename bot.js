@@ -1,6 +1,7 @@
 // ============================================================
-// 🤖 TELEGRAM PAYMENT TASK BOT - WITH PER-BUTTON COLOR SYSTEM
+// 🤖 TELEGRAM PAYMENT TASK BOT - WITH INLINE BUTTON STYLE API
 // grammy ^1.35.1 | mongoose ^8.13.0 | express ^4.21.2
+// Telegram Bot API 9.4 - style: primary/success/danger
 // ============================================================
 const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
@@ -165,11 +166,18 @@ const configSchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed }
 });
 
+// Inline button style schema
+const inlineStyleSchema = new mongoose.Schema({
+  buttonId: { type: String, required: true, unique: true },
+  style: { type: String, default: null } // "primary" | "success" | "danger" | null
+});
+
 const User = mongoose.model("User", userSchema);
 const Task = mongoose.model("Task", taskSchema);
 const GiftCode = mongoose.model("GiftCode", giftCodeSchema);
 const TaskSubmission = mongoose.model("TaskSubmission", taskSubmissionSchema);
 const Config = mongoose.model("Config", configSchema);
+const InlineStyle = mongoose.models.InlineStyle || mongoose.model("InlineStyle", inlineStyleSchema);
 
 // ============================================================
 // 🔧 HELPERS
@@ -225,123 +233,196 @@ function generateTrackerText(targetUser) {
 }
 
 // ============================================================
-// 🎨 CUSTOMIZE THEME SYSTEM
+// 🎨 INLINE BUTTON STYLE SYSTEM (Telegram Bot API 9.4)
 // ============================================================
-const DEFAULT_KEYBOARD_LAYOUT = [
-  { name: "🚀 My Balance", key: "btn_balance", row: 0 },
-  { name: "📋 Task Earn", key: "btn_tasks", row: 0 },
-  { name: "🎁 Gift Code", key: "btn_gift", row: 1 },
-  { name: "💸 P2P Transfer", key: "btn_transfer", row: 1 },
-  { name: "💳 Payout Method", key: "btn_payout", row: 2 },
-  { name: "🏦 Withdraw", key: "btn_withdraw", row: 2 }
+const INLINE_BUTTONS_REGISTRY = [
+  // 💰 Balance screen
+  { id: "balance_statement",      label: "📊 Balance Statement",     screen: "💳 Wallet" },
+  { id: "customer_support",       label: "💬 Customer Support",      screen: "💳 Wallet" },
+  { id: "refresh_balance_only",   label: "🔄 Refresh Balance",       screen: "💳 Wallet" },
+  { id: "live_fund",              label: "💰 Live Fund",             screen: "💳 Wallet" },
+  { id: "back_to_balance",        label: "🔙 Back to Balance",       screen: "💳 Wallet" },
+
+  // 🏦 Withdraw screen
+  { id: "wd_wallet",              label: "🌐 Wallet",                screen: "🏦 Withdraw" },
+  { id: "wd_upi",                 label: "⚡ UPI",                    screen: "🏦 Withdraw" },
+  { id: "wd_bank",                label: "🏦 Bank",                  screen: "🏦 Withdraw" },
+  { id: "wd_amazon",              label: "📧 Amazon",                screen: "🏦 Withdraw" },
+  { id: "wd_redeem",              label: "🎁 Redeem Code",           screen: "🏦 Withdraw" },
+  { id: "confirm_wd",             label: "✅ Confirm Withdraw",       screen: "🏦 Withdraw" },
+  { id: "cancel_wd",              label: "❌ Cancel Withdraw",        screen: "🏦 Withdraw" },
+
+  // 💳 Payout screen
+  { id: "set_wallet",             label: "🌐 Set Wallet",            screen: "💳 Payout" },
+  { id: "set_upi",                label: "⚡ Set UPI",                 screen: "💳 Payout" },
+  { id: "set_bank",               label: "🏦 Set Bank",              screen: "💳 Payout" },
+  { id: "set_amazon",             label: "📧 Set Amazon",            screen: "💳 Payout" },
+  { id: "set_redeem",             label: "🎁 Set Redeem",            screen: "💳 Payout" },
+
+  // 📋 Task
+  { id: "task_approve",           label: "✅ Approve Task",          screen: "📋 Task" },
+  { id: "task_reject",            label: "❌ Reject Task",           screen: "📋 Task" },
+  { id: "cancel_task",            label: "❌ Cancel Task",           screen: "📋 Task" },
+  { id: "open_task_link",         label: "🔗 Open Task Link",        screen: "📋 Task" },
+
+  // 👑 Admin
+  { id: "adm_back",               label: "🔙 Back (Admin)",          screen: "👑 Admin" },
+  { id: "adm_refresh",            label: "🔄 Refresh Panel",         screen: "👑 Admin" },
+  { id: "adm_customize_theme",    label: "🎨 Customize Theme",       screen: "👑 Admin" },
+  { id: "adm_edit_inline_styles", label: "🖌️ Edit Inline Styles",    screen: "👑 Admin" }
 ];
 
-// 🎨 Color emojis for reply keyboard buttons
-const STYLE_COLORS = {
-  red: "🔴",
-  blue: "🔵",
-  green: "🟢",
-  purple: "🟣",
-  orange: "🟠",
-  yellow: "🟡"
+// Default styles for each button (per Telegram style API)
+const DEFAULT_INLINE_STYLES = {
+  // Success (green)
+  "balance_statement": "primary",
+  "customer_support": "success",
+  "refresh_balance_only": "primary",
+  "live_fund": "success",
+  "back_to_balance": "primary",
+
+  "wd_wallet": "primary",
+  "wd_upi": "primary",
+  "wd_bank": "primary",
+  "wd_amazon": "primary",
+  "wd_redeem": "primary",
+  "confirm_wd": "success",
+  "cancel_wd": "danger",
+
+  "set_wallet": "primary",
+  "set_upi": "primary",
+  "set_bank": "primary",
+  "set_amazon": "primary",
+  "set_redeem": "primary",
+
+  "task_approve": "success",
+  "task_reject": "danger",
+  "cancel_task": "danger",
+  "open_task_link": "primary",
+
+  "adm_back": "primary",
+  "adm_refresh": "primary",
+  "adm_customize_theme": "primary",
+  "adm_edit_inline_styles": "primary"
 };
 
-async function getCurrentKeyboardLayout() {
-  let layout = await getConfig("keyboard_layout", null);
-  if (!layout || !Array.isArray(layout) || layout.length === 0) {
-    layout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
-    await setConfig("keyboard_layout", layout);
+// Get style for a button (from DB or default)
+async function getInlineStyle(buttonId) {
+  let record = await InlineStyle.findOne({ buttonId });
+  if (record && record.style) return record.style;
+  return DEFAULT_INLINE_STYLES[buttonId] || null;
+}
+
+// Set style for a button
+async function setInlineStyle(buttonId, style) {
+  if (style === null || style === "default") {
+    await InlineStyle.findOneAndDelete({ buttonId });
+  } else {
+    await InlineStyle.findOneAndUpdate({ buttonId }, { style }, { upsert: true });
   }
-  return layout;
 }
 
-// Strip all known color emoji prefixes from a name
-function stripColorPrefix(name) {
-  let clean = name;
-  Object.values(STYLE_COLORS).forEach(em => {
-    if (clean.startsWith(em + " ")) clean = clean.substring(em.length + 1);
-  });
-  return clean;
+// Build an inline button with style from registry
+async function ibtn(buttonId, text, callbackData, extra = {}) {
+  let style = await getInlineStyle(buttonId);
+  let btn = { text, callback_data: callbackData };
+  if (style) btn.style = style;
+  return { ...btn, ...extra };
 }
 
-// Build reply keyboard with per-button color emoji
-async function buildKeyboardFromLayout() {
-  let layout = await getCurrentKeyboardLayout();
-  let kb = new Keyboard();
-  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+// Build an inline URL button with style
+async function iurl(buttonId, text, url) {
+  let style = await getInlineStyle(buttonId);
+  let btn = { text, url };
+  if (style) btn.style = style;
+  return btn;
+}
 
-  for (let r = 0; r <= maxRow; r++) {
-    let rowButtons = layout.filter(b => b.row === r);
-    if (rowButtons.length > 0) {
-      rowButtons.forEach((btn) => {
-        // Per-button color emoji
-        let prefix = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] + " " : "";
-        let baseName = stripColorPrefix(btn.name);
-        kb = kb.text(prefix + baseName);
-      });
-      kb = kb.row();
+// Helper to build InlineKeyboard from array of buttons
+function buildIKB(rows) {
+  return { inline_keyboard: rows };
+}
+
+// ============================================================
+// 🎨 INLINE STYLE EDITOR PANEL
+// ============================================================
+const STYLE_EMOJI = {
+  "primary": "🔵",
+  "success": "🟢",
+  "danger": "🔴",
+  "default": "⚪"
+};
+const STYLE_LABEL = {
+  "primary": "Primary (Blue)",
+  "success": "Success (Green)",
+  "danger": "Danger (Red)",
+  "default": "Default (No Color)"
+};
+
+async function getInlineStylesText() {
+  let text = "🖌️ *Inline Button Styles Editor*\n\n";
+  text += "━━━━━━━━━━━━━━━━━━━━\n\n";
+  text += "Tap a button below to change its color.\n";
+  text += "Colors use Telegram's native `style` API.\n\n";
+  text += "🔵 Primary  🟢 Success  🔴 Danger  ⚪ Default\n\n";
+  text += "━━━━━━━━━━━━━━━━━━━━\n\n";
+
+  // Group by screen
+  let screens = {};
+  for (let b of INLINE_BUTTONS_REGISTRY) {
+    if (!screens[b.screen]) screens[b.screen] = [];
+    screens[b.screen].push(b);
+  }
+  for (let [screen, btns] of Object.entries(screens)) {
+    text += `*${screen}*\n`;
+    for (let b of btns) {
+      let style = await getInlineStyle(b.id);
+      let emoji = STYLE_EMOJI[style || "default"];
+      text += `  ${emoji} ${b.label}\n`;
     }
-  }
-  return kb.resized();
-}
-
-async function getManageText() {
-  let layout = await getCurrentKeyboardLayout();
-  let text = "🎨 *Customize Theme Panel*\n\n📱 Current Reply Keyboard Layout:\n━━━━━━━━━━━━━━━━━━━━\n\n";
-  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
-  for (let r = 0; r <= maxRow; r++) {
-    let rowButtons = layout.filter(b => b.row === r);
-    rowButtons.forEach(btn => {
-      let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-      text += `  ${colorEmoji} ${stripColorPrefix(btn.name)}\n`;
-    });
     text += "\n";
   }
-  text += "━━━━━━━━━━━━━━━━━━━━\n💡 Tap any button below to manage it.";
+  text += "━━━━━━━━━━━━━━━━━━━━";
   return text;
 }
 
-async function getManageKeyboard() {
-  let layout = await getCurrentKeyboardLayout();
+async function getInlineStylesKeyboard() {
   let kb = new InlineKeyboard();
-  layout.forEach((btn, idx) => {
-    let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-    kb = kb.text(`${colorEmoji} ${stripColorPrefix(btn.name)}`, `theme_edit_${idx}`).row();
-  });
-  kb = kb.text("➕ Add New Button", "theme_add_btn").row();
-  kb = kb.text("🔄 Reset to Default", "theme_reset").row();
-  kb = kb.text("📢 Update All Users", "theme_update_all").row();
+  let screens = {};
+  for (let b of INLINE_BUTTONS_REGISTRY) {
+    if (!screens[b.screen]) screens[b.screen] = [];
+    screens[b.screen].push(b);
+  }
+  for (let [screen, btns] of Object.entries(screens)) {
+    kb = kb.text(`📂 ${screen}`, `inline_scr_${encodeURIComponent(screen)}`).row();
+  }
+  kb = kb.text("🔄 Reset All to Default", "inline_reset_all").row();
   kb = kb.text("🔙 Back to Admin", "admin");
   return kb;
 }
 
-// ============================================================
-// 🎨 NEW: ALL BUTTONS MANAGER (with per-button color & reset)
-// ============================================================
-async function getAllButtonsText() {
-  let layout = await getCurrentKeyboardLayout();
-  let text = "🔘 *All Bot Buttons Manager*\n\n";
+async function getScreenText(screen) {
+  let btns = INLINE_BUTTONS_REGISTRY.filter(b => b.screen === screen);
+  let text = `🖌️ *${screen}*\n\n`;
   text += "━━━━━━━━━━━━━━━━━━━━\n\n";
-  layout.forEach((btn, idx) => {
-    let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-    let colorName = btn.color ? btn.color.charAt(0).toUpperCase() + btn.color.slice(1) : "Default";
-    text += `${idx + 1}. ${colorEmoji} *${stripColorPrefix(btn.name)}*\n`;
-    text += `    🎨 Color: \`${colorName}\`\n`;
-    text += `    🔑 Key: \`${btn.key}\`\n\n`;
-  });
-  text += "━━━━━━━━━━━━━━━━━━━━\n";
-  text += "💡 Tap a button below to Edit Style or Reset it.";
+  for (let b of btns) {
+    let style = await getInlineStyle(b.id);
+    let emoji = STYLE_EMOJI[style || "default"];
+    text += `${emoji} ${b.label}\n`;
+  }
+  text += "\n━━━━━━━━━━━━━━━━━━━━\n\n👇 Tap a button to edit its style.";
   return text;
 }
 
-async function getAllButtonsKeyboard() {
-  let layout = await getCurrentKeyboardLayout();
+async function getScreenKeyboard(screen) {
+  let btns = INLINE_BUTTONS_REGISTRY.filter(b => b.screen === screen);
   let kb = new InlineKeyboard();
-  layout.forEach((btn, idx) => {
-    let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-    kb = kb.text(`🔘 ${colorEmoji} ${stripColorPrefix(btn.name)}`, `allbtn_manage_${idx}`).row();
-  });
-  kb = kb.text("🔙 Back to Admin", "admin");
+  for (let b of btns) {
+    let style = await getInlineStyle(b.id);
+    let emoji = STYLE_EMOJI[style || "default"];
+    kb = kb.text(`${emoji} ${b.label}`, `inline_btn_${b.id}`).row();
+  }
+  kb = kb.text("🔙 Back", "adm_edit_inline_styles");
   return kb;
 }
 
@@ -391,7 +472,7 @@ bot.command("start", async (ctx) => {
     }
 
     let welcomeText = await getConfig("text_welcome", `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the keyboard buttons below:`);
-    await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout() });
+    await ctx.reply(welcomeText, { reply_markup: buildMainKeyboard() });
   } catch (err) { console.error("Error /start:", err); }
 });
 
@@ -401,8 +482,17 @@ bot.callbackQuery("check_join", async (ctx) => {
   if (!isJoined) return ctx.answerCallbackQuery({ text: "❌ You have not joined all channels yet!", show_alert: true });
   await ctx.deleteMessage().catch(() => {});
   let welcomeText = await getConfig("text_welcome", `👋 Welcome back! Choose an option below:`);
-  await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout() });
+  await ctx.reply(welcomeText, { reply_markup: buildMainKeyboard() });
 });
+
+// Main reply keyboard (NO COLOR — plain, since reply keyboard has no style API)
+function buildMainKeyboard() {
+  return new Keyboard()
+    .text("🚀 My Balance").text("📋 Task Earn").row()
+    .text("🎁 Gift Code").text("💸 P2P Transfer").row()
+    .text("💳 Payout Method").text("🏦 Withdraw").row()
+    .resized();
+}
 
 // ============================================================
 // 👑 ADMIN PANEL
@@ -430,7 +520,7 @@ async function sendAdminPanel(ctx, edit = true) {
                   `📢 Payout Channel ~ ${pChannel}\n` +
                   `💬 Support ID ~ ${supportId}`;
 
-  let keyboard = new InlineKeyboard()
+  let kb = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
     .text("👥 User Tracker", "adm_user_tracker").text("📊 All User Balances", "adm_all_balances").row()
     .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
@@ -438,13 +528,13 @@ async function sendAdminPanel(ctx, edit = true) {
     .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Manage Tasks", "adm_tasks_manager").row()
     .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
     .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
-    .text("🎨 Customize Theme", "adm_customize_theme").text("🔘 All Bot Buttons", "adm_all_buttons").row()
+    .text("🖌️ Edit Inline Styles", "adm_edit_inline_styles").row()
     .text("💬 Set Support ID", "adm_set_support").text("🔄 Refresh Panel", "admin");
 
   if (edit && ctx.callbackQuery) {
-    await ctx.editMessageText(panelText, { reply_markup: keyboard }).catch(() => {});
+    await ctx.editMessageText(panelText, { reply_markup: kb }).catch(() => {});
   } else {
-    await ctx.reply(panelText, { reply_markup: keyboard });
+    await ctx.reply(panelText, { reply_markup: kb });
   }
 }
 
@@ -455,166 +545,148 @@ bot.callbackQuery("admin", async (ctx) => {
 });
 
 // ============================================================
-// 🔘 ALL BOT BUTTONS MANAGER
+// 🖌️ INLINE STYLE EDITOR CALLBACKS
 // ============================================================
-bot.callbackQuery("adm_all_buttons", async (ctx) => {
+bot.callbackQuery("adm_edit_inline_styles", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(await getAllButtonsText(), {
+  await ctx.editMessageText(await getInlineStylesText(), {
     parse_mode: "Markdown",
-    reply_markup: await getAllButtonsKeyboard()
+    reply_markup: await getInlineStylesKeyboard()
   }).catch(() => {});
 });
 
-bot.callbackQuery(/^allbtn_manage_(\d+)$/, async (ctx) => {
+bot.callbackQuery(/^inline_scr_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+  let screen = decodeURIComponent(ctx.callbackQuery.data.replace("inline_scr_", ""));
   await ctx.answerCallbackQuery();
-  let btn = layout[idx];
-  let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-  let colorName = btn.color ? btn.color.charAt(0).toUpperCase() + btn.color.slice(1) : "Default (No Color)";
-  let text =
-    `🔘 *Button Manager*\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `📝 Name: ${colorEmoji} *${stripColorPrefix(btn.name)}*\n` +
-    `🎨 Color: \`${colorName}\`\n` +
-    `📍 Row: \`${btn.row}\`\n` +
-    `🔑 Key: \`${btn.key}\`\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `Choose an action below:`;
-  let kb = new InlineKeyboard()
-    .text("✏️ Edit Style", `allbtn_style_${idx}`).row()
-    .text("🔄 Reset this Button", `allbtn_reset_${idx}`).row()
-    .text("🔙 Back", "adm_all_buttons");
-  await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
+  await ctx.editMessageText(await getScreenText(screen), {
+    parse_mode: "Markdown",
+    reply_markup: await getScreenKeyboard(screen)
+  }).catch(() => {});
 });
 
-// ---------- EDIT STYLE (per-button color) ----------
-bot.callbackQuery(/^allbtn_style_(\d+)$/, async (ctx) => {
+bot.callbackQuery(/^inline_btn_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+  let buttonId = ctx.callbackQuery.data.replace("inline_btn_", "");
+  let meta = INLINE_BUTTONS_REGISTRY.find(b => b.id === buttonId);
+  if (!meta) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
   await ctx.answerCallbackQuery();
-  let btn = layout[idx];
-  let currentColor = btn.color || "none";
+
+  let currentStyle = await getInlineStyle(buttonId);
+  let currentEmoji = STYLE_EMOJI[currentStyle || "default"];
+  let currentLabel = STYLE_LABEL[currentStyle || "default"];
+
   let text =
-    `🎨 *Edit Style for:* ${stripColorPrefix(btn.name)}\n\n` +
-    `📌 Current: \`${currentColor === "none" ? "Default" : currentColor}\`\n\n` +
-    `👇 Pick a new color:`;
-  let kb = new InlineKeyboard();
-  let entries = Object.entries(STYLE_COLORS);
-  for (let i = 0; i < entries.length; i += 2) {
-    let [k1, e1] = entries[i];
-    let t1 = currentColor === k1 ? `✅ ${e1} ${k1.charAt(0).toUpperCase() + k1.slice(1)}` : `${e1} ${k1.charAt(0).toUpperCase() + k1.slice(1)}`;
-    kb = kb.text(t1, `allbtn_setcolor_${idx}_${k1}`);
-    if (i + 1 < entries.length) {
-      let [k2, e2] = entries[i + 1];
-      let t2 = currentColor === k2 ? `✅ ${e2} ${k2.charAt(0).toUpperCase() + k2.slice(1)}` : `${e2} ${k2.charAt(0).toUpperCase() + k2.slice(1)}`;
-      kb = kb.text(t2, `allbtn_setcolor_${idx}_${k2}`);
-    }
-    kb = kb.row();
-  }
-  kb = kb.text("⚪ Remove Color (Default)", `allbtn_setcolor_${idx}_none`).row();
-  kb = kb.text("🔙 Back", `allbtn_manage_${idx}`);
+    `🎨 *Edit Style*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📝 Button: *${meta.label}*\n` +
+    `📍 Screen: ${meta.screen}\n` +
+    `🎨 Current: ${currentEmoji} \`${currentLabel}\`\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👇 Pick a new style:`;
+
+  let kb = new InlineKeyboard()
+    .text(currentStyle === "primary" ? "✅ 🔵 Primary" : "🔵 Primary", `inline_set_${buttonId}_primary`).row()
+    .text(currentStyle === "success" ? "✅ 🟢 Success" : "🟢 Success", `inline_set_${buttonId}_success`).row()
+    .text(currentStyle === "danger" ? "✅ 🔴 Danger" : "🔴 Danger", `inline_set_${buttonId}_danger`).row()
+    .text(currentStyle === null ? "✅ ⚪ Default" : "⚪ Default (No Color)", `inline_set_${buttonId}_default`).row()
+    .text("🔄 Reset this Button", `inline_reset_${buttonId}`).row()
+    .text("🔙 Back", `inline_scr_${encodeURIComponent(meta.screen)}`);
+
   await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
 });
 
-bot.callbackQuery(/^allbtn_setcolor_(\d+)_(\w+)$/, async (ctx) => {
+bot.callbackQuery(/^inline_set_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let colorKey = ctx.match[2];
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+  let raw = ctx.callbackQuery.data.replace("inline_set_", "");
+  let lastUnderscore = raw.lastIndexOf("_");
+  let buttonId = raw.substring(0, lastUnderscore);
+  let newStyle = raw.substring(lastUnderscore + 1);
 
-  if (colorKey === "none") {
-    delete layout[idx].color;
-    await ctx.answerCallbackQuery({ text: "⚪ Color removed (default)", show_alert: false });
-  } else if (STYLE_COLORS[colorKey]) {
-    layout[idx].color = colorKey;
-    await ctx.answerCallbackQuery({ text: `${STYLE_COLORS[colorKey]} Color applied!`, show_alert: false });
+  let meta = INLINE_BUTTONS_REGISTRY.find(b => b.id === buttonId);
+  if (!meta) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+
+  if (newStyle === "default") {
+    await setInlineStyle(buttonId, null);
+    await ctx.answerCallbackQuery({ text: "⚪ Style reset to default", show_alert: false });
+  } else if (["primary", "success", "danger"].includes(newStyle)) {
+    await setInlineStyle(buttonId, newStyle);
+    await ctx.answerCallbackQuery({ text: `${STYLE_EMOJI[newStyle]} ${STYLE_LABEL[newStyle]} applied!`, show_alert: false });
   } else {
-    return ctx.answerCallbackQuery({ text: "❌ Invalid color!", show_alert: true });
+    return ctx.answerCallbackQuery({ text: "❌ Invalid style!", show_alert: true });
   }
-  await setConfig("keyboard_layout", layout);
 
-  // Re-show manage page
-  let btn = layout[idx];
-  let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-  let colorName = btn.color ? btn.color.charAt(0).toUpperCase() + btn.color.slice(1) : "Default (No Color)";
+  // Re-render button editor
+  let currentStyle = await getInlineStyle(buttonId);
+  let currentEmoji = STYLE_EMOJI[currentStyle || "default"];
+  let currentLabel = STYLE_LABEL[currentStyle || "default"];
   let text =
-    `🔘 *Button Manager*\n\n` +
+    `🎨 *Edit Style*\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `📝 Name: ${colorEmoji} *${stripColorPrefix(btn.name)}*\n` +
-    `🎨 Color: \`${colorName}\`\n` +
-    `📍 Row: \`${btn.row}\`\n` +
-    `🔑 Key: \`${btn.key}\`\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `Choose an action below:`;
+    `📝 Button: *${meta.label}*\n` +
+    `📍 Screen: ${meta.screen}\n` +
+    `🎨 Current: ${currentEmoji} \`${currentLabel}\`\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👇 Pick a new style:`;
   let kb = new InlineKeyboard()
-    .text("✏️ Edit Style", `allbtn_style_${idx}`).row()
-    .text("🔄 Reset this Button", `allbtn_reset_${idx}`).row()
-    .text("🔙 Back", "adm_all_buttons");
+    .text(currentStyle === "primary" ? "✅ 🔵 Primary" : "🔵 Primary", `inline_set_${buttonId}_primary`).row()
+    .text(currentStyle === "success" ? "✅ 🟢 Success" : "🟢 Success", `inline_set_${buttonId}_success`).row()
+    .text(currentStyle === "danger" ? "✅ 🔴 Danger" : "🔴 Danger", `inline_set_${buttonId}_danger`).row()
+    .text(currentStyle === null ? "✅ ⚪ Default" : "⚪ Default (No Color)", `inline_set_${buttonId}_default`).row()
+    .text("🔄 Reset this Button", `inline_reset_${buttonId}`).row()
+    .text("🔙 Back", `inline_scr_${encodeURIComponent(meta.screen)}`);
   await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
 });
 
-// ---------- RESET SINGLE BUTTON ----------
-bot.callbackQuery(/^allbtn_reset_(\d+)$/, async (ctx) => {
+// Reset single inline button style
+bot.callbackQuery(/^inline_reset_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
+  let buttonId = ctx.callbackQuery.data.replace("inline_reset_", "");
+  let meta = INLINE_BUTTONS_REGISTRY.find(b => b.id === buttonId);
+  if (!meta) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
 
-  let btn = layout[idx];
-  let defaultBtn = DEFAULT_KEYBOARD_LAYOUT.find(d => d.key === btn.key);
+  let currentStyle = await getInlineStyle(buttonId);
+  let defaultStyle = DEFAULT_INLINE_STYLES[buttonId] || null;
 
-  if (!defaultBtn) {
-    // Not a default button → only remove color
-    if (!btn.color) {
-      await ctx.answerCallbackQuery({ text: "ℹ️ Already default!", show_alert: true });
-    } else {
-      delete btn.color;
-      await setConfig("keyboard_layout", layout);
-      await ctx.answerCallbackQuery({ text: "✅ Reset to default!", show_alert: true });
-    }
-  } else {
-    // Compare with default
-    let currentName = stripColorPrefix(btn.name);
-    let defaultName = stripColorPrefix(defaultBtn.name);
-    let isSameName = currentName === defaultName;
-    let isSameColor = (btn.color || null) === (defaultBtn.color || null);
-    let isSameRow = btn.row === defaultBtn.row;
-
-    if (isSameName && isSameColor && isSameRow) {
-      await ctx.answerCallbackQuery({ text: "ℹ️ No changes to reset!", show_alert: true });
-    } else {
-      layout[idx] = JSON.parse(JSON.stringify(defaultBtn));
-      await setConfig("keyboard_layout", layout);
-      await ctx.answerCallbackQuery({ text: "✅ Reset to default!", show_alert: true });
-    }
+  if (currentStyle === defaultStyle) {
+    return ctx.answerCallbackQuery({ text: "ℹ️ Already at default style!", show_alert: true });
   }
 
-  // Re-show manage page (fresh)
-  let freshLayout = await getCurrentKeyboardLayout();
-  let freshBtn = freshLayout[idx];
-  let colorEmoji = (freshBtn.color && STYLE_COLORS[freshBtn.color]) ? STYLE_COLORS[freshBtn.color] : "⚪";
-  let colorName = freshBtn.color ? freshBtn.color.charAt(0).toUpperCase() + freshBtn.color.slice(1) : "Default (No Color)";
+  await setInlineStyle(buttonId, defaultStyle);
+  await ctx.answerCallbackQuery({ text: "✅ Reset to default!", show_alert: true });
+
+  // Re-render button editor
+  let newStyle = await getInlineStyle(buttonId);
+  let currentEmoji = STYLE_EMOJI[newStyle || "default"];
+  let currentLabel = STYLE_LABEL[newStyle || "default"];
   let text =
-    `🔘 *Button Manager*\n\n` +
+    `🎨 *Edit Style*\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `📝 Name: ${colorEmoji} *${stripColorPrefix(freshBtn.name)}*\n` +
-    `🎨 Color: \`${colorName}\`\n` +
-    `📍 Row: \`${freshBtn.row}\`\n` +
-    `🔑 Key: \`${freshBtn.key}\`\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `Choose an action below:`;
+    `📝 Button: *${meta.label}*\n` +
+    `📍 Screen: ${meta.screen}\n` +
+    `🎨 Current: ${currentEmoji} \`${currentLabel}\`\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👇 Pick a new style:`;
   let kb = new InlineKeyboard()
-    .text("✏️ Edit Style", `allbtn_style_${idx}`).row()
-    .text("🔄 Reset this Button", `allbtn_reset_${idx}`).row()
-    .text("🔙 Back", "adm_all_buttons");
+    .text(newStyle === "primary" ? "✅ 🔵 Primary" : "🔵 Primary", `inline_set_${buttonId}_primary`).row()
+    .text(newStyle === "success" ? "✅ 🟢 Success" : "🟢 Success", `inline_set_${buttonId}_success`).row()
+    .text(newStyle === "danger" ? "✅ 🔴 Danger" : "🔴 Danger", `inline_set_${buttonId}_danger`).row()
+    .text(newStyle === null ? "✅ ⚪ Default" : "⚪ Default (No Color)", `inline_set_${buttonId}_default`).row()
+    .text("🔄 Reset this Button", `inline_reset_${buttonId}`).row()
+    .text("🔙 Back", `inline_scr_${encodeURIComponent(meta.screen)}`);
   await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
+});
+
+// Reset all inline button styles
+bot.callbackQuery("inline_reset_all", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  await InlineStyle.deleteMany({});
+  await ctx.answerCallbackQuery({ text: "🔄 All inline styles reset to default!", show_alert: true });
+  await ctx.editMessageText(await getInlineStylesText(), {
+    parse_mode: "Markdown",
+    reply_markup: await getInlineStylesKeyboard()
+  }).catch(() => {});
 });
 
 // ============================================================
@@ -670,166 +742,23 @@ bot.callbackQuery("adm_set_support", async (ctx) => {
 });
 
 // ============================================================
-// 🎨 CUSTOMIZE THEME CALLBACKS
-// ============================================================
-bot.callbackQuery("adm_customize_theme", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  await ctx.answerCallbackQuery();
-  await ctx.editMessageText(await getManageText(), { parse_mode: "Markdown", reply_markup: await getManageKeyboard() }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_edit_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
-  await ctx.answerCallbackQuery();
-  let btn = layout[idx];
-  let colorEmoji = (btn.color && STYLE_COLORS[btn.color]) ? STYLE_COLORS[btn.color] : "⚪";
-  let text = `✏️ *Edit Button #${idx + 1}*\n\n📝 Current Name: \`${stripColorPrefix(btn.name)}\`\n🎨 Color: ${colorEmoji}\n📍 Row: ${btn.row}\n\nChoose an action:`;
-  let kb = new InlineKeyboard()
-    .text("📝 Rename", `theme_rename_${idx}`).row()
-    .text("🎨 Edit Style", `theme_style_${idx}`).row()
-    .text("⬆️ Move Up", `theme_up_${idx}`).text("⬇️ Move Down", `theme_down_${idx}`).row()
-    .text("🗑️ Delete", `theme_del_${idx}`).row()
-    .text("🔙 Back", "adm_customize_theme");
-  await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
-});
-
-// style from customize theme page → redirect to allbtn style
-bot.callbackQuery(/^theme_style_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  await ctx.answerCallbackQuery();
-  ctx.callbackQuery.data = `allbtn_style_${idx}`;
-  ctx.match = [`allbtn_style_${idx}`, String(idx)];
-  // Manually invoke handler
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return;
-  let btn = layout[idx];
-  let currentColor = btn.color || "none";
-  let text =
-    `🎨 *Edit Style for:* ${stripColorPrefix(btn.name)}\n\n` +
-    `📌 Current: \`${currentColor === "none" ? "Default" : currentColor}\`\n\n` +
-    `👇 Pick a new color:`;
-  let kb = new InlineKeyboard();
-  let entries = Object.entries(STYLE_COLORS);
-  for (let i = 0; i < entries.length; i += 2) {
-    let [k1, e1] = entries[i];
-    let t1 = currentColor === k1 ? `✅ ${e1} ${k1.charAt(0).toUpperCase() + k1.slice(1)}` : `${e1} ${k1.charAt(0).toUpperCase() + k1.slice(1)}`;
-    kb = kb.text(t1, `allbtn_setcolor_${idx}_${k1}`);
-    if (i + 1 < entries.length) {
-      let [k2, e2] = entries[i + 1];
-      let t2 = currentColor === k2 ? `✅ ${e2} ${k2.charAt(0).toUpperCase() + k2.slice(1)}` : `${e2} ${k2.charAt(0).toUpperCase() + k2.slice(1)}`;
-      kb = kb.text(t2, `allbtn_setcolor_${idx}_${k2}`);
-    }
-    kb = kb.row();
-  }
-  kb = kb.text("⚪ Remove Color (Default)", `allbtn_setcolor_${idx}_none`).row();
-  kb = kb.text("🔙 Back", `theme_edit_${idx}`);
-  await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_rename_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  userState[ctx.from.id] = `THEME_WAIT_RENAME_${idx}`;
-  await ctx.answerCallbackQuery();
-  await ctx.editMessageText(`📝 Send the new name for this button.\n\nExample: \`🎯 New Name\``, {
-    parse_mode: "Markdown",
-    reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme")
-  }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_up_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx <= 0) return ctx.answerCallbackQuery({ text: "⚠️ Cannot move higher!", show_alert: true });
-  let tempRow = layout[idx].row; layout[idx].row = layout[idx - 1].row; layout[idx - 1].row = tempRow;
-  let temp = layout[idx]; layout[idx] = layout[idx - 1]; layout[idx - 1] = temp;
-  await setConfig("keyboard_layout", layout);
-  await ctx.answerCallbackQuery({ text: "⬆️ Moved up!" });
-  await ctx.editMessageText(await getManageText(), { parse_mode: "Markdown", reply_markup: await getManageKeyboard() }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_down_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx >= layout.length - 1) return ctx.answerCallbackQuery({ text: "⚠️ Cannot move lower!", show_alert: true });
-  let tempRow = layout[idx].row; layout[idx].row = layout[idx + 1].row; layout[idx + 1].row = tempRow;
-  let temp = layout[idx]; layout[idx] = layout[idx + 1]; layout[idx + 1] = temp;
-  await setConfig("keyboard_layout", layout);
-  await ctx.answerCallbackQuery({ text: "⬇️ Moved down!" });
-  await ctx.editMessageText(await getManageText(), { parse_mode: "Markdown", reply_markup: await getManageKeyboard() }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_del_(\d+)$/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let idx = parseInt(ctx.match[1], 10);
-  let layout = await getCurrentKeyboardLayout();
-  if (idx < 0 || idx >= layout.length) return ctx.answerCallbackQuery({ text: "Button not found!", show_alert: true });
-  layout.splice(idx, 1);
-  await setConfig("keyboard_layout", layout);
-  await ctx.answerCallbackQuery({ text: "🗑️ Button deleted!" });
-  await ctx.editMessageText(await getManageText(), { parse_mode: "Markdown", reply_markup: await getManageKeyboard() }).catch(() => {});
-});
-
-bot.callbackQuery("theme_add_btn", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  userState[ctx.from.id] = "THEME_WAIT_ADD";
-  await ctx.answerCallbackQuery();
-  await ctx.editMessageText("➕ Send the new button name:\n\nExample: `🎁 Bonus`", {
-    parse_mode: "Markdown",
-    reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme")
-  }).catch(() => {});
-});
-
-bot.callbackQuery("theme_reset", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let layout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
-  await setConfig("keyboard_layout", layout);
-  await ctx.answerCallbackQuery({ text: "🔄 Reset to default!", show_alert: true });
-  await ctx.editMessageText(await getManageText(), { parse_mode: "Markdown", reply_markup: await getManageKeyboard() }).catch(() => {});
-});
-
-bot.callbackQuery("theme_update_all", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  await ctx.answerCallbackQuery({ text: "⏳ Updating all users..." });
-  let allUsers = await User.find({});
-  let count = 0, failed = 0;
-  let newKb = await buildKeyboardFromLayout();
-  for (let u of allUsers) {
-    try {
-      await ctx.api.sendMessage(u.userId, "🎨 *Keyboard Updated by Admin!*\n\nYour keyboard has been refreshed automatically.", {
-        parse_mode: "Markdown", reply_markup: newKb
-      });
-      count++;
-      await new Promise(r => setTimeout(r, 50));
-    } catch (e) { failed++; }
-  }
-  await ctx.reply(`📊 *Keyboard Update Report*\n\n✅ Updated: \`${count}\`\n❌ Failed: \`${failed}\`\n👥 Total: \`${allUsers.length}\``, { parse_mode: "Markdown" });
-});
-
-// ============================================================
 // 📋 TASK MANAGER
 // ============================================================
 async function renderTaskManager(ctx) {
   let tasks = await Task.find({});
-  let keyboard = new InlineKeyboard();
-  if (tasks.length === 0) keyboard.text("📂 No Tasks Found", "noop").row();
+  let kb = new InlineKeyboard();
+  if (tasks.length === 0) kb.text("📂 No Tasks Found", "noop").row();
   else tasks.forEach(t => {
-    keyboard.text(`📄 ${t.title}`, `view_task_${t.taskId}`)
-            .text("✏️", `edit_task_${t.taskId}`)
-            .text("🗑️", `del_task_${t.taskId}`).row();
+    kb.text(`📄 ${t.title}`, `view_task_${t.taskId}`)
+      .text("✏️", `edit_task_${t.taskId}`)
+      .text("🗑️", `del_task_${t.taskId}`).row();
   });
-  keyboard.text("➕ Add New Task", "adm_create_task").row();
-  keyboard.text("➕ Add Channel For Task Alert", "adm_add_task_channel").row();
-  keyboard.text("🔙 Back", "admin");
+  kb.text("➕ Add New Task", "adm_create_task").row();
+  kb.text("➕ Add Channel For Task Alert", "adm_add_task_channel").row();
+  kb.text("🔙 Back", "admin");
   let taskText = "💡 *Here You Can Manage Your Tasks*\n\nSelect A Task To View, Edit, Or Delete It.";
-  if (ctx.callbackQuery) await ctx.editMessageText(taskText, { reply_markup: keyboard, parse_mode: "Markdown" }).catch(() => {});
-  else await ctx.reply(taskText, { reply_markup: keyboard, parse_mode: "Markdown" });
+  if (ctx.callbackQuery) await ctx.editMessageText(taskText, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  else await ctx.reply(taskText, { reply_markup: kb, parse_mode: "Markdown" });
 }
 
 bot.callbackQuery("adm_tasks_manager", async (ctx) => {
@@ -1079,7 +1008,10 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
 
   let payoutChannel = await getConfig("payout_channel", null);
   if (payoutChannel) {
-    let adminKb = new InlineKeyboard().text("✅ Approve", `wd_app_${withdrawalId}`).text("❌ Reject", `wd_rej_${withdrawalId}`);
+    // Build admin buttons with styles
+    let approveBtn = await ibtn("task_approve", "✅ Approve", `wd_app_${withdrawalId}`);
+    let rejectBtn  = await ibtn("task_reject",  "❌ Reject",  `wd_rej_${withdrawalId}`);
+    let adminKb = buildIKB([[approveBtn, rejectBtn]]);
     try {
       await ctx.api.sendMessage(payoutChannel, `🔔 Withdrawal #${withdrawalId}\n\n👤 ${userId}\n💰 ₹${amount}\n💳 ${method}\n📋 ${details}`, { reply_markup: adminKb });
     } catch (e) {}
@@ -1187,27 +1119,8 @@ bot.on("message:text", async (ctx, next) => {
   if (state) {
     if (text === "❌ Cancel Task") {
       delete userState[userId];
-      await ctx.reply("❌ Task cancelled. Start again anytime.", { reply_markup: await buildKeyboardFromLayout() });
+      await ctx.reply("❌ Task cancelled. Start again anytime.", { reply_markup: buildMainKeyboard() });
       return;
-    }
-
-    if (state.startsWith("THEME_WAIT_RENAME_") && (await isAdmin(userId))) {
-      let idx = parseInt(state.replace("THEME_WAIT_RENAME_", ""), 10);
-      delete userState[userId];
-      let layout = await getCurrentKeyboardLayout();
-      if (idx < 0 || idx >= layout.length) return ctx.reply("❌ Button not found!");
-      layout[idx].name = text;
-      await setConfig("keyboard_layout", layout);
-      return ctx.reply(`✅ Button renamed to: ${text}`);
-    }
-
-    if (state === "THEME_WAIT_ADD" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let layout = await getCurrentKeyboardLayout();
-      let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
-      layout.push({ name: text, key: `custom_${Date.now()}`, row: maxRow });
-      await setConfig("keyboard_layout", layout);
-      return ctx.reply(`✅ New button added: ${text}`);
     }
 
     if (state === "WAITING_FOR_SUPPORT_ID" && (await isAdmin(userId))) {
@@ -1388,7 +1301,9 @@ bot.on("message:text", async (ctx, next) => {
 
       let confirmMsg = `📋 *Withdrawal Summary*\n\nMethod: ${method}\nDetails: ${details}\nAmount: ₹${amount}\n\nConfirm?`;
       let safeMethod = method.replace(/ /g, "_");
-      let kb = new InlineKeyboard().text("✅ Confirm", `conf_wd_${safeMethod}_${amount}`).text("❌ Cancel", "canc_wd");
+      let confirmBtn = await ibtn("confirm_wd", "✅ Confirm", `conf_wd_${safeMethod}_${amount}`);
+      let cancelBtn  = await ibtn("cancel_wd",  "❌ Cancel",  "canc_wd");
+      let kb = buildIKB([[confirmBtn, cancelBtn]]);
       return ctx.reply(confirmMsg, { reply_markup: kb, parse_mode: "Markdown" });
     }
 
@@ -1450,62 +1365,61 @@ bot.on("message:text", async (ctx, next) => {
   // 🔀 NORMAL BUTTON MENU ROUTING
   // ============================================================
   let user = await getUser(userId);
-  let layout = await getCurrentKeyboardLayout();
 
-  // Match by stripping color prefix
-  let cleanText = stripColorPrefix(text);
-  let matchedBtn = layout.find(b => stripColorPrefix(b.name) === cleanText);
-  let matchedKey = matchedBtn ? matchedBtn.key : null;
-
-  if (matchedKey === "btn_balance") {
+  if (text === "🚀 My Balance") {
     let msg =
       `━━━━━━ 💳 *Wallet Overview* ━━━━━━\n\n` +
       `🔵 Wallet ID ➝ \`${userId}\`\n` +
       `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
       `Built with security you can Trust.\n` +
       `Support that responds promptly.`;
-    let kb = new InlineKeyboard()
-      .text("📊 Balance Statement", "balance_statement")
-      .text("💬 Customer Support", "customer_support").row()
-      .text("🔄 Refresh", "refresh_balance_only").row()
-      .text("💰 Live Fund", "live_fund");
+    let bs  = await ibtn("balance_statement",    "📊 Balance Statement", "balance_statement");
+    let cs  = await ibtn("customer_support",     "💬 Customer Support",  "customer_support");
+    let rf  = await ibtn("refresh_balance_only", "🔄 Refresh",           "refresh_balance_only");
+    let lf  = await ibtn("live_fund",            "💰 Live Fund",         "live_fund");
+    let kb = buildIKB([[bs, cs], [rf], [lf]]);
     return ctx.reply(msg, { reply_markup: kb, parse_mode: "Markdown" });
   }
-  else if (matchedKey === "btn_tasks") {
+  else if (text === "📋 Task Earn") {
     let tasks = await Task.find({});
     if (!tasks || tasks.length === 0) return ctx.reply("📋 No tasks available.");
-    let kb = new InlineKeyboard();
-    tasks.forEach(t => { kb.text(`📌 ${t.title} (₹${t.reward})`, `do_task_${t.taskId}`).row(); });
-    return ctx.reply("📋 *Available Tasks:*\n\nTap to view details.", { reply_markup: kb, parse_mode: "Markdown" });
+    let rows = [];
+    for (let t of tasks) {
+      let btn = await ibtn("open_task_link", `📌 ${t.title} (₹${t.reward})`, `do_task_${t.taskId}`);
+      rows.push([btn]);
+    }
+    return ctx.reply("📋 *Available Tasks:*\n\nTap to view details.", { reply_markup: buildIKB(rows), parse_mode: "Markdown" });
   }
-  else if (matchedKey === "btn_gift") {
+  else if (text === "🎁 Gift Code") {
     userState[userId] = "WAITING_FOR_GIFT_REDEEM";
     return ctx.reply("🎁 Gift Code\n\n💸 Send Gift Code To Claim Reward!");
   }
-  else if (matchedKey === "btn_transfer") {
+  else if (text === "💸 P2P Transfer") {
     userState[userId] = "WAITING_FOR_P2P";
     let msg = `💸 P2P Transfer\n\nFormat:\nWalletID_or_UserID-Amount`;
-    let kb = new InlineKeyboard().text("👥 Select User", "p2p_select_user");
+    let kb = buildIKB([[{ text: "👥 Select User", callback_data: "p2p_select_user" }]]);
     return ctx.reply(msg, { reply_markup: kb });
   }
-  else if (matchedKey === "btn_payout") {
+  else if (text === "💳 Payout Method") {
     let msg = `💳 Payout Method\n\nWallet: ${user.walletAccount}\nUPI: ${user.upiId}\nBank: ${user.bankAccNo !== "Not Set" ? `${user.bankAccNo}, ${user.bankIfsc}` : "Not Set"}\nAmazon: ${user.amazonEmail}\nRedeem: ${user.redeemCodeAddr}`;
-    let kb = new InlineKeyboard()
-      .text("🌐 Set Wallet", "set_wallet").row()
-      .text("⚡ Set UPI", "set_upi").row()
-      .text("🏦 Set Bank", "set_bank").row()
-      .text("📧 Set Amazon", "set_amazon").row()
-      .text("🎁 Set Redeem", "set_redeem");
+    let sw = await ibtn("set_wallet", "🌐 Set Wallet", "set_wallet");
+    let su = await ibtn("set_upi",    "⚡ Set UPI",    "set_upi");
+    let sb = await ibtn("set_bank",   "🏦 Set Bank",   "set_bank");
+    let sa = await ibtn("set_amazon", "📧 Set Amazon", "set_amazon");
+    let sr = await ibtn("set_redeem", "🎁 Set Redeem", "set_redeem");
+    let kb = buildIKB([[sw], [su], [sb], [sa], [sr]]);
     return ctx.reply(msg, { reply_markup: kb });
   }
-  else if (matchedKey === "btn_withdraw") {
+  else if (text === "🏦 Withdraw") {
     let minW = await getConfig("min_withdraw", 1);
     let maxW = await getConfig("max_withdraw", 100);
     let msg = `🏦 Withdraw\n\nBalance: ₹${user.balance.toFixed(2)}\nMin: ₹${minW} | Max: ₹${maxW}`;
-    let kb = new InlineKeyboard()
-      .text("🌐 Wallet", "wd_wallet").text("⚡ UPI", "wd_upi").row()
-      .text("🏦 Bank", "wd_bank").text("📧 Amazon", "wd_amazon").row()
-      .text("🎁 Redeem Code", "wd_redeem");
+    let ww = await ibtn("wd_wallet", "🌐 Wallet",      "wd_wallet");
+    let wu = await ibtn("wd_upi",    "⚡ UPI",          "wd_upi");
+    let wb = await ibtn("wd_bank",   "🏦 Bank",        "wd_bank");
+    let wa = await ibtn("wd_amazon", "📧 Amazon",      "wd_amazon");
+    let wr = await ibtn("wd_redeem", "🎁 Redeem Code", "wd_redeem");
+    let kb = buildIKB([[ww, wu], [wb, wa], [wr]]);
     return ctx.reply(msg, { reply_markup: kb });
   }
   else {
@@ -1554,7 +1468,7 @@ bot.on("message:photo", async (ctx) => {
 
   await ctx.reply(
     `⏳ *Please wait...*\n\n📸 Your proof has been submitted!\n📌 Task: *${task.title}*\n💰 Reward: *₹${task.reward}*\n\n🕐 Admin will verify your submission shortly.`,
-    { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout() }
+    { parse_mode: "Markdown", reply_markup: buildMainKeyboard() }
   );
 
   let alertChannel = task.alertChannel && task.alertChannel !== "Not Set"
@@ -1570,9 +1484,9 @@ bot.on("message:photo", async (ctx) => {
       `💰 Reward: *₹${task.reward}*\n` +
       `📅 Date: ${new Date().toLocaleString('en-IN')}\n\n` +
       `👇 Use buttons below to Approve/Reject`;
-    let kb = new InlineKeyboard()
-      .text("✅ Approve", `task_app_${submissionId}`)
-      .text("❌ Reject", `task_rej_${submissionId}`);
+    let approveBtn = await ibtn("task_approve", "✅ Approve", `task_app_${submissionId}`);
+    let rejectBtn  = await ibtn("task_reject",  "❌ Reject",  `task_rej_${submissionId}`);
+    let kb = buildIKB([[approveBtn, rejectBtn]]);
     try {
       await ctx.api.sendPhoto(alertChannel, photo.file_id, { caption, parse_mode: "Markdown", reply_markup: kb });
     } catch (e) { console.error("Alert send failed:", e); }
@@ -1602,11 +1516,11 @@ bot.callbackQuery(/^do_task_/, async (ctx) => {
     `3️⃣ Send the *last screenshot* here\n\n` +
     `⏳ *Please wait...* Admin will verify and credit ₹${task.reward} to your balance.`;
 
-  let inlineKb = new InlineKeyboard()
-    .url("🔗 Open Task Link", task.link).row()
-    .text("❌ Cancel Task", `cancel_task_${taskId}`);
+  let openBtn   = await iurl("open_task_link", "🔗 Open Task Link", task.link);
+  let cancelBtn = await ibtn("cancel_task",    "❌ Cancel Task",    `cancel_task_${taskId}`);
+  let kb = buildIKB([[openBtn], [cancelBtn]]);
 
-  await ctx.reply(detailsMsg, { parse_mode: "Markdown", reply_markup: inlineKb });
+  await ctx.reply(detailsMsg, { parse_mode: "Markdown", reply_markup: kb });
   userState[userId] = `WAITING_TASK_PHOTO_${taskId}`;
   await ctx.reply("📸 *Send your screenshot now...*", {
     parse_mode: "Markdown",
@@ -1618,11 +1532,11 @@ bot.callbackQuery(/^cancel_task_/, async (ctx) => {
   delete userState[ctx.from.id];
   await ctx.answerCallbackQuery({ text: "Cancelled!" });
   await ctx.editMessageText("❌ Task cancelled. Start again anytime.").catch(() => {});
-  await ctx.reply("🏠 Main Menu", { reply_markup: await buildKeyboardFromLayout() });
+  await ctx.reply("🏠 Main Menu", { reply_markup: buildMainKeyboard() });
 });
 
 // ============================================================
-// 💰 MY BALANCE — New Layout + Live Fund
+// 💰 MY BALANCE — Refresh, Statement, Back, Live Fund
 // ============================================================
 bot.callbackQuery("refresh_balance_only", async (ctx) => {
   let user = await getUser(ctx.from.id);
@@ -1633,11 +1547,11 @@ bot.callbackQuery("refresh_balance_only", async (ctx) => {
     `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
     `Built with security you can Trust.\n` +
     `Support that responds promptly.`;
-  let kb = new InlineKeyboard()
-    .text("📊 Balance Statement", "balance_statement")
-    .text("💬 Customer Support", "customer_support").row()
-    .text("🔄 Refresh", "refresh_balance_only").row()
-    .text("💰 Live Fund", "live_fund");
+  let bs = await ibtn("balance_statement",    "📊 Balance Statement", "balance_statement");
+  let cs = await ibtn("customer_support",     "💬 Customer Support",  "customer_support");
+  let rf = await ibtn("refresh_balance_only", "🔄 Refresh",           "refresh_balance_only");
+  let lf = await ibtn("live_fund",            "💰 Live Fund",         "live_fund");
+  let kb = buildIKB([[bs, cs], [rf], [lf]]);
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
@@ -1660,7 +1574,9 @@ bot.callbackQuery("balance_statement", async (ctx) => {
     });
     msg += `━━━━━━━━━━━━━━━━━━━━\n🟢 Total Earned: *₹${totalIn.toFixed(2)}*\n🔴 Total Spent: *₹${totalOut.toFixed(2)}*`;
   }
-  let kb = new InlineKeyboard().text("🔄 Refresh", "balance_statement").row().text("🔙 Back", "back_to_balance");
+  let rf = await ibtn("refresh_balance_only", "🔄 Refresh", "balance_statement");
+  let bk = await ibtn("back_to_balance",      "🔙 Back",    "back_to_balance");
+  let kb = buildIKB([[rf], [bk]]);
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
@@ -1673,11 +1589,11 @@ bot.callbackQuery("back_to_balance", async (ctx) => {
     `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
     `Built with security you can Trust.\n` +
     `Support that responds promptly.`;
-  let kb = new InlineKeyboard()
-    .text("📊 Balance Statement", "balance_statement")
-    .text("💬 Customer Support", "customer_support").row()
-    .text("🔄 Refresh", "refresh_balance_only").row()
-    .text("💰 Live Fund", "live_fund");
+  let bs = await ibtn("balance_statement",    "📊 Balance Statement", "balance_statement");
+  let cs = await ibtn("customer_support",     "💬 Customer Support",  "customer_support");
+  let rf = await ibtn("refresh_balance_only", "🔄 Refresh",           "refresh_balance_only");
+  let lf = await ibtn("live_fund",            "💰 Live Fund",         "live_fund");
+  let kb = buildIKB([[bs, cs], [rf], [lf]]);
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
@@ -1690,7 +1606,7 @@ bot.callbackQuery("customer_support", async (ctx) => {
   let link;
   if (/^\d+$/.test(supportId)) link = `tg://user?id=${supportId}`;
   else link = `https://t.me/${supportId.replace('@', '')}`;
-  let kb = new InlineKeyboard().url("💬 Contact Support", link);
+  let kb = buildIKB([[{ text: "💬 Contact Support", url: link }]]);
   await ctx.reply(`💬 *Customer Support*\n\nClick the button below to contact our support team.\n\n🕐 We usually respond within a few minutes.`, { parse_mode: "Markdown", reply_markup: kb });
 });
 
@@ -1712,9 +1628,9 @@ bot.callbackQuery("live_fund", async (ctx) => {
     `🕐 Last Updated: ${new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}\n\n` +
     `_Live balance — automatically updated_`;
 
-  let kb = new InlineKeyboard()
-    .text("🔄 Refresh Live Fund", "live_fund").row()
-    .text("🔙 Back to Balance", "back_to_balance");
+  let rf = await ibtn("live_fund",        "🔄 Refresh Live Fund", "live_fund");
+  let bk = await ibtn("back_to_balance",  "🔙 Back to Balance",   "back_to_balance");
+  let kb = buildIKB([[rf], [bk]]);
 
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
@@ -1726,9 +1642,9 @@ bot.callbackQuery("p2p_select_user", async (ctx) => {
   await ctx.answerCallbackQuery();
   let users = await User.find({ userId: { $ne: ctx.from.id } }).limit(10);
   if (users.length === 0) return ctx.reply("❌ No users found!");
-  let kb = new InlineKeyboard();
-  users.forEach(u => { kb.text(`Wallet: ${u.walletId} (ID: ${u.userId})`, `p2p_target_${u.walletId}`).row(); });
-  await ctx.reply("👥 Select user:", { reply_markup: kb });
+  let rows = [];
+  users.forEach(u => { rows.push([{ text: `Wallet: ${u.walletId} (ID: ${u.userId})`, callback_data: `p2p_target_${u.walletId}` }]); });
+  await ctx.reply("👥 Select user:", { reply_markup: buildIKB(rows) });
 });
 
 bot.callbackQuery(/^p2p_target_/, async (ctx) => {
