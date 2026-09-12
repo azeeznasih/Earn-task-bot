@@ -1621,4 +1621,3 @@ mongoose.connect(MONGO_URI)
     bot.start({ onStart: (info) => console.log(`🚀 Bot @${info.username} running!`) });
   })
   .catch((err) => console.error("❌ DB Error:", err));
-}
