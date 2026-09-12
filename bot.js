@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   walletId: { type: String, default: "" },
   referredBy: { type: Number, default: null },
-  referralCount: { type: Int32Array || Number, default: 0 },
+  referralCount: { type: Number, default: 0 },
   payoutGatewayName: { type: String, default: "Ultra-Pay" },
   payoutGatewayAccount: { type: String, default: "Not Set" },
   isBanned: { type: Boolean, default: false },
@@ -140,7 +140,6 @@ bot.command("start", async (ctx) => {
       return ctx.reply("❌ You are banned from using this bot.");
     }
 
-    // Referral Handling if any
     let payload = ctx.match;
     if (payload && !user.referredBy && parseInt(payload, 10) !== userId) {
       let referrerId = parseInt(payload, 10);
@@ -336,7 +335,6 @@ bot.on("message:text", async (ctx, next) => {
   let userId = ctx.from.id;
   let state = userState[userId];
 
-  // Handle Admin States
   if (state) {
     if (state === "WAITING_FOR_ADD_BAL" && (await isAdmin(userId))) {
       delete userState[userId];
@@ -545,7 +543,6 @@ bot.on("message:text", async (ctx, next) => {
     return ctx.reply(msg, { reply_markup: kb });
   }
   else {
-    // If text doesn't match any button, check if it's a direct gift code submission
     let gift = await GiftCode.findOne({ code: text });
     if (gift) {
       if (gift.usedUsers.includes(userId)) return ctx.reply("❌ You already redeemed this code!");
