@@ -236,6 +236,16 @@ const DEFAULT_KEYBOARD_LAYOUT = [
   { name: "🏦 Withdraw", key: "btn_withdraw", row: 2 }
 ];
 
+// 🎨 Available style colors (emoji)
+const STYLE_COLORS = {
+  red: "🔴",
+  blue: "🔵",
+  green: "🟢",
+  purple: "🟣",
+  orange: "🟠",
+  yellow: "🟡"
+};
+
 async function getCurrentKeyboardLayout() {
   let layout = await getConfig("keyboard_layout", null);
   if (!layout || !Array.isArray(layout) || layout.length === 0) {
@@ -245,14 +255,29 @@ async function getCurrentKeyboardLayout() {
   return layout;
 }
 
+async function getCurrentStyleColor() {
+  return await getConfig("style_color", "none");
+}
+
+// Build keyboard with selected color emoji prefixed
 async function buildKeyboardFromLayout() {
   let layout = await getCurrentKeyboardLayout();
+  let styleColor = await getCurrentStyleColor();
+  let prefix = (styleColor && styleColor !== "none" && STYLE_COLORS[styleColor]) ? STYLE_COLORS[styleColor] + " " : "";
+
   let kb = new Keyboard();
   let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
   for (let r = 0; r <= maxRow; r++) {
     let rowButtons = layout.filter(b => b.row === r);
     if (rowButtons.length > 0) {
-      rowButtons.forEach((btn) => { kb = kb.text(btn.name); });
+      rowButtons.forEach((btn) => {
+        // Avoid double prefix
+        let btnName = btn.name;
+        Object.values(STYLE_COLORS).forEach(em => {
+          if (btnName.startsWith(em + " ")) btnName = btnName.substring(em.length + 1);
+        });
+        kb = kb.text(prefix + btnName);
+      });
       kb = kb.row();
     }
   }
@@ -281,6 +306,51 @@ async function getManageKeyboard() {
   kb = kb.text("➕ Add New Button", "theme_add_btn").row();
   kb = kb.text("🔄 Reset to Default", "theme_reset").row();
   kb = kb.text("📢 Update All Users", "theme_update_all").row();
+  kb = kb.text("🔙 Back to Admin", "admin");
+  return kb;
+}
+
+// ============================================================
+// 🎨 EDIT STYLES SYSTEM
+// ============================================================
+async function getStylesText() {
+  let current = await getCurrentStyleColor();
+  let currentEmoji = (current && current !== "none" && STYLE_COLORS[current]) ? STYLE_COLORS[current] : "⚪";
+  let text =
+    `🎨 *Edit Styles Panel*\n\n` +
+    `📌 *Current Style:* ${currentEmoji} ${current === "none" ? "Default (No Color)" : current.charAt(0).toUpperCase() + current.slice(1)}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🔽 *Choose a color for your keyboard buttons:*\n\n` +
+    `🔴 Red\n` +
+    `🔵 Blue\n` +
+    `🟢 Green\n` +
+    `🟣 Purple\n` +
+    `🟠 Orange\n` +
+    `🟡 Yellow\n\n` +
+    `💡 Tap a color below to apply it to all users' keyboards.`;
+  return text;
+}
+
+async function getStylesKeyboard() {
+  let current = await getCurrentStyleColor();
+  let kb = new InlineKeyboard();
+
+  // Add color buttons with checkmark on current
+  let colorEntries = Object.entries(STYLE_COLORS);
+  for (let i = 0; i < colorEntries.length; i += 2) {
+    let [key1, emoji1] = colorEntries[i];
+    let btn1Text = current === key1 ? `✅ ${emoji1} ${key1.charAt(0).toUpperCase() + key1.slice(1)}` : `${emoji1} ${key1.charAt(0).toUpperCase() + key1.slice(1)}`;
+    kb = kb.text(btn1Text, `style_set_${key1}`);
+
+    if (i + 1 < colorEntries.length) {
+      let [key2, emoji2] = colorEntries[i + 1];
+      let btn2Text = current === key2 ? `✅ ${emoji2} ${key2.charAt(0).toUpperCase() + key2.slice(1)}` : `${emoji2} ${key2.charAt(0).toUpperCase() + key2.slice(1)}`;
+      kb = kb.text(btn2Text, `style_set_${key2}`);
+    }
+    kb = kb.row();
+  }
+
+  kb = kb.text("❌ Remove Style (Default)", "style_set_none").row();
   kb = kb.text("🔙 Back to Admin", "admin");
   return kb;
 }
@@ -378,8 +448,8 @@ async function sendAdminPanel(ctx, edit = true) {
     .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Manage Tasks", "adm_tasks_manager").row()
     .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
     .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
-    .text("🎨 Customize Theme", "adm_customize_theme").text("💬 Set Support ID", "adm_set_support").row()
-    .text("🔄 Refresh Panel", "admin");
+    .text("🎨 Customize Theme", "adm_customize_theme").text("🖌️ Edit Styles", "adm_edit_styles").row()
+    .text("💬 Set Support ID", "adm_set_support").text("🔄 Refresh Panel", "admin");
 
   if (edit && ctx.callbackQuery) {
     await ctx.editMessageText(panelText, { reply_markup: keyboard }).catch(() => {});
@@ -444,6 +514,38 @@ bot.callbackQuery("adm_set_support", async (ctx) => {
     `Send:\n• Username (e.g. \`@MySupport\`)\n• Or User ID (e.g. \`8061612320\`)`,
     { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }
   ).catch(() => {});
+});
+
+// ============================================================
+// 🖌️ EDIT STYLES CALLBACKS
+// ============================================================
+bot.callbackQuery("adm_edit_styles", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(await getStylesText(), {
+    parse_mode: "Markdown",
+    reply_markup: await getStylesKeyboard()
+  }).catch(() => {});
+});
+
+bot.callbackQuery(/^style_set_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let colorKey = ctx.callbackQuery.data.replace("style_set_", "");
+
+  if (colorKey === "none") {
+    await setConfig("style_color", "none");
+    await ctx.answerCallbackQuery({ text: "⚪ Style removed (default)", show_alert: false });
+  } else if (STYLE_COLORS[colorKey]) {
+    await setConfig("style_color", colorKey);
+    await ctx.answerCallbackQuery({ text: `${STYLE_COLORS[colorKey]} Style applied!`, show_alert: false });
+  } else {
+    return ctx.answerCallbackQuery({ text: "❌ Invalid color!", show_alert: true });
+  }
+
+  await ctx.editMessageText(await getStylesText(), {
+    parse_mode: "Markdown",
+    reply_markup: await getStylesKeyboard()
+  }).catch(() => {});
 });
 
 // ============================================================
@@ -1192,7 +1294,18 @@ bot.on("message:text", async (ctx, next) => {
   // ============================================================
   let user = await getUser(userId);
   let layout = await getCurrentKeyboardLayout();
-  let findKeyByName = (name) => { let btn = layout.find(b => b.name === name); return btn ? btn.key : null; };
+  let styleColor = await getCurrentStyleColor();
+  let prefix = (styleColor && styleColor !== "none" && STYLE_COLORS[styleColor]) ? STYLE_COLORS[styleColor] + " " : "";
+
+  let findKeyByName = (name) => {
+    // Strip any color prefix before matching
+    let cleanName = name;
+    Object.values(STYLE_COLORS).forEach(em => {
+      if (cleanName.startsWith(em + " ")) cleanName = cleanName.substring(em.length + 1);
+    });
+    let btn = layout.find(b => b.name === cleanName);
+    return btn ? btn.key : null;
+  };
   let matchedKey = findKeyByName(text);
 
   if (matchedKey === "btn_balance") {
@@ -1433,7 +1546,7 @@ bot.callbackQuery("customer_support", async (ctx) => {
 });
 
 // ============================================================
-// 💰 LIVE FUND — Show total balance of ALL users (Live)
+// 💰 LIVE FUND — Show total balance of ALL users
 // ============================================================
 bot.callbackQuery("live_fund", async (ctx) => {
   await ctx.answerCallbackQuery("💰 Loading Live Fund...");
@@ -1508,3 +1621,4 @@ mongoose.connect(MONGO_URI)
     bot.start({ onStart: (info) => console.log(`🚀 Bot @${info.username} running!`) });
   })
   .catch((err) => console.error("❌ DB Error:", err));
+}
