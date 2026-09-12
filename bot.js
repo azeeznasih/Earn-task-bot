@@ -39,7 +39,6 @@ const userSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   balance: { type: Number, default: 0 },
   walletId: { type: String, default: "" },
-  // Payout Method Fields
   walletAccount: { type: String, default: "Not Set" },
   upiId: { type: String, default: "Not Set" },
   bankAccNo: { type: String, default: "Not Set" },
@@ -72,7 +71,7 @@ const withdrawalSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, required: true },
   details: { type: String, required: true },
-  status: { type: String, default: "Pending" }, // Pending, Approved, Rejected
+  status: { type: String, default: "Pending" },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -197,21 +196,24 @@ bot.command("admin", async (ctx) => {
   let botActive = await getConfig("bot_active", true);
   let minW = await getConfig("min_withdraw", 1);
   let maxW = await getConfig("max_withdraw", 100);
+  let pChannel = await getConfig("payout_channel", "Not Set");
 
   let panelText = `👑 Welcome To Admin Panel\n\n` +
                   `💡 Review Bot Details ^_^\n` +
                   `👨‍💻 Main Owner ~ ${ownerId}\n` +
                   `🤖 Bot On/Off ~ ${botActive ? "✅ Active" : "❌ Off"}\n` +
-                  `💸 Minimum Withdraw ~ ${minW}\n` +
-                  `💰 Maximum Withdraw ~ ${maxW}`;
+                  `💸 Minimum Withdraw ~ ₹${minW}\n` +
+                  `💰 Maximum Withdraw ~ ₹${maxW}\n` +
+                  `📢 Payout Channel ~ ${pChannel}`;
 
   let keyboard = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
-    .text("📢 Manage Channels", "adm_channels").text("🔄 Reset Balance", "adm_reset_bal").row()
-    .text("📋 Create Task", "adm_create_task").text("🎁 Create Gift", "adm_create_gift").row()
-    .text("📢 Broadcast", "adm_broadcast").text("👥 Manage Admins", "adm_admins").row()
-    .text("👑 Transfer Ownership", "adm_transfer").text("🎨 Customize Texts", "adm_customize").row()
-    .text("🔄 Refresh Panel", "admin");
+    .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
+    .text("📢 Set Payout Channel", "adm_set_p_chan").text("📢 Manage Channels", "adm_channels").row()
+    .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Create Task", "adm_create_task").row()
+    .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
+    .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
+    .text("🎨 Customize Texts", "adm_customize").text("🔄 Refresh Panel", "admin");
 
   await ctx.reply(panelText, { reply_markup: keyboard });
 });
@@ -224,21 +226,24 @@ bot.callbackQuery("admin", async (ctx) => {
   let botActive = await getConfig("bot_active", true);
   let minW = await getConfig("min_withdraw", 1);
   let maxW = await getConfig("max_withdraw", 100);
+  let pChannel = await getConfig("payout_channel", "Not Set");
 
   let panelText = `👑 Welcome To Admin Panel\n\n` +
                   `💡 Review Bot Details ^_^\n` +
                   `👨‍💻 Main Owner ~ ${ownerId}\n` +
                   `🤖 Bot On/Off ~ ${botActive ? "✅ Active" : "❌ Off"}\n` +
-                  `💸 Minimum Withdraw ~ ${minW}\n` +
-                  `💰 Maximum Withdraw ~ ${maxW}`;
+                  `💸 Minimum Withdraw ~ ₹${minW}\n` +
+                  `💰 Maximum Withdraw ~ ₹${maxW}\n` +
+                  `📢 Payout Channel ~ ${pChannel}`;
 
   let keyboard = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
-    .text("📢 Manage Channels", "adm_channels").text("🔄 Reset Balance", "adm_reset_bal").row()
-    .text("📋 Create Task", "adm_create_task").text("🎁 Create Gift", "adm_create_gift").row()
-    .text("📢 Broadcast", "adm_broadcast").text("👥 Manage Admins", "adm_admins").row()
-    .text("👑 Transfer Ownership", "adm_transfer").text("🎨 Customize Texts", "adm_customize").row()
-    .text("🔄 Refresh Panel", "admin");
+    .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
+    .text("📢 Set Payout Channel", "adm_set_p_chan").text("📢 Manage Channels", "adm_channels").row()
+    .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Create Task", "adm_create_task").row()
+    .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
+    .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
+    .text("🎨 Customize Texts", "adm_customize").text("🔄 Refresh Panel", "admin");
 
   await ctx.editMessageText(panelText, { reply_markup: keyboard }).catch(() => {});
 });
@@ -256,6 +261,30 @@ bot.callbackQuery("adm_rem_bal", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "WAITING_FOR_REM_BAL";
   await ctx.editMessageText("➖ Remove Balance:\n\nSend in format: UserID Amount\n(Example: 123456789 20)", {
+    reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
+  });
+});
+
+bot.callbackQuery("adm_set_min_w", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_MIN_W";
+  await ctx.editMessageText("📉 Set Minimum Withdraw Amount:\n\nSend the new amount (e.g. 10):", {
+    reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
+  });
+});
+
+bot.callbackQuery("adm_set_max_w", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_MAX_W";
+  await ctx.editMessageText("📈 Set Maximum Withdraw Amount:\n\nSend the new amount (e.g. 5000):", {
+    reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
+  });
+});
+
+bot.callbackQuery("adm_set_p_chan", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_P_CHAN";
+  await ctx.editMessageText("📢 Set Payout Channel:\n\nSend the channel username or ID (e.g., @payout_channel):", {
     reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
   });
 });
@@ -330,7 +359,7 @@ bot.callbackQuery("adm_customize", async (ctx) => {
   });
 });
 
-// Admin Approve / Reject Withdrawal Callbacks
+// Admin Approve / Reject Withdrawal Callbacks (Channel Integration)
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_app_", "");
@@ -342,10 +371,12 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
   await wd.save();
 
   await ctx.answerCallbackQuery({ text: "Withdrawal Approved!" });
-  await ctx.editMessageText(`✅ Withdrawal Request #${wId} has been **APPROVED** by admin.`).catch(() => {});
+  try {
+    await ctx.editMessageText(`✅ Withdrawal Request #${wId} has been **APPROVED** by Admin (@${ctx.from.username || ctx.from.first_name}).`);
+  } catch (e) {}
   
   try {
-    await ctx.api.sendMessage(wd.userId, `✅ Your withdrawal request of ₹${wd.amount} has been approved and processed successfully!`);
+    await ctx.api.sendMessage(wd.userId, `✅ Check your ${wd.method}! Your payment of ₹${wd.amount} has been approved.`);
   } catch (e) {}
 });
 
@@ -365,7 +396,9 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   await user.save();
 
   await ctx.answerCallbackQuery({ text: "Withdrawal Rejected & Amount Refunded!" });
-  await ctx.editMessageText(`❌ Withdrawal Request #${wId} has been **REJECTED** and ₹${wd.amount} refunded to user.`).catch(() => {});
+  try {
+    await ctx.editMessageText(`❌ Withdrawal Request #${wId} has been **REJECTED** and ₹${wd.amount} refunded to user.`);
+  } catch (e) {}
 
   try {
     await ctx.api.sendMessage(wd.userId, `❌ Your withdrawal request of ₹${wd.amount} was rejected. ₹${wd.amount} has been refunded to your wallet balance.`);
@@ -402,6 +435,28 @@ bot.on("message:text", async (ctx, next) => {
       targetUser.balance = newBal;
       await targetUser.save();
       return ctx.reply(`✅ Successfully removed ₹${amount} from user ${targetId}. Current Balance: ₹${newBal.toFixed(2)}`);
+    }
+
+    if (state === "WAITING_FOR_MIN_W" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+      await setConfig("min_withdraw", amt);
+      return ctx.reply(`✅ Minimum withdrawal limit updated to ₹${amt}`);
+    }
+
+    if (state === "WAITING_FOR_MAX_W" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+      await setConfig("max_withdraw", amt);
+      return ctx.reply(`✅ Maximum withdrawal limit updated to ₹${amt}`);
+    }
+
+    if (state === "WAITING_FOR_P_CHAN" && (await isAdmin(userId))) {
+      delete userState[userId];
+      await setConfig("payout_channel", text);
+      return ctx.reply(`✅ Payout notification channel updated to: ${text}`);
     }
 
     if (state === "WAITING_FOR_RESET_BAL" && (await isAdmin(userId))) {
@@ -500,7 +555,6 @@ bot.on("message:text", async (ctx, next) => {
     }
     if (state === "SET_BANK_ACC") {
       delete userState[userId];
-      // Format expected: AccNo | IFSC | BankName
       let parts = text.split("|").map(p => p.trim());
       if (parts.length < 3) return ctx.reply("❌ Invalid format! Use: AccNo | IFSC | BankName");
       await User.findOneAndUpdate({ userId }, { bankAccNo: parts[0], bankIfsc: parts[1], bankName: parts[2] });
@@ -515,6 +569,17 @@ bot.on("message:text", async (ctx, next) => {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { redeemCodeAddr: text });
       return ctx.reply(`✅ Redeem code address updated to: ${text}`);
+    }
+
+    // Withdrawal Amount Input Handlers
+    if (state && state.startsWith("WD_AMT_")) {
+      let method = state.replace("WD_AMT_", "");
+      delete userState[userId];
+      let amount = parseFloat(text);
+      if (isNaN(amount) || amount <= 0) {
+        return ctx.reply("❌ Invalid withdrawal amount entered!");
+      }
+      return await executeWithdrawalRequest(ctx, method, amount);
     }
 
     if (state === "WAITING_FOR_P2P") {
@@ -570,7 +635,7 @@ bot.on("message:text", async (ctx, next) => {
         return ctx.reply("🚫 Invalid Redeem Code! 🚫\n\n⚠️ Make sure you’ve entered the correct code.");
       }
       if (gift.usedUsers.includes(userId)) {
-        return ctx.reply("❌ You have already redeemed this gift code!");
+        return ctx.reply("❌ You already redeemed this gift code!");
       }
       if (gift.usedUsers.length >= gift.maxUses) {
         return ctx.reply("❌ Gift code limit exceeded!");
@@ -768,8 +833,8 @@ bot.callbackQuery("set_redeem", async (ctx) => {
   await ctx.reply("🎁 Send your Redeem code address / details:");
 });
 
-// Withdrawal Request Handlers
-async function processWithdrawal(ctx, method, details) {
+// Withdrawal Amount Request Handlers (Asking user how much to withdraw)
+async function promptWithdrawalAmount(ctx, method, details) {
   let user = await getUser(ctx.from.id);
   let minW = await getConfig("min_withdraw", 1);
   let maxW = await getConfig("max_withdraw", 100);
@@ -777,13 +842,37 @@ async function processWithdrawal(ctx, method, details) {
   if (user.balance < minW) {
     return ctx.answerCallbackQuery({ text: `❌ Minimum withdrawal amount is ₹${minW}!`, show_alert: true });
   }
-  if (user.balance > maxW) {
-    return ctx.answerCallbackQuery({ text: `❌ Maximum withdrawal limit is ₹${maxW}!`, show_alert: true });
+
+  userState[ctx.from.id] = `WD_AMT_${method}`;
+  await ctx.answerCallbackQuery();
+  await ctx.reply(`🏦 Withdraw via ${method}\n\nYour Current Balance: ₹${user.balance.toFixed(2)}\n📉 Min Withdraw: ₹${minW} | 📈 Max Withdraw: ₹${maxW}\n\n👉 Send the amount you want to withdraw:`);
+}
+
+async function executeWithdrawalRequest(ctx, method, amount) {
+  let user = await getUser(ctx.from.id);
+  let minW = await getConfig("min_withdraw", 1);
+  let maxW = await getConfig("max_withdraw", 100);
+
+  if (amount < minW) {
+    return ctx.reply(`❌ Minimum withdrawal amount is ₹${minW}!`);
+  }
+  if (amount > maxW) {
+    return ctx.reply(`❌ Maximum withdrawal limit is ₹${maxW}!`);
+  }
+  if (user.balance < amount) {
+    return ctx.reply(`❌ Insufficient balance! You have only ₹${user.balance.toFixed(2)}`);
   }
 
-  let amount = user.balance;
-  user.balance = 0; // Deduct balance immediately upon request
+  // Deduct requested amount immediately
+  user.balance -= amount;
   await user.save();
+
+  let details = "";
+  if (method === "Wallet") details = user.walletAccount;
+  else if (method === "UPI") details = user.upiId;
+  else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`;
+  else if (method === "Amazon") details = user.amazonEmail;
+  else if (method === "Redeem Code") details = user.redeemCodeAddr;
 
   let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
   await Withdrawal.create({
@@ -794,7 +883,6 @@ async function processWithdrawal(ctx, method, details) {
     details
   });
 
-  await ctx.answerCallbackQuery({ text: "Withdrawal request submitted successfully!" });
   await ctx.reply(`✅ Withdrawal request of ₹${amount} via ${method} submitted successfully!\nRequest ID: #${withdrawalId}\nStatus: Pending Admin Approval.`);
 
   // Send to payout/admin notification channel if configured
@@ -816,31 +904,31 @@ async function processWithdrawal(ctx, method, details) {
 bot.callbackQuery("wd_wallet", async (ctx) => {
   let user = await getUser(ctx.from.id);
   if (user.walletAccount === "Not Set") return ctx.answerCallbackQuery({ text: "Please set your Wallet account in Payout Method first!", show_alert: true });
-  await processWithdrawal(ctx, "Wallet", user.walletAccount);
+  await promptWithdrawalAmount(ctx, "Wallet", user.walletAccount);
 });
 
 bot.callbackQuery("wd_upi", async (ctx) => {
   let user = await getUser(ctx.from.id);
   if (user.upiId === "Not Set") return ctx.answerCallbackQuery({ text: "Please set your UPI ID in Payout Method first!", show_alert: true });
-  await processWithdrawal(ctx, "UPI", user.upiId);
+  await promptWithdrawalAmount(ctx, "UPI", user.upiId);
 });
 
 bot.callbackQuery("wd_bank", async (ctx) => {
   let user = await getUser(ctx.from.id);
   if (user.bankAccNo === "Not Set") return ctx.answerCallbackQuery({ text: "Please set your Bank details in Payout Method first!", show_alert: true });
-  await processWithdrawal(ctx, "Bank", `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`);
+  await promptWithdrawalAmount(ctx, "Bank", `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`);
 });
 
 bot.callbackQuery("wd_amazon", async (ctx) => {
   let user = await getUser(ctx.from.id);
   if (user.amazonEmail === "Not Set") return ctx.answerCallbackQuery({ text: "Please set your Amazon email in Payout Method first!", show_alert: true });
-  await processWithdrawal(ctx, "Amazon Email", user.amazonEmail);
+  await promptWithdrawalAmount(ctx, "Amazon", user.amazonEmail);
 });
 
 bot.callbackQuery("wd_redeem", async (ctx) => {
   let user = await getUser(ctx.from.id);
   if (user.redeemCodeAddr === "Not Set") return ctx.answerCallbackQuery({ text: "Please set your Redeem code address in Payout Method first!", show_alert: true });
-  await processWithdrawal(ctx, "Redeem Code", user.redeemCodeAddr);
+  await promptWithdrawalAmount(ctx, "Redeem Code", user.redeemCodeAddr);
 });
 
 // Global Error Handler
@@ -853,7 +941,7 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Connected Successfully!");
     bot.start({
-      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with All Requested Features & Refund Logic!`)
+      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with All Requested Features & Admin Payout Channel!`)
     });
   })
   .catch((err) => {
