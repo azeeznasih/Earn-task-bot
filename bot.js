@@ -866,7 +866,7 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
 });
 
 // ============================================================
-// 📋 TASK SUBMISSION APPROVAL (from alert channel)
+// 📋 TASK SUBMISSION APPROVAL
 // ============================================================
 bot.callbackQuery(/^task_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
@@ -918,7 +918,7 @@ bot.callbackQuery(/^task_rej_/, async (ctx) => {
 });
 
 // ============================================================
-// 💬 TEXT HANDLER (All admin inputs + User menu routing)
+// 💬 TEXT HANDLER
 // ============================================================
 bot.on("message:text", async (ctx, next) => {
   let text = ctx.message.text.trim();
@@ -1198,14 +1198,15 @@ bot.on("message:text", async (ctx, next) => {
   if (matchedKey === "btn_balance") {
     let msg =
       `━━━━━━ 💳 *Wallet Overview* ━━━━━━\n\n` +
-      `🔵 Wallet ID ➝ \`${user.walletId}\`\n` +
+      `🔵 Wallet ID ➝ \`${userId}\`\n` +
       `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
       `Built with security you can Trust.\n` +
       `Support that responds promptly.`;
     let kb = new InlineKeyboard()
-      .text("📊 Balance Statement", "balance_statement").row()
+      .text("📊 Balance Statement", "balance_statement")
       .text("💬 Customer Support", "customer_support").row()
-      .text("🔄 Refresh", "refresh_balance_only");
+      .text("🔄 Refresh", "refresh_balance_only").row()
+      .text("💰 Live Fund", "live_fund");
     return ctx.reply(msg, { reply_markup: kb, parse_mode: "Markdown" });
   }
   else if (matchedKey === "btn_tasks") {
@@ -1359,21 +1360,22 @@ bot.callbackQuery(/^cancel_task_/, async (ctx) => {
 });
 
 // ============================================================
-// 💰 MY BALANCE CALLBACKS (Statement, Support, Refresh, Back)
+// 💰 MY BALANCE — New Layout + Live Fund
 // ============================================================
 bot.callbackQuery("refresh_balance_only", async (ctx) => {
   let user = await getUser(ctx.from.id);
   await ctx.answerCallbackQuery("🔄 Balance Refreshed!");
   let msg =
     `━━━━━━ 💳 *Wallet Overview* ━━━━━━\n\n` +
-    `🔵 Wallet ID ➝ \`${user.walletId}\`\n` +
+    `🔵 Wallet ID ➝ \`${ctx.from.id}\`\n` +
     `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
     `Built with security you can Trust.\n` +
     `Support that responds promptly.`;
   let kb = new InlineKeyboard()
-    .text("📊 Balance Statement", "balance_statement").row()
+    .text("📊 Balance Statement", "balance_statement")
     .text("💬 Customer Support", "customer_support").row()
-    .text("🔄 Refresh", "refresh_balance_only");
+    .text("🔄 Refresh", "refresh_balance_only").row()
+    .text("💰 Live Fund", "live_fund");
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
@@ -1405,14 +1407,15 @@ bot.callbackQuery("back_to_balance", async (ctx) => {
   await ctx.answerCallbackQuery();
   let msg =
     `━━━━━━ 💳 *Wallet Overview* ━━━━━━\n\n` +
-    `🔵 Wallet ID ➝ \`${user.walletId}\`\n` +
+    `🔵 Wallet ID ➝ \`${ctx.from.id}\`\n` +
     `🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\n` +
     `Built with security you can Trust.\n` +
     `Support that responds promptly.`;
   let kb = new InlineKeyboard()
-    .text("📊 Balance Statement", "balance_statement").row()
+    .text("📊 Balance Statement", "balance_statement")
     .text("💬 Customer Support", "customer_support").row()
-    .text("🔄 Refresh", "refresh_balance_only");
+    .text("🔄 Refresh", "refresh_balance_only").row()
+    .text("💰 Live Fund", "live_fund");
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
@@ -1427,6 +1430,31 @@ bot.callbackQuery("customer_support", async (ctx) => {
   else link = `https://t.me/${supportId.replace('@', '')}`;
   let kb = new InlineKeyboard().url("💬 Contact Support", link);
   await ctx.reply(`💬 *Customer Support*\n\nClick the button below to contact our support team.\n\n🕐 We usually respond within a few minutes.`, { parse_mode: "Markdown", reply_markup: kb });
+});
+
+// ============================================================
+// 💰 LIVE FUND — Show total balance of ALL users (Live)
+// ============================================================
+bot.callbackQuery("live_fund", async (ctx) => {
+  await ctx.answerCallbackQuery("💰 Loading Live Fund...");
+  let users = await User.find({});
+  let totalBalance = 0;
+  users.forEach(u => { totalBalance += u.balance; });
+
+  let msg =
+    `💰 *Live Fund Report*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👥 *Total Users:* \`${users.length}\`\n` +
+    `💵 *Total Balance:* \`₹${totalBalance.toFixed(2)}\`\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🕐 Last Updated: ${new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}\n\n` +
+    `_Live balance — automatically updated_`;
+
+  let kb = new InlineKeyboard()
+    .text("🔄 Refresh Live Fund", "live_fund").row()
+    .text("🔙 Back to Balance", "back_to_balance");
+
+  await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
 // ============================================================
