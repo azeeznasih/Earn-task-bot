@@ -21,7 +21,23 @@ const withdrawalSchema = new mongoose.Schema({
 });
 const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", withdrawalSchema);
 
-// Web App Receipt Route matching your exact screenshot design
+// User Activity / Balance History Schema for Tracking
+const balanceHistorySchema = new mongoose.Schema({
+  userId: { type: Number, required: true },
+  action: { type: String, required: true }, // e.g. "Task Reward", "Gift Redeemed", "Admin Added", "Withdrawn"
+  amount: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const BalanceHistory = mongoose.models.BalanceHistory || mongoose.model("BalanceHistory", balanceHistorySchema);
+
+// Helper function to log balance changes
+async function logBalanceHistory(userId, action, amount) {
+  try {
+    await BalanceHistory.create({ userId, action, amount });
+  } catch (e) {}
+}
+
+// Web App Receipt Route
 app.get("/receipt/:id", async (req, res) => {
   try {
     let wId = req.params.id;
@@ -225,6 +241,10 @@ const userSchema = new mongoose.Schema({
   bankName: { type: String, default: "Not Set" },
   amazonEmail: { type: String, default: "Not Set" },
   redeemCodeAddr: { type: String, default: "Not Set" },
+  withdrawnTotal: { type: Number, default: 0 },
+  blockedRefs: { type: Number, default: 0 },
+  referralsWithLinkWallet: { type: Number, default: 0 },
+  referredBy: { type: String, default: "Auto Started" },
   isBanned: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
@@ -376,6 +396,7 @@ bot.command("admin", async (ctx) => {
 
   let keyboard = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
+    .text("👥 User Tracker", "adm_user_tracker").row()
     .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
     .text("📢 Set Payout Channel", "adm_set_p_chan").text("📢 Manage Channels", "adm_channels").row()
     .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Create Task", "adm_create_task").row()
@@ -406,6 +427,7 @@ bot.callbackQuery("admin", async (ctx) => {
 
   let keyboard = new InlineKeyboard()
     .text("➕ Add Balance", "adm_add_bal").text("➖ Remove Balance", "adm_rem_bal").row()
+    .text("👥 User Tracker", "adm_user_tracker").row()
     .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
     .text("📢 Set Payout Channel", "adm_set_p_chan").text("📢 Manage Channels", "adm_channels").row()
     .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Create Task", "adm_create_task").row()
@@ -429,6 +451,14 @@ bot.callbackQuery("adm_rem_bal", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "WAITING_FOR_REM_BAL";
   await ctx.editMessageText("➖ Remove Balance:\n\nSend in format: UserID Amount\n(Example: 123456789 20)", {
+    reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
+  });
+});
+
+bot.callbackQuery("adm_user_tracker", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_TRACKER_ID";
+  await ctx.editMessageText("🔍 User Tracker:\n\nSend the Telegram User ID of the user you want to track:", {
     reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
   });
 });
@@ -527,6 +557,97 @@ bot.callbackQuery("adm_customize", async (ctx) => {
   });
 });
 
+// --- Tracker Specific Callbacks (Balance Record, Withdraw History, Refresh, Back) ---
+bot.callbackQuery(/^track_bal_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let targetId = parseInt(ctx.callbackQuery.data.replace("track_bal_", ""), 10);
+  let history = await BalanceHistory.find({ userId: targetId }).sort({ createdAt: -1 }).limit(15);
+  
+  let msg = `📊 **User Balance Record (ID: ${targetId})**\n\n`;
+  if (history.length === 0) {
+    msg += "No balance records found for this user.";
+  } else {
+    history.forEach((h, idx) => {
+      let dateStr = new Date(h.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      msg += `${idx + 1}. **${h.action}**: ₹${h.amount} (${dateStr})\n`;
+    });
+  }
+
+  let kb = new InlineKeyboard()
+    .text("🔙 Back to User Info", `track_back_${targetId}`);
+  await ctx.editMessageText(msg, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^track_wd_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let targetId = parseInt(ctx.callbackQuery.data.replace("track_wd_", ""), 10);
+  let withdrawals = await Withdrawal.find({ userId: targetId }).sort({ createdAt: -1 }).limit(15);
+
+  let msg = `🏧 **User Withdraw History (ID: ${targetId})**\n\n`;
+  if (withdrawals.length === 0) {
+    msg += "No withdrawal history found for this user.";
+  } else {
+    withdrawals.forEach((w, idx) => {
+      let dateStr = new Date(w.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      msg += `${idx + 1}. Amt: **₹${w.amount}** | Method: ${w.method}\n   Status: **${w.status}** | Date: ${dateStr}\n\n`;
+    });
+  }
+
+  let kb = new InlineKeyboard()
+    .text("🔙 Back to User Info", `track_back_${targetId}`);
+  await ctx.editMessageText(msg, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^track_ref_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let targetId = parseInt(ctx.callbackQuery.data.replace("track_ref_", ""), 10);
+  let targetUser = await User.findOne({ userId: targetId });
+  if (!targetUser) return ctx.answerCallbackQuery({ text: "User not found!", show_alert: true });
+
+  let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
+                   `🚻 Usᴇʀ : ${targetUser.userId}\n` +
+                   `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
+                   `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
+                   `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
+                   `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
+                   `🔗 Rᴇғᴇʀʀᴀʟs Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
+                   `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
+                   `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+
+  let kb = new InlineKeyboard()
+    .text("📜 User Balance Record", `track_bal_${targetId}`).row()
+    .text("🏧 User Withdraw History", `track_wd_${targetId}`).row()
+    .text("🔄 Refresh", `track_ref_${targetId}`).row()
+    .text("🔙 Back to Admin", "admin");
+
+  await ctx.editMessageText(trackerMsg, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^track_back_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let targetId = parseInt(ctx.callbackQuery.data.replace("track_back_", ""), 10);
+  let targetUser = await User.findOne({ userId: targetId });
+  if (!targetUser) return ctx.answerCallbackQuery({ text: "User not found!", show_alert: true });
+
+  let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
+                   `🚻 Usᴇʀ : ${targetUser.userId}\n` +
+                   `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
+                   `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
+                   `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
+                   `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
+                   `🔗 Rᴇғᴇʀʀᴀʟs Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
+                   `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
+                   `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+
+  let kb = new InlineKeyboard()
+    .text("📜 User Balance Record", `track_bal_${targetId}`).row()
+    .text("🏧 User Withdraw History", `track_wd_${targetId}`).row()
+    .text("🔄 Refresh", `track_ref_${targetId}`).row()
+    .text("🔙 Back to Admin", "admin");
+
+  await ctx.editMessageText(trackerMsg, { reply_markup: kb }).catch(() => {});
+});
+
 // --- In-Bot User Confirmation Callbacks (Confirm / Cancel Withdrawal) ---
 bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let dataParts = ctx.callbackQuery.data.replace("conf_wd_", "").split("_");
@@ -539,9 +660,12 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
     return ctx.answerCallbackQuery({ text: "❌ Insufficient balance!", show_alert: true });
   }
 
-  // Deduct balance now
   user.balance -= amount;
+  user.withdrawnTotal = (user.withdrawnTotal || 0) + amount;
   await user.save();
+
+  // Log to balance history
+  await logBalanceHistory(userId, `Withdrawn via ${method}`, -amount);
 
   let details = "";
   if (method === "Wallet") details = user.walletAccount;
@@ -562,7 +686,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   await ctx.answerCallbackQuery({ text: "Withdrawal Confirmed & Submitted!" });
   await ctx.editMessageText(`✅ Withdrawal request of ₹${amount} via ${method} submitted successfully!\nRequest ID: #${withdrawalId}\nStatus: Pending Admin Approval.`);
 
-  // Send to payout/admin channel
   let payoutChannel = await getConfig("payout_channel", null);
   if (payoutChannel) {
     let adminKb = new InlineKeyboard()
@@ -583,7 +706,7 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Withdrawal request has been cancelled by you.");
 });
 
-// Admin Approve / Reject Withdrawal Callbacks (Channel Integration)
+// Admin Approve / Reject Withdrawal Callbacks
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_app_", "");
@@ -599,7 +722,6 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
     await ctx.editMessageText(`✅ Withdrawal Request #${wId} has been **APPROVED** by Admin (@${ctx.from.username || ctx.from.first_name}).`);
   } catch (e) {}
   
-  // Send notification to user with method name and "🚀 Check Payment Status" Web App button
   try {
     let serverUrl = process.env.RENDER_EXTERNAL_URL || process.env.REPLIT_DEV_DOMAIN || `http://localhost:${PORT}`;
     if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
@@ -627,10 +749,12 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   wd.status = "Rejected";
   await wd.save();
 
-  // Refund the user's balance
   let user = await getUser(wd.userId);
   user.balance += wd.amount;
+  user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
   await user.save();
+
+  await logBalanceHistory(wd.userId, `Withdrawal Refunded (${wd.method})`, wd.amount);
 
   await ctx.answerCallbackQuery({ text: "Withdrawal Rejected & Amount Refunded!" });
   try {
@@ -655,6 +779,35 @@ bot.on("message:text", async (ctx, next) => {
   let state = userState[userId];
 
   if (state) {
+    if (state === "WAITING_FOR_TRACKER_ID" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let targetId = parseInt(text, 10);
+      if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
+
+      let targetUser = await User.findOne({ userId: targetId });
+      if (!targetUser) {
+        return ctx.reply(`❌ User with ID ${targetId} not found in database!`);
+      }
+
+      let trackerMsg = `🙇‍♂️ Uꜱᴇʀ Dᴇᴛᴀɪʟꜱ Fᴏᴜɴᴅ Cʜᴇᴄᴋ \n\n` +
+                       `🚻 Usᴇʀ : ${targetUser.userId}\n` +
+                       `🆔 Usᴇʀ ID : ${targetUser.userId}\n` +
+                       `💵 Aᴠᴀɪʟᴀʙʟᴇ Bᴀʟᴀɴᴄᴇ : ₹${targetUser.balance.toFixed(2)}\n` +
+                       `🏧 Wɪᴛʜᴅʀᴀᴡ Bᴀʟᴀɴᴄᴇ : ₹${(targetUser.withdrawnTotal || 0).toFixed(2)}\n` +
+                       `⛔ Bʟᴏᴄᴋᴇᴅ Rᴇғᴇʀs (Sᴀᴍᴇ Dᴇᴠɪᴄᴇ) : ${targetUser.blockedRefs || 0}\n` +
+                       `🔗 Rᴇғᴇʀʀᴀls Wɪᴛʜ Lɪɴᴋ Wállet : ${targetUser.referralsWithLinkWallet || 0}\n` +
+                       `🎴 Wᴀʟʟᴇᴛ : ${targetUser.walletAccount !== "Not Set" ? targetUser.walletAccount : (targetUser.upiId !== "Not Set" ? targetUser.upiId : "ABCD@UPI")}\n` +
+                       `👩‍💻 Rᴇғᴇʀᴇᴅ Bʏ : ${targetUser.referredBy || "Aᴜᴛᴏ Sᴛᴀʀᴛᴇᴅ"}`;
+
+      let kb = new InlineKeyboard()
+        .text("📜 User Balance Record", `track_bal_${targetId}`).row()
+        .text("🏧 User Withdraw History", `track_wd_${targetId}`).row()
+        .text("🔄 Refresh", `track_ref_${targetId}`).row()
+        .text("🔙 Back to Admin", "admin");
+
+      return ctx.reply(trackerMsg, { reply_markup: kb });
+    }
+
     if (state === "WAITING_FOR_ADD_BAL" && (await isAdmin(userId))) {
       delete userState[userId];
       let parts = text.split(" ");
@@ -663,6 +816,7 @@ bot.on("message:text", async (ctx, next) => {
       if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Invalid format! Use: UserID Amount");
 
       let updated = await User.findOneAndUpdate({ userId: targetId }, { $inc: { balance: amount } }, { new: true, upsert: true });
+      await logBalanceHistory(targetId, "Admin Added Balance", amount);
       return ctx.reply(`✅ Successfully added ₹${amount} to user ${targetId}. New Balance: ₹${updated.balance.toFixed(2)}`);
     }
 
@@ -677,6 +831,7 @@ bot.on("message:text", async (ctx, next) => {
       let newBal = Math.max(0, targetUser.balance - amount);
       targetUser.balance = newBal;
       await targetUser.save();
+      await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
       return ctx.reply(`✅ Successfully removed ₹${amount} from user ${targetId}. Current Balance: ₹${newBal.toFixed(2)}`);
     }
 
@@ -707,6 +862,7 @@ bot.on("message:text", async (ctx, next) => {
       let targetId = parseInt(text, 10);
       if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
       await User.findOneAndUpdate({ userId: targetId }, { balance: 0 });
+      await logBalanceHistory(targetId, "Admin Reset Balance to 0", 0);
       return ctx.reply(`✅ Balance for user ${targetId} has been reset to 0.`);
     }
 
@@ -785,7 +941,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Successfully updated configuration for ${key}`);
     }
 
-    // Payout setting handlers
     if (state === "SET_WALLET_ACC") {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { walletAccount: text });
@@ -814,7 +969,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Redeem code address updated to: ${text}`);
     }
 
-    // Withdrawal Amount Input Handler -> Shows In-Bot Confirmation (Confirm / Cancel) instead of direct submit
     if (state && state.startsWith("WD_AMT_")) {
       let method = state.replace("WD_AMT_", "");
       delete userState[userId];
@@ -885,6 +1039,7 @@ bot.on("message:text", async (ctx, next) => {
 
       sender.balance -= totalCost;
       await sender.save();
+      await logBalanceHistory(userId, "P2P Transfer Sent", -totalCost);
 
       let summary = "✅ P2P Transfer(s) Successful:\n";
       for (let t of transfers) {
@@ -892,11 +1047,13 @@ bot.on("message:text", async (ctx, next) => {
         if (receiver) {
           receiver.balance += t.amount;
           await receiver.save();
+          await logBalanceHistory(receiver.userId, "P2P Transfer Received", t.amount);
           summary += `➡️ ₹${t.amount} sent to Wallet ID: ${t.targetWallet}\n`;
         } else {
           summary += `⚠️ Wallet ID ${t.targetWallet} not found (Amount refunded)\n`;
           sender.balance += t.amount;
           await sender.save();
+          await logBalanceHistory(userId, "P2P Transfer Refund", t.amount);
         }
       }
       return ctx.reply(summary);
@@ -920,6 +1077,7 @@ bot.on("message:text", async (ctx, next) => {
       let user = await getUser(userId);
       user.balance += gift.amount;
       await user.save();
+      await logBalanceHistory(userId, `Gift Code Redeemed (${gift.code})`, gift.amount);
       return ctx.reply(`🎉 Gift code redeemed successfully! Added ₹${gift.amount} to your balance.`);
     }
   }
@@ -1015,6 +1173,7 @@ bot.on("message:text", async (ctx, next) => {
       await gift.save();
       user.balance += gift.amount;
       await user.save();
+      await logBalanceHistory(userId, `Gift Code Redeemed (${gift.code})`, gift.amount);
       return ctx.reply(`🎉 Success! Added ₹${gift.amount} to your balance.`);
     }
     return next();
@@ -1076,6 +1235,8 @@ bot.callbackQuery(/^do_task_/, async (ctx) => {
   user.balance += task.reward;
   await user.save();
 
+  await logBalanceHistory(userId, `Task Completed (${task.title})`, task.reward);
+
   await ctx.answerCallbackQuery({ text: `Task completed! ₹${task.reward} added.`, show_alert: true });
   await ctx.editMessageText(`✅ Task Completed Successfully! You earned ₹${task.reward}.`);
 });
@@ -1107,7 +1268,6 @@ bot.callbackQuery("set_redeem", async (ctx) => {
   await ctx.reply("🎁 Send your Redeem code address / details:");
 });
 
-// Prompt withdrawal amount helper
 async function promptWithdrawalAmount(ctx, method, details) {
   let user = await getUser(ctx.from.id);
   let minW = await getConfig("min_withdraw", 1);
@@ -1162,7 +1322,7 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Connected Successfully!");
     bot.start({
-      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with Receipt Mini App Feature!`)
+      onStart: (info) => console.log(`🚀 Bot @${info.username} is running 24/7 with User Tracker Records & Receipt Mini App Feature!`)
     });
   })
   .catch((err) => {
