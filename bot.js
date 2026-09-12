@@ -1,12 +1,13 @@
 // ============================================================
 // 🤖 TELEGRAM PAYMENT TASK BOT - FULL WITH API GATEWAY
 // grammy (latest) | mongoose ^8.13.0 | express ^4.21.2
+// Gateway: URL-only (key URL-ൽ), no separate API Key step
 // ============================================================
 const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
-const axios = require("axios"); // ⚡ NEW: for HTTP requests
-const { v4: uuidv4 } = require("uuid"); // ⚡ NEW: for unique IDs
+const crypto = require("crypto");
+const uuidv4 = () => crypto.randomUUID();
 
 // ============================================================
 // 🌐 EXPRESS SERVER
@@ -26,7 +27,7 @@ const withdrawalSchema = new mongoose.Schema({
   gatewayName: { type: String, default: "" },
   gatewayRef: { type: String, default: "" },
   gatewayResponse: { type: mongoose.Schema.Types.Mixed },
-  status: { type: String, default: "Pending" }, // Pending | Approved | Rejected | AutoSuccess | AutoFailed
+  status: { type: String, default: "Pending" },
   autoPaid: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
@@ -122,7 +123,7 @@ const userSchema = new mongoose.Schema({
   bankName: { type: String, default: "Not Set" },
   amazonEmail: { type: String, default: "Not Set" },
   redeemCodeAddr: { type: String, default: "Not Set" },
-  taxId: { type: String, default: "Not Set" }, // ⚡ NEW: Tax ID
+  taxId: { type: String, default: "Not Set" },
   withdrawnTotal: { type: Number, default: 0 },
   blockedRefs: { type: Number, default: 0 },
   referralsWithLinkWallet: { type: Number, default: 0 },
@@ -166,18 +167,16 @@ const configSchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed }
 });
 
-// ⚡ NEW: API Gateway Schema
+// ⚡ Gateway Schema — no separate API key field (URL-only)
 const gatewaySchema = new mongoose.Schema({
   gatewayId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   url: { type: String, required: true },
-  apiKey: { type: String, default: "" },
   authType: { type: String, default: "none" }, // none | bearer | basic | apikey_header
   authHeader: { type: String, default: "Authorization" },
+  authValue: { type: String, default: "" },
   merchantId: { type: String, default: "" },
   method: { type: String, default: "POST" },
-  customHeaders: { type: String, default: "" }, // JSON string
-  bodyTemplate: { type: String, default: "" },  // JSON string with placeholders
   successField: { type: String, default: "status" },
   successValue: { type: String, default: "SUCCESS" },
   active: { type: Boolean, default: true },
@@ -193,13 +192,11 @@ const keyboardLayoutSchema = new mongoose.Schema({
   position: { type: Number, default: 0 }
 });
 
-// 🎨 Reply keyboard styles
 const keyboardStyleSchema = new mongoose.Schema({
   buttonKey: { type: String, required: true, unique: true },
   style: { type: String, default: null }
 });
 
-// 🎨 Inline button styles
 const inlineStyleSchema = new mongoose.Schema({
   buttonId: { type: String, required: true, unique: true },
   style: { type: String, default: null }
@@ -308,7 +305,7 @@ function maskDetails(method, details) {
 }
 
 // ============================================================
-// ⚡ API GATEWAY SYSTEM (AUTO PAYMENT)
+// ⚡ API GATEWAY SYSTEM
 // ============================================================
 async function getActiveGateways() {
   return await Gateway.find({ active: true }).sort({ createdAt: 1 });
@@ -320,7 +317,6 @@ async function getActiveGateway() {
   return await Gateway.findOne({ active: true }).sort({ createdAt: 1 });
 }
 
-// ⚡ Replace placeholders in body template
 function replacePlaceholders(template, data) {
   let result = template;
   for (let [key, value] of Object.entries(data)) {
@@ -330,75 +326,59 @@ function replacePlaceholders(template, data) {
   return result;
 }
 
-// ⚡ Send payment request to gateway
 async function sendPaymentToGateway(gateway, paymentData) {
   try {
-    // Build headers
     let headers = { "Content-Type": "application/json" };
 
-    // Auth type
-    if (gateway.authType === "bearer" && gateway.apiKey) {
-      headers["Authorization"] = `Bearer ${gateway.apiKey}`;
-    } else if (gateway.authType === "basic" && gateway.apiKey) {
-      let encoded = Buffer.from(gateway.apiKey).toString("base64");
+    if (gateway.authType === "bearer" && gateway.authValue) {
+      headers["Authorization"] = `Bearer ${gateway.authValue}`;
+    } else if (gateway.authType === "basic" && gateway.authValue) {
+      let encoded = Buffer.from(gateway.authValue).toString("base64");
       headers["Authorization"] = `Basic ${encoded}`;
-    } else if (gateway.authType === "apikey_header" && gateway.apiKey) {
-      headers[gateway.authHeader || "X-API-Key"] = gateway.apiKey;
+    } else if (gateway.authType === "apikey_header" && gateway.authValue) {
+      headers[gateway.authHeader || "X-API-Key"] = gateway.authValue;
     }
 
-    // Custom headers
-    if (gateway.customHeaders) {
-      try {
-        let custom = JSON.parse(gateway.customHeaders);
-        Object.assign(headers, custom);
-      } catch (e) { console.error("Custom headers parse error:", e); }
-    }
-
-    // Build body
-    let body = {};
     let defaultBody = {
       amount: paymentData.amount,
       upi: paymentData.details,
       userId: paymentData.userId,
       orderId: paymentData.orderId,
       taxId: paymentData.taxId || "",
-      apiKey: gateway.apiKey,
       merchantId: gateway.merchantId
     };
+    let body = defaultBody;
 
-    if (gateway.bodyTemplate && gateway.bodyTemplate.trim() !== "") {
-      // Custom template
-      let templateStr = replacePlaceholders(gateway.bodyTemplate, defaultBody);
-      try {
-        body = JSON.parse(templateStr);
-      } catch (e) {
-        // If not valid JSON, send as string
-        body = templateStr;
-      }
-    } else {
-      // Default body
-      body = defaultBody;
-    }
-
-    // Send request
-    let config = {
-      method: gateway.method || "POST",
-      url: gateway.url,
+    let method = (gateway.method || "POST").toUpperCase();
+    let finalUrl = gateway.url;
+    let fetchOptions = {
+      method,
       headers,
-      timeout: 30000,
-      validateStatus: () => true
+      signal: AbortSignal.timeout(30000)
     };
-    if ((gateway.method || "POST").toUpperCase() === "POST") {
-      config.data = body;
+
+    if (method === "POST") {
+      fetchOptions.body = JSON.stringify(body);
     } else {
-      config.params = body;
+      let qs = new URLSearchParams();
+      for (let [k, v] of Object.entries(body)) {
+        qs.append(k, String(v));
+      }
+      finalUrl += (finalUrl.includes("?") ? "&" : "?") + qs.toString();
     }
 
-    let response = await axios(config);
-    let data = response.data;
+    let response = await fetch(finalUrl, fetchOptions);
     let httpOk = response.status >= 200 && response.status < 300;
 
-    // Detect success
+    let data = null;
+    let rawText = "";
+    try {
+      rawText = await response.text();
+      data = JSON.parse(rawText);
+    } catch (e) {
+      data = { raw: rawText };
+    }
+
     let isSuccess = false;
     if (gateway.successField && gateway.successValue) {
       let fieldValue = getNestedField(data, gateway.successField);
@@ -406,14 +386,11 @@ async function sendPaymentToGateway(gateway, paymentData) {
         isSuccess = String(fieldValue).toLowerCase() === String(gateway.successValue).toLowerCase();
       }
     }
-    // Fallback: HTTP 2xx = success
     if (!isSuccess && httpOk && (!gateway.successField || !gateway.successValue)) {
       isSuccess = true;
     }
-    // If HTTP error → failure
     if (!httpOk) isSuccess = false;
 
-    // Extract reference
     let ref = "";
     if (data) {
       ref = data.referenceId || data.refId || data.transactionId || data.orderId || data.txnId || data.id || "";
@@ -448,15 +425,12 @@ function getNestedField(obj, path) {
   return cur;
 }
 
-// ⚡ Send notification to payout channel (auto success/fail)
 async function sendPayoutChannelNotification(ctx, withdrawal, gateway, autoResult) {
   let pChannel = await getConfig("payout_channel", null);
   if (!pChannel) return;
-
   let targetUser = await User.findOne({ userId: withdrawal.userId });
   let userMention = targetUser ? `[${withdrawal.userId}](tg://user?id=${withdrawal.userId})` : `\`${withdrawal.userId}\``;
   let maskedDetails = maskDetails(withdrawal.method, withdrawal.details);
-
   let statusIcon = autoResult.success ? "✅" : "❌";
   let statusText = autoResult.success ? "PAYMENT SUCCESSFUL" : "PAYMENT FAILED";
   let statusColor = autoResult.success ? "🟢" : "🔴";
@@ -496,12 +470,9 @@ const DEFAULT_LAYOUT = [
 ];
 
 const DEFAULT_REPLY_STYLES = {
-  "btn_task": "primary",
-  "btn_balance": "success",
-  "btn_quickpay": "primary",
-  "btn_gift": "success",
-  "btn_payout": "primary",
-  "btn_withdraw": "danger"
+  "btn_task": "primary", "btn_balance": "success",
+  "btn_quickpay": "primary", "btn_gift": "success",
+  "btn_payout": "primary", "btn_withdraw": "danger"
 };
 
 const STYLE_EMOJI = { "primary": "🔵", "success": "🟢", "danger": "🔴", "default": "⚪" };
@@ -576,7 +547,6 @@ async function getKeyboardManageKeyboard() {
   let layout = await getKeyboardLayout();
   let kb = new InlineKeyboard();
   let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
-
   for (let r = 0; r <= maxRow; r++) {
     let rowBtns = layout.filter(b => b.row === r).sort((a, b) => a.position - b.position);
     if (rowBtns.length === 0) continue;
@@ -585,7 +555,6 @@ async function getKeyboardManageKeyboard() {
            .text("⬆️ Row", `kbd_rowup_${r}`)
            .text("⬇️ Row", `kbd_rowdown_${r}`).row();
   }
-
   for (let btn of layout) {
     let style = await getReplyStyle(btn.buttonKey);
     let emoji = STYLE_EMOJI[style || "default"];
@@ -595,7 +564,6 @@ async function getKeyboardManageKeyboard() {
            .text("⬇️ Btn", `kbd_btndown_${btn.buttonKey}`)
            .text("📦 Move", `kbd_move_${btn.buttonKey}`).row();
   }
-
   kb = kb.text("♻️ Reset Keyboard To Default", "kbd_reset").row();
   kb = kb.text("🎨 Update Keyboard For All Users", "kbd_update_all").row();
   kb = kb.text("⬅️ Back", "admin");
@@ -687,10 +655,7 @@ function buildIKB(rows) { return { inline_keyboard: rows }; }
 // 🎨 INLINE STYLE EDITOR
 // ============================================================
 async function getInlineStylesText() {
-  let text = "🖌️ *Inline Button Styles Editor*\n\n━━━━━━━━━━━━━━━━━━━━\n\n";
-  text += "Tap a screen below to edit button colors.\n\n";
-  text += "🔵 Primary  🟢 Success  🔴 Danger  ⚪ Default\n\n━━━━━━━━━━━━━━━━━━━━";
-  return text;
+  return "🖌️ *Inline Button Styles Editor*\n\n━━━━━━━━━━━━━━━━━━━━\n\nTap a screen below to edit button colors.\n\n🔵 Primary  🟢 Success  🔴 Danger  ⚪ Default\n\n━━━━━━━━━━━━━━━━━━━━";
 }
 async function getInlineStylesKeyboard() {
   let kb = new InlineKeyboard();
@@ -724,29 +689,24 @@ async function getScreenKeyboard(screen) {
 }
 
 // ============================================================
-// 🔌 GATEWAY MANAGEMENT (Admin Panel)
+// 🔌 GATEWAY MANAGEMENT — TEXT & KEYBOARD
 // ============================================================
 async function getGatewayListText() {
   let gateways = await Gateway.find({}).sort({ createdAt: 1 });
-  let text = "🔌 *API Gateways — Auto Payment*\n\n";
-  text += "━━━━━━━━━━━━━━━━━━━━\n\n";
+  let text = "🔌 *API Gateways — Auto Payment*\n\n━━━━━━━━━━━━━━━━━━━━\n\n";
   if (gateways.length === 0) {
-    text += "📭 No gateways added yet.\n\n";
-    text += "Tap *➕ Add New Gateway* below to add one.";
+    text += "📭 No gateways added yet.\n\nTap *➕ Add New Gateway* below.";
   } else {
     gateways.forEach((g, i) => {
       let statusIcon = g.active ? "🟢" : "⚪";
       text += `${i + 1}. ${statusIcon} *${g.name}*\n`;
-      text += `   🔗 \`${g.url.substring(0, 40)}${g.url.length > 40 ? "..." : ""}\`\n`;
-      text += `   🔑 Key: \`${g.apiKey ? "Set" : "Empty"}\`\n`;
-      text += `   📋 Method: ${g.method} | Auth: ${g.authType}\n\n`;
+      text += `   🔗 \`${g.url.substring(0, 50)}${g.url.length > 50 ? "..." : ""}\`\n`;
+      text += `   🔐 Auth: ${g.authType}\n\n`;
     });
   }
-  text += "━━━━━━━━━━━━━━━━━━━━\n";
-  text += "💡 Tap a gateway to Edit / Delete / Toggle.";
+  text += "━━━━━━━━━━━━━━━━━━━━\n💡 Tap a gateway to Edit / Delete / Toggle.";
   return text;
 }
-
 async function getGatewayListKeyboard() {
   let gateways = await Gateway.find({}).sort({ createdAt: 1 });
   let kb = new InlineKeyboard();
@@ -882,9 +842,7 @@ bot.callbackQuery(/^gw_view_/, async (ctx) => {
   let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
   text += `📛 *Name:* ${gw.name}\n`;
   text += `🔗 *URL:* \`${gw.url}\`\n`;
-  text += `🔑 *API Key:* \`${gw.apiKey ? "Set" : "Empty"}\`\n`;
   text += `🔐 *Auth Type:* ${gw.authType}\n`;
-  text += `📋 *Method:* ${gw.method}\n`;
   text += `🏪 *Merchant ID:* ${gw.merchantId || "Not Set"}\n`;
   text += `✅ *Success Field:* \`${gw.successField}\` = \`${gw.successValue}\`\n`;
   text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n`;
@@ -893,7 +851,6 @@ bot.callbackQuery(/^gw_view_/, async (ctx) => {
   let kb = new InlineKeyboard()
     .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
     .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
-    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
     .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
     .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
     .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
@@ -908,7 +865,7 @@ bot.callbackQuery("gw_add_new", async (ctx) => {
   await ctx.answerCallbackQuery();
   userState[ctx.from.id] = "GW_ADD_NAME";
   await ctx.editMessageText(
-    `🔌 *Add New Gateway — Step 1/5*\n\n` +
+    `🔌 *Add New Gateway — Step 1/4*\n\n` +
     `📛 Send the *Gateway Name*\n\n` +
     `Example: \`Paytm\` or \`Vsv\` or \`Cashfree\``,
     { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
@@ -924,18 +881,16 @@ bot.callbackQuery(/^gw_toggle_/, async (ctx) => {
   gw.active = !gw.active;
   await gw.save();
   await ctx.answerCallbackQuery({ text: gw.active ? "🟢 Activated!" : "⚪ Deactivated!" });
-  // Re-show view
-  ctx.callbackQuery.data = `gw_view_${gwId}`;
-  await bot.handleUpdate({ ...ctx.update, callback_query: { ...ctx.update.callback_query, data: `gw_view_${gwId}` } }).catch(() => {});
-  // Fallback: manually call view handler
+
   let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
   text += `📛 *Name:* ${gw.name}\n`;
   text += `🔗 *URL:* \`${gw.url}\`\n`;
+  text += `🔐 *Auth Type:* ${gw.authType}\n`;
+  text += `✅ *Success:* \`${gw.successField}=${gw.successValue}\`\n`;
   text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n━━━━━━━━━━━━━━━━━━━━`;
   let kb = new InlineKeyboard()
     .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
     .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
-    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
     .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
     .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
     .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
@@ -973,7 +928,7 @@ bot.callbackQuery(/^gw_confirmdel_/, async (ctx) => {
   }).catch(() => {});
 });
 
-// Edit gateway fields — prompt
+// Edit gateway fields
 bot.callbackQuery(/^gw_edit_name_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_edit_name_", "");
@@ -990,18 +945,7 @@ bot.callbackQuery(/^gw_edit_url_/, async (ctx) => {
   let gwId = ctx.callbackQuery.data.replace("gw_edit_url_", "");
   userState[ctx.from.id] = `GW_EDIT_URL_${gwId}`;
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(`🔗 Send new *API URL*:\n\nExample: \`https://api.gateway.com/pay\``, {
-    parse_mode: "Markdown",
-    reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
-  }).catch(() => {});
-});
-
-bot.callbackQuery(/^gw_edit_key_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let gwId = ctx.callbackQuery.data.replace("gw_edit_key_", "");
-  userState[ctx.from.id] = `GW_EDIT_KEY_${gwId}`;
-  await ctx.answerCallbackQuery();
-  await ctx.editMessageText(`🔑 Send new *API Key*:\n\n(send \`none\` to remove)`, {
+  await ctx.editMessageText(`🔗 Send new *API URL*:\n\nExample: \`https://api.gateway.com/pay?key=xxx\``, {
     parse_mode: "Markdown",
     reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
   }).catch(() => {});
@@ -1014,9 +958,9 @@ bot.callbackQuery(/^gw_edit_auth_/, async (ctx) => {
   if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
   await ctx.answerCallbackQuery();
   let kb = new InlineKeyboard()
-    .text(gw.authType === "none" ? "✅ None" : "None", `gw_setauth_${gwId}_none`).row()
-    .text(gw.authType === "bearer" ? "✅ Bearer" : "Bearer", `gw_setauth_${gwId}_bearer`).row()
-    .text(gw.authType === "basic" ? "✅ Basic" : "Basic", `gw_setauth_${gwId}_basic`).row()
+    .text(gw.authType === "none" ? "✅ None (URL key)" : "None (URL key)", `gw_setauth_${gwId}_none`).row()
+    .text(gw.authType === "bearer" ? "✅ Bearer Token" : "Bearer Token", `gw_setauth_${gwId}_bearer`).row()
+    .text(gw.authType === "basic" ? "✅ Basic Auth" : "Basic Auth", `gw_setauth_${gwId}_basic`).row()
     .text(gw.authType === "apikey_header" ? "✅ API Key Header" : "API Key Header", `gw_setauth_${gwId}_apikey_header`).row()
     .text("🔙 Back", `gw_view_${gwId}`);
   await ctx.editMessageText(`🔐 *Choose Auth Type:*\n\nCurrent: \`${gw.authType}\``, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
@@ -1030,19 +974,31 @@ bot.callbackQuery(/^gw_setauth_/, async (ctx) => {
   let authType = raw.substring(lastIdx + 1);
   let gw = await getGatewayById(gwId);
   if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
-  gw.authType = authType;
-  await gw.save();
-  await ctx.answerCallbackQuery({ text: "✅ Auth updated!" });
-  // Re-render view
+
+  if (authType === "none") {
+    gw.authType = "none";
+    gw.authValue = "";
+    await gw.save();
+    await ctx.answerCallbackQuery({ text: "✅ Auth set to None" });
+  } else {
+    // Prompt for auth value
+    userState[ctx.from.id] = `GW_SET_AUTHVALUE_${gwId}_${authType}`;
+    await ctx.answerCallbackQuery();
+    let promptText = `🔐 *${authType === "bearer" ? "Bearer Token" : authType === "basic" ? "Basic Auth (user:pass)" : "API Key"}*\n\nSend the value:\n\n(send \`none\` to clear)`;
+    await ctx.editMessageText(promptText, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`) }).catch(() => {});
+    return;
+  }
+
+  // Re-render
   let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
   text += `📛 *Name:* ${gw.name}\n`;
   text += `🔗 *URL:* \`${gw.url}\`\n`;
   text += `🔐 *Auth Type:* ${gw.authType}\n`;
+  text += `✅ *Success:* \`${gw.successField}=${gw.successValue}\`\n`;
   text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n━━━━━━━━━━━━━━━━━━━━`;
   let kb = new InlineKeyboard()
     .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
     .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
-    .text("✏️ Edit API Key", `gw_edit_key_${gwId}`).row()
     .text("✏️ Edit Auth Type", `gw_edit_auth_${gwId}`).row()
     .text("✏️ Edit Success Field", `gw_edit_success_${gwId}`).row()
     .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
@@ -1596,20 +1552,16 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let user = await getUser(userId);
   if (user.balance < amount) return ctx.answerCallbackQuery({ text: "❌ Insufficient!", show_alert: true });
 
-  // Deduct balance
   user.balance -= amount;
   user.withdrawnTotal = (user.withdrawnTotal || 0) + amount;
   await user.save();
   await logBalanceHistory(userId, `Withdrawal via ${method}`, -amount);
 
-  // Get details
   let details = method === "Wallet" ? user.walletAccount : method === "UPI" ? user.upiId :
                 method === "Bank" ? `${user.bankAccNo}, ${user.bankIfsc}` :
                 method === "Amazon" ? user.amazonEmail : user.redeemCodeAddr;
 
   let wId = Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Create withdrawal record
   let wd = await Withdrawal.create({
     withdrawalId: wId, userId, amount, method, details,
     taxId: user.taxId || "Not Set",
@@ -1619,10 +1571,8 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   await ctx.answerCallbackQuery({ text: "⏳ Processing..." });
   await ctx.editMessageText(`⏳ *Processing Withdrawal...*\n\n💰 Amount: ₹${amount}\n💳 Method: ${method}\n\n_Please wait while we process your payment._`, { parse_mode: "Markdown" });
 
-  // ⚡ AUTO PAYMENT VIA GATEWAY
   let activeGateway = await getActiveGateway();
   if (!activeGateway) {
-    // No gateway set — mark as pending for manual approval
     let pChannel = await getConfig("payout_channel", null);
     if (pChannel) {
       let maskedDetails = maskDetails(method, details);
@@ -1643,18 +1593,9 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
     return;
   }
 
-  // Send to gateway
-  let paymentData = {
-    amount,
-    details,
-    userId,
-    orderId: wId,
-    taxId: user.taxId || ""
-  };
-
+  let paymentData = { amount, details, userId, orderId: wId, taxId: user.taxId || "" };
   let result = await sendPaymentToGateway(activeGateway, paymentData);
 
-  // Update withdrawal record
   wd.gatewayName = activeGateway.name;
   wd.gatewayRef = result.ref || "";
   wd.gatewayResponse = result.data;
@@ -1673,12 +1614,10 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
       `🎉 _Funds will be credited shortly._`,
       { parse_mode: "Markdown" }
     );
-    // Notify payout channel
     await sendPayoutChannelNotification(ctx, wd, activeGateway, result);
   } else {
     wd.status = "AutoFailed";
     await wd.save();
-    // Refund balance
     user.balance += amount;
     user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amount);
     await user.save();
@@ -1692,7 +1631,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
       `${result.error ? `⚠️ _${result.error}_` : ""}`,
       { parse_mode: "Markdown" }
     );
-    // Notify payout channel
     await sendPayoutChannelNotification(ctx, wd, activeGateway, result);
   }
 });
@@ -1702,7 +1640,7 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.");
 });
 
-// Manual approve/reject (for no-gateway case)
+// Manual approve/reject (no-gateway case)
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_app_", "");
@@ -1815,34 +1753,51 @@ bot.on("message:text", async (ctx, next) => {
     // ===== GATEWAY SETUP STATE MACHINE =====
     if (state === "GW_ADD_NAME" && (await isAdmin(userId))) {
       userState[userId] = `GW_ADD_URL_${text}`;
-      return ctx.reply(`✅ Name: *${text}*\n\n🔗 Now send the *API URL*:\n\nExample: \`https://api.gateway.com/pay\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") });
+      return ctx.reply(
+        `✅ Name: *${text}*\n\n` +
+        `🔗 Now send the *API URL*:\n\n` +
+        `Example: \`https://api.gateway.com/pay?key=sk_xxx\`\n` +
+        `(URL-ൽ key ഉണ്ടെങ്കിൽ അതും ചേർക്കൂ)`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+      );
     }
     if (state.startsWith("GW_ADD_URL_") && (await isAdmin(userId))) {
       let name = state.replace("GW_ADD_URL_", "");
-      userState[userId] = `GW_ADD_KEY_${name}__${text}`;
-      return ctx.reply(`✅ URL: \`${text}\`\n\n🔑 Now send the *API Key*:\n\n(send \`none\` if not needed)`, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") });
-    }
-    if (state.startsWith("GW_ADD_KEY_") && (await isAdmin(userId))) {
-      let rest = state.replace("GW_ADD_KEY_", "");
-      let idx = rest.indexOf("__");
-      let name = rest.substring(0, idx);
-      let url = rest.substring(idx + 2);
-      let apiKey = text.toLowerCase() === "none" ? "" : text;
-      userState[userId] = `GW_ADD_AUTH_${name}__${url}__${apiKey}`;
+      userState[userId] = `GW_ADD_AUTH_${name}__${text}`;
       let kb = new InlineKeyboard()
-        .text("None", "gwpickauth_none").row()
-        .text("Bearer", "gwpickauth_bearer").row()
-        .text("Basic", "gwpickauth_basic").row()
+        .text("None (URL-ൽ key ഉണ്ട്)", "gwpickauth_none").row()
+        .text("Bearer Token", "gwpickauth_bearer").row()
+        .text("Basic Auth", "gwpickauth_basic").row()
         .text("API Key Header", "gwpickauth_apikey_header").row()
         .text("❌ Cancel", "adm_gateway_list");
-      return ctx.reply(`✅ API Key saved.\n\n🔐 Choose *Auth Type*:`, { reply_markup: kb, parse_mode: "Markdown" });
+      return ctx.reply(
+        `✅ URL saved.\n\n` +
+        `🔐 *Choose Auth Type*:\n\n` +
+        `• *None* → URL-ൽ key ഉണ്ടെങ്കിൽ\n` +
+        `• *Bearer* → Header-ൽ token കൊടുക്കണം\n` +
+        `• *Basic* → Username:Password\n` +
+        `• *API Key Header* → Header-ൽ X-API-Key`,
+        { reply_markup: kb, parse_mode: "Markdown" }
+      );
+    }
+    if (state.startsWith("GW_ADD_AUTHVALUE_") && (await isAdmin(userId))) {
+      let rest = state.replace("GW_ADD_AUTHVALUE_", "");
+      let parts = rest.split("__");
+      let name = parts[0], url = parts[1], authType = parts[2];
+      let authValue = text.toLowerCase() === "none" ? "" : text;
+      userState[userId] = `GW_ADD_SUCCESS_${name}__${url}__${authType}__${authValue}`;
+      return ctx.reply(
+        `✅ Auth value saved.\n\n` +
+        `✅ *Set Success Detection*:\n\n` +
+        `Send in format: \`field=value\`\n\n` +
+        `Examples:\n• \`status=SUCCESS\`\n• \`success=true\`\n• \`code=200\``,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+      );
     }
     if (state.startsWith("GW_ADD_SUCCESS_") && (await isAdmin(userId))) {
-      // Format: GW_ADD_SUCCESS_name__url__apiKey__authType
       let rest = state.replace("GW_ADD_SUCCESS_", "");
       let parts = rest.split("__");
-      let name = parts[0], url = parts[1], apiKey = parts[2], authType = parts[3];
-      // Parse success field=value
+      let name = parts[0], url = parts[1], authType = parts[2], authValue = parts[3] || "";
       let successField = "status", successValue = "SUCCESS";
       let sep = text.indexOf("=");
       if (sep > 0) {
@@ -1850,23 +1805,18 @@ bot.on("message:text", async (ctx, next) => {
         successValue = text.substring(sep + 1).trim();
       }
       delete userState[userId];
-
       let gwId = "gw_" + uuidv4().replace(/-/g, "").substring(0, 12);
       await Gateway.create({
-        gatewayId: gwId,
-        name, url, apiKey,
-        authType,
-        successField, successValue,
-        method: "POST",
-        active: true
+        gatewayId: gwId, name, url, authType, authValue,
+        successField, successValue, method: "POST", active: true
       });
-      return ctx.reply(`🎉 *Gateway Added!*\n\n📛 ${name}\n🔗 ${url}\n🔐 Auth: ${authType}\n✅ Success: ${successField}=${successValue}`, {
-        parse_mode: "Markdown",
-        reply_markup: new InlineKeyboard().text("🔌 View Gateways", "adm_gateway_list")
-      });
+      return ctx.reply(
+        `🎉 *Gateway Added!*\n\n📛 ${name}\n🔗 ${url}\n🔐 Auth: ${authType}\n✅ Success: \`${successField}=${successValue}\``,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔌 View Gateways", "adm_gateway_list") }
+      );
     }
 
-    // Edit gateway name
+    // Edit gateway fields
     if (state.startsWith("GW_EDIT_NAME_") && (await isAdmin(userId))) {
       let gwId = state.replace("GW_EDIT_NAME_", "");
       delete userState[userId];
@@ -1883,14 +1833,18 @@ bot.on("message:text", async (ctx, next) => {
       gw.url = text; await gw.save();
       return ctx.reply(`✅ URL updated!`);
     }
-    if (state.startsWith("GW_EDIT_KEY_") && (await isAdmin(userId))) {
-      let gwId = state.replace("GW_EDIT_KEY_", "");
+    if (state.startsWith("GW_SET_AUTHVALUE_") && (await isAdmin(userId))) {
+      let rest = state.replace("GW_SET_AUTHVALUE_", "");
+      let lastIdx = rest.lastIndexOf("_");
+      let gwId = rest.substring(0, lastIdx);
+      let authType = rest.substring(lastIdx + 1);
       delete userState[userId];
       let gw = await getGatewayById(gwId);
       if (!gw) return ctx.reply("❌ Not found!");
-      gw.apiKey = text.toLowerCase() === "none" ? "" : text;
+      gw.authType = authType;
+      gw.authValue = text.toLowerCase() === "none" ? "" : text;
       await gw.save();
-      return ctx.reply(`✅ API Key updated!`);
+      return ctx.reply(`✅ Auth updated!`);
     }
     if (state.startsWith("GW_EDIT_SUCCESS_") && (await isAdmin(userId))) {
       let gwId = state.replace("GW_EDIT_SUCCESS_", "");
@@ -2161,7 +2115,6 @@ bot.on("message:text", async (ctx, next) => {
     let minW = await getConfig("min_withdraw", 1);
     let maxW = await getConfig("max_withdraw", 100);
     let msg = `🏦 Withdraw\n\nBalance: ₹${user.balance.toFixed(2)}\nMin: ₹${minW} | Max: ₹${maxW}`;
-    // ⚡ Gateway names from DB
     let gateways = await getActiveGateways();
     let rows = [];
     let gatewayRow = [];
@@ -2192,20 +2145,36 @@ bot.on("message:text", async (ctx, next) => {
   }
 });
 
-// Gateway name input handler (when GW_ADD_AUTH step)
+// ============================================================
+// 🎯 GATEWAY AUTH PICK HANDLER
+// ============================================================
 bot.callbackQuery(/^gwpickauth_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let authType = ctx.callbackQuery.data.replace("gwpickauth_", "");
   let state = userState[ctx.from.id];
   if (!state || !state.startsWith("GW_ADD_AUTH_")) return ctx.answerCallbackQuery({ text: "Session expired!", show_alert: true });
   let rest = state.replace("GW_ADD_AUTH_", "");
-  userState[ctx.from.id] = `GW_ADD_SUCCESS_${rest}__${authType}`;
+
+  if (authType === "none") {
+    userState[ctx.from.id] = `GW_ADD_SUCCESS_${rest}__none__`;
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      `✅ Auth: *None*\n\n` +
+      `✅ *Set Success Detection*:\n\n` +
+      `Send in format: \`field=value\`\n\n` +
+      `Examples:\n• \`status=SUCCESS\`\n• \`success=true\`\n• \`code=200\``,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+    ).catch(() => {});
+    return;
+  }
+
+  userState[ctx.from.id] = `GW_ADD_AUTHVALUE_${rest}__${authType}`;
   await ctx.answerCallbackQuery();
   await ctx.editMessageText(
     `✅ Auth Type: *${authType}*\n\n` +
-    `✅ Now set *Success Detection*:\n\n` +
-    `Send in format: \`field=value\`\n\n` +
-    `Examples:\n• \`status=SUCCESS\`\n• \`success=true\`\n• \`code=200\``,
+    `🔑 Send the *Auth Value*:\n\n` +
+    `• Bearer → Token\n• Basic → Username:Password\n• API Key Header → Key\n\n` +
+    `(send \`none\` to skip)`,
     { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
   ).catch(() => {});
 });
@@ -2358,9 +2327,8 @@ bot.callbackQuery("set_upi", async (ctx) => { userState[ctx.from.id] = "SET_UPI_
 bot.callbackQuery("set_bank", async (ctx) => { userState[ctx.from.id] = "SET_BANK_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🏦 Format: AccNo | IFSC | BankName"); });
 bot.callbackQuery("set_amazon", async (ctx) => { userState[ctx.from.id] = "SET_AMAZON_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("📧 Send Amazon email:"); });
 bot.callbackQuery("set_redeem", async (ctx) => { userState[ctx.from.id] = "SET_REDEEM_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🎁 Send Redeem address:"); });
-bot.callbackQuery("set_taxid", async (ctx) => { userState[ctx.from.id] = "SET_TAXID_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🧾 Send Tax ID (PAN/Aadhaar/etc.):"); });
+bot.callbackQuery("set_taxid", async (ctx) => { userState[ctx.from.id] = "SET_TAXID_ACC"; await ctx.answerCallbackQuery(); await ctx.reply("🧾 Send Tax ID:"); });
 
-// Gateway withdraw method
 bot.callbackQuery(/^wd_gateway_/, async (ctx) => {
   let gwId = ctx.callbackQuery.data.replace("wd_gateway_", "");
   let gw = await getGatewayById(gwId);
@@ -2369,7 +2337,7 @@ bot.callbackQuery(/^wd_gateway_/, async (ctx) => {
   let minW = await getConfig("min_withdraw", 1);
   if (user.balance < minW) return ctx.answerCallbackQuery({ text: `❌ Min ₹${minW}!`, show_alert: true });
   await ctx.answerCallbackQuery();
-  userState[ctx.from.id] = `WD_AMT_Wallet|${gw.name}`;
+  userState[ctx.from.id] = `WD_AMT_Wallet`;
   await ctx.reply(`🏦 Withdraw via *${gw.name}*\n\n💰 Balance: ₹${user.balance.toFixed(2)}\n👉 Send amount:`, { parse_mode: "Markdown" });
 });
 
