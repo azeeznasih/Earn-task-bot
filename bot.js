@@ -2,7 +2,7 @@ const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
 
-// --- Express Server for 24/7 Render Uptime ---
+// --- Express Server for 24/7 Render / Replit Uptime ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -101,7 +101,7 @@ async function getUser(userId) {
 
 async function getReplyKeyboard() {
   let btn1 = await getConfig("btn_balance", "🚀 My Balance");
-  let btn2 = await getConfig("btn_tasks", "📋 Tasks");
+  let btn2 = await getConfig("btn_tasks", "📋 Task Earn");
   let btn3 = await getConfig("btn_gift", "🎁 Gift Code");
   let btn4 = await getConfig("btn_transfer", "💸 P2P Transfer");
   let btn5 = await getConfig("btn_payout", "💳 Payout Method");
@@ -478,7 +478,7 @@ bot.on("message:text", async (ctx, next) => {
     if (state === "WAITING_FOR_GIFT_REDEEM") {
       delete userState[userId];
       let gift = await GiftCode.findOne({ code: text });
-      if (!gift) return ctx.reply("❌ Invalid Gift Code!");
+      if (!gift) return ctx.reply("❌ Invalid Gift Code! നൽകിയ ഗിഫ്റ്റ് കോഡ് തെറ്റാണ്.");
       if (gift.usedUsers.includes(userId)) return ctx.reply("❌ You have already redeemed this gift code!");
       if (gift.usedUsers.length >= gift.maxUses) return ctx.reply("❌ Gift code limit exceeded!");
 
@@ -494,7 +494,7 @@ bot.on("message:text", async (ctx, next) => {
   // --- Normal Button Menu Routing ---
   let user = await getUser(userId);
   let btnBalance = await getConfig("btn_balance", "🚀 My Balance");
-  let btnTasks = await getConfig("btn_tasks", "📋 Tasks");
+  let btnTasks = await getConfig("btn_tasks", "📋 Task Earn");
   let btnGift = await getConfig("btn_gift", "🎁 Gift Code");
   let btnTransfer = await getConfig("btn_transfer", "💸 P2P Transfer");
   let btnPayout = await getConfig("btn_payout", "💳 Payout Method");
@@ -507,7 +507,10 @@ bot.on("message:text", async (ctx, next) => {
               `💰 Balance → ₹${user.balance.toFixed(2)}\n\n` +
               `👥 Total Referrals → ${user.referralCount || 0}\n` +
               `🔗 Referral Link → ${refLink}`;
-    return ctx.reply(msg);
+    let kb = new InlineKeyboard()
+      .text("🔄 Refresh Balance", "refresh_balance")
+      .text("🔙 Back", "back_home");
+    return ctx.reply(msg, { reply_markup: kb });
   }
   else if (text === btnTasks) {
     let tasks = await Task.find({});
@@ -532,13 +535,17 @@ bot.on("message:text", async (ctx, next) => {
               `Account / UPI: ${user.payoutGatewayAccount}`;
     let kb = new InlineKeyboard()
       .text("🔗 Set Gateway Name", "set_gw_name").row()
-      .text("💰 Set Gateway Account", "set_gw_acc");
+      .text("💰 Set Gateway Account / UPI", "set_gw_acc");
     return ctx.reply(msg, { reply_markup: kb });
   }
   else if (text === btnWithdraw) {
+    let minW = await getConfig("min_withdraw", 1);
+    let maxW = await getConfig("max_withdraw", 100);
     let msg = `🏦 Withdrawal Menu\n\n` +
               `Active Gateway: ${user.payoutGatewayName}\n` +
-              `Your Balance: ₹${user.balance.toFixed(2)}`;
+              `Your Balance: ₹${user.balance.toFixed(2)}\n` +
+              `📉 Min Withdraw: ₹${minW}\n` +
+              `📈 Max Withdraw: ₹${maxW}`;
     let kb = new InlineKeyboard().text(`🟢 Withdraw via ${user.payoutGatewayName}`, "do_withdraw");
     return ctx.reply(msg, { reply_markup: kb });
   }
@@ -558,6 +565,27 @@ bot.on("message:text", async (ctx, next) => {
 });
 
 // Inline Callbacks for User Actions
+bot.callbackQuery("refresh_balance", async (ctx) => {
+  let user = await getUser(ctx.from.id);
+  await ctx.answerCallbackQuery("Balance Refreshed!");
+  let refLink = `https://t.me/${ctx.me.username}?start=${ctx.from.id}`;
+  let msg = `💳 Wallet Overview 💳\n\n` +
+            `🌐 Wallet ID → ${user.walletId}\n` +
+            `💰 Balance → ₹${user.balance.toFixed(2)}\n\n` +
+            `👥 Total Referrals → ${user.referralCount || 0}\n` +
+            `🔗 Referral Link → ${refLink}`;
+  let kb = new InlineKeyboard()
+    .text("🔄 Refresh Balance", "refresh_balance")
+    .text("🔙 Back", "back_home");
+  await ctx.editMessageText(msg, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery("back_home", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  let welcomeText = await getConfig("text_welcome", `👋 Welcome back! Choose an option below:`);
+  await ctx.editMessageText(welcomeText, { reply_markup: await getReplyKeyboard() }).catch(() => {});
+});
+
 bot.callbackQuery(/^do_task_/, async (ctx) => {
   let taskId = ctx.callbackQuery.data.replace("do_task_", "");
   let task = await Task.findOne({ taskId });
@@ -582,22 +610,29 @@ bot.callbackQuery(/^do_task_/, async (ctx) => {
 bot.callbackQuery("set_gw_name", async (ctx) => {
   userState[ctx.from.id] = "USER_SET_GW_NAME";
   await ctx.answerCallbackQuery();
-  await ctx.reply("🔗 Send your desired Gateway Name (e.g., Ultra-Pay, VSV Wallet):");
+  await ctx.reply("🔗 Send your desired Gateway Name (e.g., UPI, Bank Account):");
 });
 
 bot.callbackQuery("set_gw_acc", async (ctx) => {
   userState[ctx.from.id] = "USER_SET_GW_ACC";
   await ctx.answerCallbackQuery();
-  await ctx.reply("💰 Send your Gateway Account / UPI ID:");
+  await ctx.reply("💰 Send your Gateway Account / UPI ID (e.g., yourname@upi):");
 });
 
 bot.callbackQuery("do_withdraw", async (ctx) => {
   let user = await getUser(ctx.from.id);
   let minW = await getConfig("min_withdraw", 1);
-  if (user.balance < minW) return ctx.answerCallbackQuery({ text: `❌ Minimum withdrawal is ₹${minW}!`, show_alert: true });
+  let maxW = await getConfig("max_withdraw", 100);
+
+  if (user.balance < minW) {
+    return ctx.answerCallbackQuery({ text: `❌ Minimum withdrawal amount is ₹${minW}!`, show_alert: true });
+  }
+  if (user.balance > maxW) {
+    return ctx.answerCallbackQuery({ text: `❌ Maximum withdrawal limit is ₹${maxW}!`, show_alert: true });
+  }
   
   await ctx.answerCallbackQuery();
-  await ctx.reply(`✅ Withdrawal request of ₹${user.balance.toFixed(2)} via ${user.payoutGatewayName} submitted successfully!`);
+  await ctx.reply(`✅ Withdrawal request of ₹${user.balance.toFixed(2)} via ${user.payoutGatewayName} (${user.payoutGatewayAccount}) submitted successfully!`);
 });
 
 // Global Error Handler
