@@ -579,30 +579,45 @@ bot.callbackQuery("theme_reset", async (ctx) => {
   }).catch(() => {});
 });
 
+// ✅ UPDATED: Now sends new keyboard silently to all users — auto updates without /start
 bot.callbackQuery("theme_update_all", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) {
     return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   }
 
+  await ctx.answerCallbackQuery({ text: "⏳ Updating all users...", show_alert: false });
+
   let allUsers = await User.find({});
   let count = 0;
   let failed = 0;
 
+  let newKb = await buildKeyboardFromLayout();
+
   for (let u of allUsers) {
     try {
-      await ctx.api.sendMessage(u.userId, "🎨 Keyboard has been updated by Admin! Send /start to see the new layout.");
+      // ✅ Send a message WITH the new keyboard — Telegram will auto-replace it on user's screen
+      await ctx.api.sendMessage(
+        u.userId,
+        "🎨 *Keyboard Updated by Admin!*\n\nYour keyboard has been refreshed automatically.",
+        {
+          parse_mode: "Markdown",
+          reply_markup: newKb
+        }
+      );
       count++;
+      // Small delay to avoid Telegram flood limits
+      await new Promise(r => setTimeout(r, 50));
     } catch (e) {
       failed++;
     }
   }
 
-  await ctx.answerCallbackQuery({ text: "✅ Update sent!", show_alert: true });
   await ctx.reply(
     `📊 *Keyboard Update Report*\n\n` +
-    `✅ Successfully Notified: \`${count}\` Users\n` +
+    `✅ Successfully Updated: \`${count}\` Users\n` +
     `❌ Failed / Blocked: \`${failed}\` Users\n` +
-    `👥 Total: \`${allUsers.length}\` Users`,
+    `👥 Total Processed: \`${allUsers.length}\` Users\n\n` +
+    `🎨 Keyboard successfully updated for all active users!`,
     { parse_mode: "Markdown" }
   );
 });
@@ -946,7 +961,7 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   else if (method === "UPI") details = user.upiId;
   else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}, ${user.bankName}`;
   else if (method === "Amazon") details = user.amazonEmail;
-  else if (method === "Redeem Code") details = user.redeemCodeAddr;
+  else if (method === "Redeem") details = user.redeemCodeAddr;
 
   let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
   await Withdrawal.create({ withdrawalId, userId, amount, method, details });
@@ -1277,7 +1292,8 @@ bot.on("message:text", async (ctx, next) => {
       else if (method === "Redeem Code") details = user.redeemCodeAddr;
 
       let confirmMsg = `📋 *Withdrawal Summary*\n\n🔹 Method: ${method}\n🔹 Details: ${details}\n💰 Amount: ₹${amount}\n\nConfirm withdrawal?`;
-      let kb = new InlineKeyboard().text("✅ Confirm", `conf_wd_${method.replace(" ", "_")}_${amount}`).text("❌ Cancel", "canc_wd");
+      let safeMethod = method.replace(" ", "_");
+      let kb = new InlineKeyboard().text("✅ Confirm", `conf_wd_${safeMethod}_${amount}`).text("❌ Cancel", "canc_wd");
 
       return ctx.reply(confirmMsg, { reply_markup: kb, parse_mode: "Markdown" });
     }
@@ -1352,7 +1368,7 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ============================================================
-  // 🔀 NORMAL BUTTON MENU ROUTING (uses keyboard layout from DB)
+  // 🔀 NORMAL BUTTON MENU ROUTING
   // ============================================================
   let user = await getUser(userId);
   let layout = await getCurrentKeyboardLayout();
@@ -1525,6 +1541,6 @@ bot.catch((err) => { console.error("❌ Bot Error:", err); });
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("🍃 MongoDB Atlas Connected Successfully!");
-    bot.start({ onStart: (info) => console.log(`🚀 Bot @${info.username} is running with Customize Theme!`) });
+    bot.start({ onStart: (info) => console.log(`🚀 Bot @${info.username} is running with Auto-Update Keyboard!`) });
   })
   .catch((err) => { console.error("❌ DB Connection Error:", err); });
