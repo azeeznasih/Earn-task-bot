@@ -254,9 +254,9 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   reward: { type: Number, required: true },
   link: { type: String, required: true },
-  timeLimitMinutes: { type: Number, default: 0 }, // New: Timer in minutes
-  alertEnabled: { type: Boolean, default: true },   // New: Alert toggle on/off
-  alertChannel: { type: String, default: "Not Set" }, // New: Channel for task alert
+  timeLimitMinutes: { type: Number, default: 0 }, 
+  alertEnabled: { type: Boolean, default: true },   
+  alertChannel: { type: String, default: "Not Set" }, 
   completedUsers: { type: [Number], default: [] }
 });
 
@@ -420,7 +420,7 @@ bot.command("admin", async (ctx) => {
     .text("👥 User Tracker", "adm_user_tracker").row()
     .text("📉 Min Withdraw", "adm_set_min_w").text("📈 Max Withdraw", "adm_set_max_w").row()
     .text("📢 Set Payout Channel", "adm_set_p_chan").text("📢 Manage Channels", "adm_channels").row()
-    .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Manage Tasks", "adm_tasks_manager").row() // Upgraded Task Manager
+    .text("🔄 Reset Balance", "adm_reset_bal").text("📋 Manage Tasks", "adm_tasks_manager").row()
     .text("🎁 Create Gift", "adm_create_gift").text("📢 Broadcast", "adm_broadcast").row()
     .text("👥 Manage Admins", "adm_admins").text("👑 Transfer Ownership", "adm_transfer").row()
     .text("🎨 Customize Texts", "adm_customize").text("🔄 Refresh Panel", "admin");
@@ -468,7 +468,6 @@ async function renderTaskManager(ctx) {
     keyboard.text("📂 No Tasks Found", "noop").row();
   } else {
     tasks.forEach(t => {
-      // Screenshot style: Task Title | ✏️ (Edit) | 🗑️ (Delete)
       keyboard.text(`📄 ${t.title}`, `view_task_${t.taskId}`)
               .text("✏️", `edit_task_${t.taskId}`)
               .text("🗑️", `del_task_${t.taskId}`)
@@ -476,7 +475,6 @@ async function renderTaskManager(ctx) {
     });
   }
 
-  // Action Buttons requested
   keyboard.text("➕ Add New Task", "adm_create_task").row();
   keyboard.text("➕ Add Channel For Task Alert", "adm_add_task_channel").row();
   keyboard.text("🔙 Back", "admin");
@@ -496,7 +494,6 @@ bot.callbackQuery("adm_tasks_manager", async (ctx) => {
   await renderTaskManager(ctx);
 });
 
-// View Task Details & Timer Control
 bot.callbackQuery(/^view_task_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let tId = ctx.callbackQuery.data.replace("view_task_", "");
@@ -520,7 +517,6 @@ bot.callbackQuery(/^view_task_/, async (ctx) => {
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Edit Task Menu (Pencil click)
 bot.callbackQuery(/^edit_task_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let tId = ctx.callbackQuery.data.replace("edit_task_", "");
@@ -537,7 +533,6 @@ bot.callbackQuery(/^edit_task_/, async (ctx) => {
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Toggle Alert ON/OFF
 bot.callbackQuery(/^toggle_t_alert_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let tId = ctx.callbackQuery.data.replace("toggle_t_alert_", "");
@@ -549,7 +544,6 @@ bot.callbackQuery(/^toggle_t_alert_/, async (ctx) => {
 
   await ctx.answerCallbackQuery({ text: `Alert status changed to ${task.alertEnabled ? 'ON' : 'OFF'}` });
   
-  // Re-render edit menu
   let kb = new InlineKeyboard()
     .text("⏱️ Set Time Limit", `set_t_time_${tId}`)
     .text(task.alertEnabled ? "🔔 Alert: ON" : "🔕 Alert: OFF", `toggle_t_alert_${tId}`).row()
@@ -560,7 +554,6 @@ bot.callbackQuery(/^toggle_t_alert_/, async (ctx) => {
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Prompt Set Time Limit
 bot.callbackQuery(/^set_t_time_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let tId = ctx.callbackQuery.data.replace("set_t_time_", "");
@@ -572,7 +565,6 @@ bot.callbackQuery(/^set_t_time_/, async (ctx) => {
   });
 });
 
-// Delete Task (Trash bin click)
 bot.callbackQuery(/^del_task_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let tId = ctx.callbackQuery.data.replace("del_task_", "");
@@ -581,7 +573,6 @@ bot.callbackQuery(/^del_task_/, async (ctx) => {
   await renderTaskManager(ctx);
 });
 
-// Add Channel for Task Alert Button
 bot.callbackQuery("adm_add_task_channel", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   userState[ctx.from.id] = "WAITING_FOR_TASK_ALERT_CHANNEL";
@@ -900,7 +891,6 @@ bot.on("message:text", async (ctx, next) => {
   let state = userState[userId];
 
   if (state) {
-    // Handle Task Time limit input
     if (state.startsWith("WAITING_FOR_TASK_TIME_") && (await isAdmin(userId))) {
       let tId = state.replace("WAITING_FOR_TASK_TIME_", "");
       delete userState[userId];
@@ -911,10 +901,8 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Time limit for task \`${tId}\` updated to ${mins} minutes successfully!`);
     }
 
-    // Handle Task Alert Channel input
     if (state === "WAITING_FOR_TASK_ALERT_CHANNEL" && (await isAdmin(userId))) {
       delete userState[userId];
-      // Save alert channel to config or apply to default tasks
       await setConfig("default_task_alert_channel", text);
       return ctx.reply(`✅ Task Alert Channel successfully set to: ${text}`);
     }
@@ -1356,9 +1344,13 @@ async function promptWithdrawalAmount(ctx, method) {
 
 bot.callbackQuery("wd_wallet", async (ctx) => { await promptWithdrawalAmount(ctx, "Wallet"); });
 bot.callbackQuery("wd_upi", async (ctx) => { await promptWithdrawalAmount(ctx, "UPI"); });
-bot.callbackQuery("wd_bank", async (ctx, next) => { await promptWithdrawalAmount(ctx, "Bank"); });
+bot.callbackQuery("wd_bank", async (ctx) => { await promptWithdrawalAmount(ctx, "Bank"); });
 bot.callbackQuery("wd_amazon", async (ctx) => { await promptWithdrawalAmount(ctx, "Amazon"); });
-bot.callbackQuery("wd_redeem", async (ctx) => { await promptWithdrawalButton = await promptWithdrawalAmount(ctx, "Redeem Code"); });
+
+// ശരിയാക്കിയ വരി ഇവിടെ നൽകിയിരിക്കുന്നു:
+bot.callbackQuery("wd_redeem", async (ctx) => { 
+  await promptWithdrawalAmount(ctx, "Redeem Code"); 
+});
 
 bot.catch((err) => { console.error("❌ Bot Error:", err); });
 
