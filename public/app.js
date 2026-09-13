@@ -1,37 +1,46 @@
 // ============================================================
-// 🎯 Mini App Logic
+// TASK EARN BOT — Mini App Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
 let currentUser = null;
 let currentUserId = null;
+let receiverUser = null;
 
-// ----- Get User ID -----
+// ============================================================
+// 🆔 Get User ID
+// ============================================================
 function getUserId() {
   if (tg && tg.initDataUnsafe?.user?.id) {
     return String(tg.initDataUnsafe.user.id);
   }
-  // Fallback for testing in browser
   let testId = localStorage.getItem('miniapp_test_id');
   if (!testId) {
-    testId = prompt("Enter Test User ID (browser testing):", "8061612320") || "8061612320";
+    testId = prompt("Enter Test User ID:", "8061612320") || "8061612320";
     localStorage.setItem('miniapp_test_id', testId);
   }
   return testId;
 }
 
-// ----- Init -----
+// ============================================================
+// 🚀 Init
+// ============================================================
 async function initMiniApp() {
   if (tg) {
     tg.ready();
     tg.expand();
-    tg.setHeaderColor("#0a0f0a");
-    tg.setBackgroundColor("#0a0f0a");
+    try {
+      tg.setHeaderColor("#0a0f0a");
+      tg.setBackgroundColor("#0a0f0a");
+    } catch (e) {}
   }
   currentUserId = getUserId();
   await loadUser();
+  await loadProfilePhoto();
 }
 
-// ----- Load User -----
+// ============================================================
+// 👤 Load User
+// ============================================================
 async function loadUser() {
   try {
     const res = await fetch(`/miniapp/api/user/${currentUserId}`);
@@ -42,25 +51,48 @@ async function loadUser() {
     }
     currentUser = data.user;
 
-    // Update Home page
     const usernameEl = document.getElementById('username');
     const userIdEl = document.getElementById('userid');
     const balanceEl = document.getElementById('balance');
     const linkedEl = document.getElementById('linkedStatus');
+    const payBalanceEl = document.getElementById('payBalance');
 
     if (usernameEl) usernameEl.textContent = data.user.firstName || "User";
     if (userIdEl) userIdEl.textContent = 'ID: ' + data.user.userId;
     if (balanceEl) balanceEl.textContent = '₹' + (data.user.balance || 0).toFixed(2);
     if (linkedEl) linkedEl.textContent = data.user.linkedInfo || "Not Linked";
+    if (payBalanceEl) payBalanceEl.textContent = '₹' + (data.user.balance || 0).toFixed(2);
 
-    // Load payment methods
     await loadPaymentMethods();
   } catch (e) {
     console.error("loadUser:", e);
   }
 }
 
-// ----- Load Payment Methods -----
+// ============================================================
+// 📸 Load Profile Photo
+// ============================================================
+async function loadProfilePhoto() {
+  try {
+    const res = await fetch(`/miniapp/api/profile-photo/${currentUserId}`);
+    const data = await res.json();
+    if (data.success && data.photoUrl) {
+      const avatarImg = document.getElementById('avatarImg');
+      const avatarFallback = document.getElementById('avatarFallback');
+      const profileAvatarImg = document.getElementById('profileAvatarImg');
+      const profileAvatarFallback = document.getElementById('profileAvatarFallback');
+
+      if (avatarImg) { avatarImg.src = data.photoUrl; avatarImg.style.display = 'block'; }
+      if (avatarFallback) avatarFallback.style.display = 'none';
+      if (profileAvatarImg) { profileAvatarImg.src = data.photoUrl; profileAvatarImg.style.display = 'block'; }
+      if (profileAvatarFallback) profileAvatarFallback.style.display = 'none';
+    }
+  } catch (e) { console.error("photo:", e); }
+}
+
+// ============================================================
+// 💳 Load Payment Methods
+// ============================================================
 async function loadPaymentMethods() {
   try {
     const res = await fetch(`/miniapp/api/payment-methods/${currentUserId}`);
@@ -77,7 +109,9 @@ async function loadPaymentMethods() {
   } catch (e) { console.error(e); }
 }
 
-// ----- Withdraw Modal -----
+// ============================================================
+// 💸 Withdraw Modal
+// ============================================================
 function openWithdraw() {
   const modal = document.getElementById('withdrawModal');
   const methods = document.getElementById('withdrawMethods');
@@ -104,7 +138,8 @@ function openWithdraw() {
 }
 
 function closeWithdraw() {
-  document.getElementById('withdrawModal')?.classList.remove('active');
+  const modal = document.getElementById('withdrawModal');
+  if (modal) modal.classList.remove('active');
 }
 
 async function requestWithdraw(method) {
@@ -130,7 +165,9 @@ async function requestWithdraw(method) {
   } catch (e) { alert("❌ Error: " + e.message); }
 }
 
-// ----- Payment Methods Modal -----
+// ============================================================
+// 💳 Payment Methods Modal
+// ============================================================
 function openPaymentMethods() {
   const modal = document.getElementById('paymentModal');
   const list = document.getElementById('paymentUpdateList');
@@ -158,7 +195,8 @@ function openPaymentMethods() {
 }
 
 function closePaymentModal() {
-  document.getElementById('paymentModal')?.classList.remove('active');
+  const modal = document.getElementById('paymentModal');
+  if (modal) modal.classList.remove('active');
 }
 
 async function updateField(field, label) {
@@ -198,7 +236,6 @@ async function loadTasks() {
 
     list.innerHTML = "";
     data.tasks.forEach(t => {
-      // ⚠️ Only Title + Reward (No emoji, no description)
       const card = document.createElement('div');
       card.className = 'task-card';
       card.innerHTML = `
@@ -221,10 +258,6 @@ function openTaskDetail(task) {
   const detail = document.getElementById('taskDetail');
   if (!modal) return;
 
-  const miniAppUrl = window.location.origin + "/miniapp/task";
-  const botUsername = "YourBotUsername"; // optional
-  const telegramLink = `https://t.me/YourBotUsername`;
-
   detail.innerHTML = `
     <h3>📋 ${task.title}</h3>
     <p style="color:#00ff88; font-weight:700; font-size:18px; margin:12px 0;">💰 ₹${task.reward}</p>
@@ -246,59 +279,160 @@ function openTaskDetail(task) {
 }
 
 function goToBotForScreenshot() {
-  // Close the Mini App and go back to Telegram bot chat
-  if (tg) {
-    tg.close();
-  } else {
-    alert("Please go back to the Telegram bot and send your screenshot.");
-  }
+  if (tg) tg.close();
+  else alert("Please go back to the Telegram bot and send your screenshot.");
 }
 
 function closeTaskModal() {
-  document.getElementById('taskModal')?.classList.remove('active');
+  const modal = document.getElementById('taskModal');
+  if (modal) modal.classList.remove('active');
 }
 
 // ============================================================
-// 🎁 GIFT PAGE
+// 💸 QUICK PAY PAGE
 // ============================================================
-async function claimGift() {
-  const input = document.getElementById('giftCode');
-  const msg = document.getElementById('giftMsg');
-  if (!input || !msg) return;
+async function checkUser() {
+  const input = document.getElementById('payUserId');
+  const msg = document.getElementById('userCheckMsg');
+  const box = document.getElementById('userInfoBox');
+  const amountCard = document.getElementById('amountCard');
+  const balanceInfo = document.getElementById('payBalanceInfo');
+  const payBtn = document.getElementById('payNowBtn');
 
-  const code = input.value.trim();
-  if (!code) {
-    msg.textContent = "Please enter a code";
-    msg.className = 'gift-msg error';
-    return;
-  }
+  if (!input || !msg) return;
+  const userId = input.value.trim();
+  if (!userId) { msg.textContent = "Please enter a User ID"; msg.className = 'check-msg error'; return; }
+
+  msg.textContent = "⏳ Checking...";
+  msg.className = 'check-msg';
 
   try {
-    const res = await fetch('/miniapp/api/claim-gift', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUserId, code })
-    });
+    const res = await fetch(`/miniapp/api/check-user/${userId}`);
     const data = await res.json();
+
     if (data.success) {
-      msg.textContent = `✅ ₹${data.amount} added! New balance: ₹${data.newBalance.toFixed(2)}`;
-      msg.className = 'gift-msg success';
-      input.value = '';
+      receiverUser = data.user;
+      msg.textContent = "✅ User found!";
+      msg.className = 'check-msg success';
+
+      // Show user info box
+      if (box) {
+        box.style.display = 'flex';
+        document.getElementById('userInfoName').textContent = receiverUser.firstName || "User";
+        document.getElementById('userInfoId').textContent = 'ID: ' + receiverUser.userId;
+        const avatarBox = document.getElementById('userInfoAvatar');
+        if (receiverUser.photoUrl) {
+          avatarBox.innerHTML = `<img src="${receiverUser.photoUrl}" alt="">`;
+        } else {
+          avatarBox.innerHTML = '👤';
+        }
+      }
+
+      // Show amount card + balance + pay button
+      if (amountCard) amountCard.style.display = 'block';
+      if (balanceInfo) balanceInfo.style.display = 'flex';
+      if (payBtn) payBtn.style.display = 'block';
     } else {
-      msg.textContent = "❌ " + data.error;
-      msg.className = 'gift-msg error';
+      receiverUser = null;
+      msg.textContent = "❌ " + (data.error || "User not found");
+      msg.className = 'check-msg error';
+      if (box) box.style.display = 'none';
+      if (amountCard) amountCard.style.display = 'none';
+      if (balanceInfo) balanceInfo.style.display = 'none';
+      if (payBtn) payBtn.style.display = 'none';
     }
   } catch (e) {
     msg.textContent = "❌ Error: " + e.message;
-    msg.className = 'gift-msg error';
+    msg.className = 'check-msg error';
   }
+}
+
+function setAmount(amt) {
+  const input = document.getElementById('payAmount');
+  if (input) input.value = amt;
+}
+
+function initiatePay() {
+  if (!receiverUser) return alert("Please check user first!");
+  const amountInput = document.getElementById('payAmount');
+  const amount = parseFloat(amountInput.value);
+  if (isNaN(amount) || amount <= 0) return alert("Enter valid amount!");
+
+  const balance = currentUser?.balance || 0;
+  if (amount > balance) return alert("❌ Insufficient balance!");
+
+  // Fill confirm modal
+  document.getElementById('confirmName').textContent = receiverUser.firstName || "User";
+  document.getElementById('confirmUserId').textContent = receiverUser.userId;
+  document.getElementById('confirmAmount').textContent = '₹' + amount.toFixed(2);
+
+  const modal = document.getElementById('confirmModal');
+  if (modal) modal.classList.add('active');
+}
+
+function cancelPay() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function confirmPay() {
+  if (!receiverUser) return;
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  if (isNaN(amount) || amount <= 0) return;
+
+  const confirmBtn = document.querySelector('.confirm-ok-btn');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "⏳ Sending..."; }
+
+  try {
+    const res = await fetch('/miniapp/api/quick-pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderId: currentUserId,
+        receiverId: receiverUser.userId,
+        amount: amount
+      })
+    });
+    const data = await res.json();
+
+    cancelPay();
+
+    if (data.success) {
+      document.getElementById('successMsg').textContent =
+        `₹${amount.toFixed(2)} sent to ${receiverUser.firstName || "User"} successfully!`;
+      const successModal = document.getElementById('successModal');
+      if (successModal) successModal.classList.add('active');
+
+      // Reset form
+      document.getElementById('payUserId').value = '';
+      document.getElementById('payAmount').value = '';
+      document.getElementById('userInfoBox').style.display = 'none';
+      document.getElementById('amountCard').style.display = 'none';
+      document.getElementById('payBalanceInfo').style.display = 'none';
+      document.getElementById('payNowBtn').style.display = 'none';
+      document.getElementById('userCheckMsg').textContent = '';
+      receiverUser = null;
+
+      await loadUser();
+    } else {
+      alert("❌ " + (data.error || "Payment failed"));
+    }
+  } catch (e) {
+    alert("❌ Error: " + e.message);
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "✅ CONFIRM"; }
+  }
+}
+
+function closeSuccess() {
+  const modal = document.getElementById('successModal');
+  if (modal) modal.classList.remove('active');
 }
 
 // ============================================================
 // 👤 PROFILE PAGE
 // ============================================================
 async function loadProfile() {
-  // Load total balance
   try {
     const tb = await fetch('/miniapp/api/total-balance');
     const tbData = await tb.json();
@@ -310,14 +444,16 @@ async function loadProfile() {
     }
   } catch (e) { console.error(e); }
 
-  // Load user profile
   try {
     const res = await fetch(`/miniapp/api/user/${currentUserId}`);
     const data = await res.json();
     if (!data.success) return;
 
     const u = data.user;
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
 
     set('profileName', u.firstName || "User");
     set('profileId', 'ID: ' + u.userId);
@@ -340,7 +476,6 @@ async function loadProfile() {
 window.addEventListener('DOMContentLoaded', async () => {
   await initMiniApp();
 
-  // Route-specific loaders
   if (document.getElementById('taskList')) await loadTasks();
   if (document.getElementById('totalBalance')) await loadProfile();
 });
