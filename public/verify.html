@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Device Verification</title>
+<link rel="stylesheet" href="verify.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="verify-app">
+
+  <!-- TOP BAR -->
+  <header class="verify-topbar">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="topbar-title">Device Verification</div>
+    <div class="status-badge" id="statusBadge">
+      <span class="dot"></span>
+      <span id="statusText">Checking</span>
+    </div>
+  </header>
+
+  <!-- USER INFO (Top) -->
+  <div class="user-top-info">
+    <div class="user-avatar" id="userAvatar">
+      <span id="userFallback">👤</span>
+      <img id="userImg" src="" alt="" style="display:none;">
+    </div>
+    <div class="user-details">
+      <div class="user-name" id="userName">Loading...</div>
+      <div class="user-id" id="userId">ID: -</div>
+      <div class="user-handle" id="userHandle">@-</div>
+    </div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="main-card" id="mainCard">
+    <div class="card-header">
+      <span class="card-label">Device verification</span>
+      <span class="card-status-icon" id="cardStatusIcon">⏳</span>
+    </div>
+
+    <div class="card-content">
+      <div class="card-field">
+        <div class="field-label">TELEGRAM ID</div>
+        <div class="field-value id-value" id="cardTelegramId">-</div>
+      </div>
+
+      <div class="card-field">
+        <div class="field-value name-value" id="cardName">-</div>
+        <div class="field-handle" id="cardHandle">@-</div>
+      </div>
+    </div>
+
+    <div class="card-bot-photo" id="cardBotPhoto">
+      <img id="botPhotoImg" src="" alt="Bot">
+    </div>
+  </div>
+
+  <!-- STATUS TEXT -->
+  <div class="status-section">
+    <div class="status-title" id="statusTitle">⏳ Verifying...</div>
+    <div class="status-subtitle" id="statusSubtitle">Please wait while we verify your device.</div>
+  </div>
+
+  <!-- BOT INFO CARD -->
+  <div class="bot-info-card">
+    <div class="bot-avatar" id="botAvatar">
+      <img id="botPhotoSmall" src="" alt="Bot">
+    </div>
+    <div class="bot-details">
+      <div class="bot-name" id="botName">TASK EARN BOT</div>
+      <div class="bot-status" id="botStatus">Account verified</div>
+    </div>
+    <div class="bot-check">✅</div>
+  </div>
+
+  <!-- CONTINUE BUTTON -->
+  <button class="continue-btn" id="continueBtn" onclick="continueToBot()" style="display:none;">
+    Continue to Bot  ›
+  </button>
+
+  <!-- FOOTER -->
+  <div class="verify-footer">
+    <span class="lock-icon">🔒</span>
+    <span>Your access is ready when you are.</span>
+  </div>
+
+</div>
+
+<script src="verify.js"></script>
+</body>
+</html>
