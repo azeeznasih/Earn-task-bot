@@ -1,6 +1,7 @@
 {
-  "name": "payment-task-bot",
-  "version": "1.0.0",
+  "name": "earn-task-bot",
+  "version": "2.0.0",
+  "description": "Telegram Payment Task Bot with Mini App",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
@@ -10,6 +11,19 @@
     "mongoose": "^8.13.0",
     "express": "^4.21.2",
     "axios": "^1.7.9",
-    "uuid": "^11.0.3"
-  }
+    "uuid": "^11.0.3",
+    "path": "^0.12.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "miniapp",
+    "task",
+    "payment"
+  ],
+  "author": "azeeznasi",
+  "license": "MIT"
 }
