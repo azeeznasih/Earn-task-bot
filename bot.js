@@ -1,7 +1,7 @@
 // ============================================================
 // 🤖 TELEGRAM PAYMENT TASK BOT - FULL WORKING
 // grammy | mongoose | express
-// With: Gateway Auto-Pay, Privacy Mask, Validators, All Features
+// With: Universal Gateway Auto-Pay, Privacy Mask, Validators
 // ============================================================
 const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
@@ -165,12 +165,14 @@ const configSchema = new mongoose.Schema({
   value: { type: mongoose.Schema.Types.Mixed }
 });
 
-// ⚡ Gateway — Simple URL only
+// ⚡ Gateway — Universal Format (supports ALL gateways)
 const gatewaySchema = new mongoose.Schema({
   gatewayId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   url: { type: String, required: true },
-  method: { type: String, default: "POST" },
+  method: { type: String, default: "GET" },
+  params: { type: mongoose.Schema.Types.Mixed, default: {} },
+  headers: { type: mongoose.Schema.Types.Mixed, default: {} },
   active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -264,7 +266,6 @@ function maskValue(val) {
   if (val.length <= 6) return val;
   return `${val.substring(0, 3)}*****${val.slice(-3)}`;
 }
-
 function maskUPI(upi) {
   if (!upi || upi === "Not Set") return "Not Set";
   if (!upi.includes("@")) return maskValue(upi);
@@ -272,7 +273,6 @@ function maskUPI(upi) {
   if (name.length <= 3) return `${name[0]}*****@${domain}`;
   return `${name.substring(0, 3)}*****@${domain}`;
 }
-
 function maskEmail(email) {
   if (!email || email === "Not Set") return "Not Set";
   if (!email.includes("@")) return maskValue(email);
@@ -280,21 +280,17 @@ function maskEmail(email) {
   if (name.length <= 3) return `${name[0]}*****@${domain}`;
   return `${name.substring(0, 3)}*****@${domain}`;
 }
-
 function maskBank(acc) {
   if (!acc || acc === "Not Set") return "Not Set";
   if (acc.length <= 6) return acc;
   return `${acc.substring(0, 3)}*****${acc.slice(-3)}`;
 }
-
-// Address masker — for withdrawal messages
 function maskAddress(addr) {
   if (!addr || addr === "Not Set") return "Not Set";
   addr = String(addr);
   if (addr.length <= 6) return addr;
   return `${addr.substring(0, 3)}*****${addr.slice(-3)}`;
 }
-
 function maskDetails(method, details) {
   if (!details || details === "Not Set") return "Not Set";
   if (method === "UPI") return maskUPI(details);
@@ -333,7 +329,7 @@ function isValidIFSC(ifsc) {
 }
 
 // ============================================================
-// ⚡ API GATEWAY SYSTEM
+// ⚡ UNIVERSAL API GATEWAY SYSTEM
 // ============================================================
 async function getActiveGateways() {
   return await Gateway.find({ active: true }).sort({ createdAt: 1 });
@@ -355,37 +351,48 @@ function getNestedField(obj, path) {
   return cur;
 }
 
+// 🔄 Replace {upi}, {amount}, {userId}, {orderId} with actual values
+function replaceDynamicParams(params, paymentData) {
+  let result = {};
+  for (let [key, val] of Object.entries(params || {})) {
+    if (typeof val === "string") {
+      result[key] = val
+        .replace(/{upi}/g, String(paymentData.details || ""))
+        .replace(/{amount}/g, String(paymentData.amount || ""))
+        .replace(/{userId}/g, String(paymentData.userId || ""))
+        .replace(/{orderId}/g, String(paymentData.orderId || ""))
+        .replace(/{name}/g, String(paymentData.name || ""))
+        .replace(/{method}/g, String(paymentData.method || ""));
+    } else {
+      result[key] = val;
+    }
+  }
+  return result;
+}
+
 async function sendPaymentToGateway(gateway, paymentData) {
   try {
-    console.log("🚀 [GATEWAY] Sending payment request...");
+    console.log("🚀 [GATEWAY] Sending payment...");
     console.log("   Gateway:", gateway.name);
     console.log("   URL:", gateway.url);
     console.log("   Payment:", JSON.stringify(paymentData));
 
-    let headers = { "Content-Type": "application/json" };
-    let body = {
-      amount: paymentData.amount,
-      upi: paymentData.details,
-      userId: paymentData.userId,
-      orderId: paymentData.orderId,
-      details: paymentData.details
-    };
+    let finalParams = replaceDynamicParams(gateway.params, paymentData);
+    console.log("   Params:", JSON.stringify(finalParams));
 
-    console.log("   Body:", JSON.stringify(body));
-
-    let method = (gateway.method || "POST").toUpperCase();
+    let method = (gateway.method || "GET").toUpperCase();
     let finalUrl = gateway.url;
     let fetchOptions = {
       method,
-      headers,
+      headers: { "Content-Type": "application/json", ...(gateway.headers || {}) },
       signal: AbortSignal.timeout(30000)
     };
 
     if (method === "POST") {
-      fetchOptions.body = JSON.stringify(body);
+      fetchOptions.body = JSON.stringify(finalParams);
     } else {
       let qs = new URLSearchParams();
-      for (let [k, v] of Object.entries(body)) {
+      for (let [k, v] of Object.entries(finalParams)) {
         qs.append(k, String(v));
       }
       finalUrl += (finalUrl.includes("?") ? "&" : "?") + qs.toString();
@@ -406,31 +413,37 @@ async function sendPaymentToGateway(gateway, paymentData) {
       data = { raw: rawText };
     }
 
-    console.log("   HTTP Status:", response.status);
+    console.log("   HTTP:", response.status);
 
-    // Success detection
+    // 🔍 Flexible success detection
     let isSuccess = false;
     let statusField = data.status || (data.data && data.data.status);
     let codeField = data.code || (data.data && data.data.code);
+    let messageField = data.message || (data.data && data.data.message);
+    let successField = data.success || (data.data && data.data.success);
 
-    if (statusField) {
-      isSuccess = String(statusField).toLowerCase() === "success";
+    if (typeof successField === "boolean") {
+      isSuccess = successField;
+    } else if (statusField) {
+      let s = String(statusField).toLowerCase();
+      isSuccess = ["success", "ok", "true", "completed", "paid", "approved", "1"].includes(s);
     } else if (codeField) {
-      // Look for success code patterns
-      let codeStr = String(codeField).toLowerCase();
-      isSuccess = codeStr.includes("success") || codeStr.includes("200") || codeStr.includes("ppt_200");
+      let c = String(codeField).toLowerCase();
+      isSuccess = c.includes("success") || c.includes("200") || c.includes("00") || c.includes("ppt_200");
+    } else if (messageField) {
+      let m = String(messageField).toLowerCase();
+      isSuccess = m.includes("success") || m.includes("completed") || m.includes("paid");
     } else if (httpOk) {
       isSuccess = true;
     }
-
     if (!httpOk) isSuccess = false;
 
     let ref = "";
     if (data && typeof data === "object") {
       ref = data.referenceId || data.refId || data.ref || data.transactionId ||
             data.txnId || data.txn_id || data.orderId || data.order_id ||
-            data.paymentId || data.payment_id || data.id || data.utr ||
-            (data.data && (data.data.referenceId || data.data.refId || data.data.txnId || data.data.id)) || "";
+            data.paymentId || data.payment_id || data.utr || data.id ||
+            (data.data && (data.data.referenceId || data.data.refId || data.data.txnId || data.data.id || data.data.utr)) || "";
     }
 
     console.log("   Success:", isSuccess, "| Ref:", ref);
@@ -455,6 +468,7 @@ async function sendPaymentToGateway(gateway, paymentData) {
     };
   }
 }
+
 
 // ============================================================
 // ⌨️ REPLY KEYBOARD LAYOUT SYSTEM
@@ -674,7 +688,7 @@ async function getScreenKeyboard(screen) {
 }
 
 // ============================================================
-// 🔌 GATEWAY MANAGEMENT
+// 🔌 UNIVERSAL GATEWAY MANAGEMENT (with params)
 // ============================================================
 async function getGatewayListText() {
   let gateways = await Gateway.find({}).sort({ createdAt: 1 });
@@ -684,8 +698,10 @@ async function getGatewayListText() {
   } else {
     gateways.forEach((g, i) => {
       let statusIcon = g.active ? "🟢" : "⚪";
+      let paramCount = g.params ? Object.keys(g.params).length : 0;
       text += `${i + 1}. ${statusIcon} *${g.name}*\n`;
-      text += `   🔗 \`${g.url.substring(0, 50)}${g.url.length > 50 ? "..." : ""}\`\n\n`;
+      text += `   📡 ${g.method} • 🔑 ${paramCount} params\n`;
+      text += `   🔗 \`${g.url.substring(0, 45)}${g.url.length > 45 ? "..." : ""}\`\n\n`;
     });
   }
   text += "━━━━━━━━━━━━━━━━━━━━\n💡 Tap a gateway to Edit / Delete / Toggle.";
@@ -702,59 +718,6 @@ async function getGatewayListKeyboard() {
   kb = kb.text("⬅️ Back to Admin", "admin");
   return kb;
 }
-
-// ============================================================
-// 🚀 /start COMMAND
-// ============================================================
-bot.command("start", async (ctx) => {
-  try {
-    delete userState[ctx.from.id];
-    let userId = ctx.from.id;
-    let existingUser = await User.findOne({ userId });
-    let isNewUser = !existingUser;
-    let user = await getUser(userId);
-    user.firstName = ctx.from.first_name || "";
-    user.username = ctx.from.username || "";
-    await user.save();
-
-    if (isNewUser) {
-      let nameStr = `${ctx.from.first_name || ""} ${ctx.from.last_name || ""}`.trim() || "No Name";
-      let usernameStr = ctx.from.username ? `@${ctx.from.username}` : "No Username";
-      let notifMsg = `🆕 *New User Started Bot!*\n\n👤 ${nameStr}\n🆔 \`${userId}\`\n📛 ${usernameStr}\n📅 ${new Date().toLocaleString('en-IN')}`;
-      let profileKb = new InlineKeyboard().url("👤 Open Profile", `tg://user?id=${userId}`);
-      try { await ctx.api.sendMessage(MAIN_OWNER_ID, notifMsg, { parse_mode: "Markdown", reply_markup: profileKb }); } catch (e) {}
-    }
-
-    if (user.isBanned) return ctx.reply("❌ You are banned from using this bot.");
-
-    let isJoined = await checkForceJoin(ctx);
-    if (!isJoined) {
-      let channels = await getConfig("forced_channels", []);
-      let rows = [];
-      for (let i = 0; i < channels.length; i++) {
-        let ch = channels[i];
-        let btn = await iurl("join_channel", `📢 Join Channel ${i + 1}`, `https://t.me/${ch.replace('@', '')}`);
-        rows.push([btn]);
-      }
-      let verifyBtn = await ibtn("joined_verify", "✅ I have Joined", "check_join");
-      rows.push([verifyBtn]);
-      let joinText = await getConfig("text_forced_join", "⚠️ You must join our channels to use this bot!\n\nJoin the channels below and click 'I have Joined':");
-      return ctx.reply(joinText, { reply_markup: buildIKB(rows) });
-    }
-
-    let welcomeText = await getConfig("text_welcome", `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Payment Task Bot!`);
-    await ctx.reply(welcomeText, { reply_markup: await buildReplyKeyboard() });
-  } catch (err) { console.error("Error /start:", err); }
-});
-
-bot.callbackQuery("check_join", async (ctx) => {
-  await ctx.answerCallbackQuery().catch(() => {});
-  let isJoined = await checkForceJoin(ctx);
-  if (!isJoined) return ctx.answerCallbackQuery({ text: "❌ Join all channels first!", show_alert: true });
-  await ctx.deleteMessage().catch(() => {});
-  let welcomeText = await getConfig("text_welcome", `👋 Welcome back! Choose an option below:`);
-  await ctx.reply(welcomeText, { reply_markup: await buildReplyKeyboard() });
-});
 
 // ============================================================
 // 👑 ADMIN PANEL
@@ -804,7 +767,7 @@ bot.callbackQuery("admin", async (ctx) => {
 });
 
 // ============================================================
-// 🔌 GATEWAY MANAGEMENT CALLBACKS
+// 🔌 GATEWAY LIST
 // ============================================================
 bot.callbackQuery("adm_gateway_list", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
@@ -815,7 +778,9 @@ bot.callbackQuery("adm_gateway_list", async (ctx) => {
   }).catch(() => {});
 });
 
-// View single gateway
+// ============================================================
+// 🔌 VIEW SINGLE GATEWAY (with params)
+// ============================================================
 bot.callbackQuery(/^gw_view_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_view_", "");
@@ -823,35 +788,54 @@ bot.callbackQuery(/^gw_view_/, async (ctx) => {
   if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
   await ctx.answerCallbackQuery();
 
+  let paramsText = "";
+  if (gw.params && Object.keys(gw.params).length > 0) {
+    for (let [k, v] of Object.entries(gw.params)) {
+      let displayVal = String(v);
+      if (displayVal.length > 40) displayVal = displayVal.substring(0, 40) + "...";
+      paramsText += `   • \`${k}\` = \`${displayVal}\`\n`;
+    }
+  } else {
+    paramsText = "   _(none)_\n";
+  }
+
   let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
   text += `📛 *Name:* ${gw.name}\n`;
+  text += `📡 *Method:* ${gw.method}\n`;
   text += `🔗 *URL:*\n\`${gw.url}\`\n\n`;
+  text += `🔑 *Params:*\n${paramsText}\n`;
   text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n`;
   text += `━━━━━━━━━━━━━━━━━━━━`;
 
   let kb = new InlineKeyboard()
     .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
     .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
+    .text("🔑 Edit Params", `gw_edit_params_${gwId}`).row()
+    .text("📡 Toggle Method", `gw_toggle_method_${gwId}`).row()
     .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
     .text("🗑️ Delete Gateway", `gw_delete_${gwId}`).row()
     .text("🔙 Back", "adm_gateway_list");
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// Add new gateway — Step 1/2
+// ============================================================
+// 🔌 ADD NEW GATEWAY — Step 1/3 (Name)
+// ============================================================
 bot.callbackQuery("gw_add_new", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   await ctx.answerCallbackQuery();
   userState[ctx.from.id] = "GW_ADD_NAME";
   await ctx.editMessageText(
-    `🔌 *Add New Gateway — Step 1/2*\n\n` +
+    `🔌 *Add New Gateway — Step 1/3*\n\n` +
     `📛 Send the *Gateway Name*\n\n` +
-    `Example: \`Paytm\` or \`Vsv\` or \`Cashfree\``,
+    `Examples:\n• \`Ultra Pay\`\n• \`Paytm\`\n• \`Cashfree\`\n• \`PhonePe\``,
     { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
   ).catch(() => {});
 });
 
-// Toggle active
+// ============================================================
+// 🔌 TOGGLE ACTIVE
+// ============================================================
 bot.callbackQuery(/^gw_toggle_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_toggle_", "");
@@ -860,21 +844,29 @@ bot.callbackQuery(/^gw_toggle_/, async (ctx) => {
   gw.active = !gw.active;
   await gw.save();
   await ctx.answerCallbackQuery({ text: gw.active ? "🟢 Activated!" : "⚪ Deactivated!" });
-
-  let text = `🔌 *Gateway Details*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
-  text += `📛 *Name:* ${gw.name}\n`;
-  text += `🔗 *URL:*\n\`${gw.url}\`\n\n`;
-  text += `📊 *Status:* ${gw.active ? "🟢 Active" : "⚪ Inactive"}\n\n━━━━━━━━━━━━━━━━━━━━`;
-  let kb = new InlineKeyboard()
-    .text("✏️ Edit Name", `gw_edit_name_${gwId}`).row()
-    .text("✏️ Edit URL", `gw_edit_url_${gwId}`).row()
-    .text(gw.active ? "⚪ Deactivate" : "🟢 Activate", `gw_toggle_${gwId}`).row()
-    .text("🗑️ Delete Gateway", `gw_delete_${gwId}`).row()
-    .text("🔙 Back", "adm_gateway_list");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  return bot.api.sendMessage(ctx.from.id, "🔄 Refreshed!", { reply_markup: new InlineKeyboard().text("🔌 View Gateway", `gw_view_${gwId}`) }).catch(() => {});
 });
 
-// Delete confirmation
+// ============================================================
+// 🔌 TOGGLE METHOD (GET/POST)
+// ============================================================
+bot.callbackQuery(/^gw_toggle_method_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_toggle_method_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  gw.method = (gw.method || "GET").toUpperCase() === "GET" ? "POST" : "GET";
+  await gw.save();
+  await ctx.answerCallbackQuery({ text: `📡 Method: ${gw.method}` });
+  await ctx.editMessageText(`📡 Method changed to *${gw.method}*`, {
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard().text("🔙 Back to Gateway", `gw_view_${gwId}`)
+  }).catch(() => {});
+});
+
+// ============================================================
+// 🔌 DELETE CONFIRM
+// ============================================================
 bot.callbackQuery(/^gw_delete_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_delete_", "");
@@ -903,7 +895,9 @@ bot.callbackQuery(/^gw_confirmdel_/, async (ctx) => {
   }).catch(() => {});
 });
 
-// Edit gateway name
+// ============================================================
+// 🔌 EDIT NAME
+// ============================================================
 bot.callbackQuery(/^gw_edit_name_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_edit_name_", "");
@@ -915,20 +909,74 @@ bot.callbackQuery(/^gw_edit_name_/, async (ctx) => {
   }).catch(() => {});
 });
 
-// Edit gateway URL
+// ============================================================
+// 🔌 EDIT URL
+// ============================================================
 bot.callbackQuery(/^gw_edit_url_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let gwId = ctx.callbackQuery.data.replace("gw_edit_url_", "");
   userState[ctx.from.id] = `GW_EDIT_URL_${gwId}`;
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(`🔗 Send new *API URL*:\n\nExample: \`https://api.gateway.com/pay?key=xxx\``, {
+  await ctx.editMessageText(
+    `🔗 Send new *API URL*:\n\n` +
+    `Example:\n\`https://api.gateway.com/pay\``,
+    {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+    }
+  ).catch(() => {});
+});
+
+// ============================================================
+// 🔌 EDIT PARAMS (KEY-VALUE PAIRS)
+// ============================================================
+bot.callbackQuery(/^gw_edit_params_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_edit_params_", "");
+  userState[ctx.from.id] = `GW_EDIT_PARAMS_${gwId}`;
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText(
+    `🔑 *Edit Params*\n\n` +
+    `Send params in this format:\n\n` +
+    `\`\`\`\n` +
+    `token=P7HrpXCZLTQpd1hLNroxduBqpOmg0cTXpYnX7b5n1B\n` +
+    `key=2j6djFlhsWBT7o7O\n` +
+    `paytoNumber={upi}\n` +
+    `amount={amount}\n` +
+    `comment=Monthly payment\n` +
+    `\`\`\`\n\n` +
+    `💡 *Dynamic values:*\n` +
+    `• \`{upi}\` → user UPI/wallet\n` +
+    `• \`{amount}\` → withdrawal amount\n` +
+    `• \`{userId}\` → user ID\n` +
+    `• \`{orderId}\` → order ID\n\n` +
+    `⚠️ Each param on *new line*`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+    }
+  ).catch(() => {});
+});
+
+// ============================================================
+// 🔌 CLEAR PARAMS
+// ============================================================
+bot.callbackQuery(/^gw_clear_params_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let gwId = ctx.callbackQuery.data.replace("gw_clear_params_", "");
+  let gw = await getGatewayById(gwId);
+  if (!gw) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
+  gw.params = {};
+  await gw.save();
+  await ctx.answerCallbackQuery({ text: "🔑 Params cleared!" });
+  await ctx.editMessageText(`🔑 Params cleared for *${gw.name}*`, {
     parse_mode: "Markdown",
-    reply_markup: new InlineKeyboard().text("❌ Cancel", `gw_view_${gwId}`)
+    reply_markup: new InlineKeyboard().text("🔙 Back", `gw_view_${gwId}`)
   }).catch(() => {});
 });
 
 // ============================================================
-// ⌨️ CUSTOMIZE KEYBOARD CALLBACKS
+// ⌨️ KEYBOARD CUSTOMIZE
 // ============================================================
 bot.callbackQuery("adm_customize_keyboard", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
@@ -1023,9 +1071,6 @@ bot.callbackQuery(/^kbd_resetbtn_/, async (ctx) => {
   let btnKey = ctx.callbackQuery.data.replace("kbd_resetbtn_", "");
   let btn = await KeyboardLayout.findOne({ buttonKey: btnKey });
   if (!btn) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
-  let currentStyle = await getReplyStyle(btnKey);
-  let defaultStyle = DEFAULT_REPLY_STYLES[btnKey] || null;
-  if (currentStyle === defaultStyle) return ctx.answerCallbackQuery({ text: "ℹ️ Already default!", show_alert: true });
   await resetReplyStyle(btnKey);
   await ctx.answerCallbackQuery({ text: "✅ Reset to default!", show_alert: true });
   let newStyle = await getReplyStyle(btnKey);
@@ -1222,9 +1267,6 @@ bot.callbackQuery(/^inline_reset_/, async (ctx) => {
   let buttonId = ctx.callbackQuery.data.replace("inline_reset_", "");
   let meta = INLINE_BUTTONS_REGISTRY.find(b => b.id === buttonId);
   if (!meta) return ctx.answerCallbackQuery({ text: "Not found!", show_alert: true });
-  let current = await getInlineStyle(buttonId);
-  let def = DEFAULT_INLINE_STYLES[buttonId] || null;
-  if (current === def) return ctx.answerCallbackQuery({ text: "ℹ️ Already default!", show_alert: true });
   await resetInlineStyle(buttonId);
   await ctx.answerCallbackQuery({ text: "✅ Reset!", show_alert: true });
   await ctx.editMessageText(await getScreenText(meta.screen), { reply_markup: await getScreenKeyboard(meta.screen), parse_mode: "Markdown" }).catch(() => {});
@@ -1235,6 +1277,60 @@ bot.callbackQuery("inline_reset_all", async (ctx) => {
   await InlineStyle.deleteMany({});
   await ctx.answerCallbackQuery({ text: "🔄 All reset!", show_alert: true });
   await ctx.editMessageText(await getInlineStylesText(), { reply_markup: await getInlineStylesKeyboard(), parse_mode: "Markdown" }).catch(() => {});
+});
+
+
+// ============================================================
+// 🚀 /start COMMAND
+// ============================================================
+bot.command("start", async (ctx) => {
+  try {
+    delete userState[ctx.from.id];
+    let userId = ctx.from.id;
+    let existingUser = await User.findOne({ userId });
+    let isNewUser = !existingUser;
+    let user = await getUser(userId);
+    user.firstName = ctx.from.first_name || "";
+    user.username = ctx.from.username || "";
+    await user.save();
+
+    if (isNewUser) {
+      let nameStr = `${ctx.from.first_name || ""} ${ctx.from.last_name || ""}`.trim() || "No Name";
+      let usernameStr = ctx.from.username ? `@${ctx.from.username}` : "No Username";
+      let notifMsg = `🆕 *New User Started Bot!*\n\n👤 ${nameStr}\n🆔 \`${userId}\`\n📛 ${usernameStr}\n📅 ${new Date().toLocaleString('en-IN')}`;
+      let profileKb = new InlineKeyboard().url("👤 Open Profile", `tg://user?id=${userId}`);
+      try { await ctx.api.sendMessage(MAIN_OWNER_ID, notifMsg, { parse_mode: "Markdown", reply_markup: profileKb }); } catch (e) {}
+    }
+
+    if (user.isBanned) return ctx.reply("❌ You are banned from using this bot.");
+
+    let isJoined = await checkForceJoin(ctx);
+    if (!isJoined) {
+      let channels = await getConfig("forced_channels", []);
+      let rows = [];
+      for (let i = 0; i < channels.length; i++) {
+        let ch = channels[i];
+        let btn = await iurl("join_channel", `📢 Join Channel ${i + 1}`, `https://t.me/${ch.replace('@', '')}`);
+        rows.push([btn]);
+      }
+      let verifyBtn = await ibtn("joined_verify", "✅ I have Joined", "check_join");
+      rows.push([verifyBtn]);
+      let joinText = await getConfig("text_forced_join", "⚠️ You must join our channels to use this bot!\n\nJoin the channels below and click 'I have Joined':");
+      return ctx.reply(joinText, { reply_markup: buildIKB(rows) });
+    }
+
+    let welcomeText = await getConfig("text_welcome", `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Payment Task Bot!`);
+    await ctx.reply(welcomeText, { reply_markup: await buildReplyKeyboard() });
+  } catch (err) { console.error("Error /start:", err); }
+});
+
+bot.callbackQuery("check_join", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  let isJoined = await checkForceJoin(ctx);
+  if (!isJoined) return ctx.answerCallbackQuery({ text: "❌ Join all channels first!", show_alert: true });
+  await ctx.deleteMessage().catch(() => {});
+  let welcomeText = await getConfig("text_welcome", `👋 Welcome back! Choose an option below:`);
+  await ctx.reply(welcomeText, { reply_markup: await buildReplyKeyboard() });
 });
 
 // ============================================================
@@ -1450,7 +1546,7 @@ bot.callbackQuery(/^track_back_/, async (ctx) => {
 });
 
 // ============================================================
-// 🏧 WITHDRAWAL — AUTO PAYMENT VIA GATEWAY
+// 🏧 WITHDRAWAL — AUTO PAYMENT VIA UNIVERSAL GATEWAY
 // ============================================================
 bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let parts = ctx.callbackQuery.data.replace("conf_wd_", "").split("_");
@@ -1475,7 +1571,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
 
   let wId = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Create withdrawal record
   let wd = await Withdrawal.create({
     withdrawalId: wId, userId, amount, method, details,
     status: "Pending", autoPaid: false
@@ -1520,8 +1615,8 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
     return;
   }
 
-  // ⚡ AUTO PAYMENT via gateway
-  let paymentData = { amount, details, userId, orderId: wId };
+  // ⚡ AUTO PAYMENT via gateway (Universal)
+  let paymentData = { amount, details, userId, orderId: wId, name: ctx.from.first_name || "", method };
   let result = await sendPaymentToGateway(activeGateway, paymentData);
 
   // Update record
@@ -1530,29 +1625,21 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   wd.gatewayResponse = result.data;
   wd.autoPaid = true;
 
-  // Masked address
   let maskedAddress = maskAddress(details);
 
-  // Gateway response JSON text
   let gatewayResponseText = "";
   if (result.data) {
-    try {
-      gatewayResponseText = JSON.stringify(result.data);
-    } catch (e) {
-      gatewayResponseText = String(result.data);
-    }
+    try { gatewayResponseText = JSON.stringify(result.data); }
+    catch (e) { gatewayResponseText = String(result.data); }
   } else {
     gatewayResponseText = JSON.stringify({ error: result.error || "Unknown error" });
   }
-
-  // Telegram markdown escape for JSON (remove backticks issues)
   gatewayResponseText = gatewayResponseText.replace(/`/g, "'");
 
   if (result.success) {
     wd.status = "AutoSuccess";
     await wd.save();
 
-    // Success message (user format)
     let successMsg =
       `✅ *New Withdrawal Processed* ✅\n\n` +
       `🟢 *User :* ${userId}\n` +
@@ -1592,7 +1679,7 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   }
 });
 
-// Payout channel notification (both success & fail)
+// Payout channel notification
 async function sendPayoutChannelNotification(ctx, withdrawal, gateway, autoResult, user, maskedAddress, botUsername) {
   let pChannel = await getConfig("payout_channel", null);
   if (!pChannel) return;
@@ -1639,7 +1726,7 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.");
 });
 
-// Manual approve (no-gateway case)
+// Manual approve (no-gateway)
 bot.callbackQuery(/^wd_app_/, async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
   let wId = ctx.callbackQuery.data.replace("wd_app_", "");
@@ -1745,7 +1832,7 @@ bot.callbackQuery(/^task_rej_/, async (ctx) => {
 });
 
 // ============================================================
-// 💬 TEXT HANDLER
+// 💬 TEXT HANDLER (with 3-step Gateway setup)
 // ============================================================
 bot.on("message:text", async (ctx, next) => {
   let text = ctx.message.text.trim();
@@ -1759,34 +1846,92 @@ bot.on("message:text", async (ctx, next) => {
       return;
     }
 
-    // ===== GATEWAY SETUP (2 steps only) =====
+    // ===== GATEWAY ADD — Step 1/3: Name =====
     if (state === "GW_ADD_NAME" && (await isAdmin(userId))) {
       userState[userId] = `GW_ADD_URL_${text}`;
       return ctx.reply(
         `✅ Name: *${text}*\n\n` +
-        `🔗 Now send the *Full API URL*\n\n` +
-        `⚠️ URL-ൽ *എല്ലാം* ഉണ്ടായിരിക്കണം (key, password, wallet, etc.)\n\n` +
-        `Example:\n\`https://api.gateway.com/pay?key=sk_xxx&wallet=yyy\``,
+        `🔌 *Step 2/3 — API URL*\n\n` +
+        `Send the *full API URL*\n\n` +
+        `Examples:\n` +
+        `• \`https://ultra-pay.in/APIs/api\`\n` +
+        `• \`https://api.paytm.com/pay\``,
         { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
       );
     }
+
+    // ===== GATEWAY ADD — Step 2/3: URL =====
     if (state.startsWith("GW_ADD_URL_") && (await isAdmin(userId))) {
       let name = state.replace("GW_ADD_URL_", "");
       let url = text.trim();
+      userState[userId] = `GW_ADD_PARAMS_${name}|||${url}`;
+      return ctx.reply(
+        `✅ URL saved!\n\n` +
+        `🔌 *Step 3/3 — Params*\n\n` +
+        `Send params in this format:\n\n` +
+        `\`\`\`\n` +
+        `token=P7HrpXCZLTQpd1hLNroxduBqpOmg0cTXpYnX7b5n1B\n` +
+        `key=2j6djFlhsWBT7o7O\n` +
+        `paytoNumber={upi}\n` +
+        `amount={amount}\n` +
+        `comment=Monthly payment\n` +
+        `\`\`\`\n\n` +
+        `💡 *Dynamic values:*\n` +
+        `• \`{upi}\` → user address\n` +
+        `• \`{amount}\` → withdrawal amount\n` +
+        `• \`{userId}\` → user ID\n` +
+        `• \`{orderId}\` → order ID\n\n` +
+        `⚠️ *Each param on a new line*\n` +
+        `\`key=value\` format`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "adm_gateway_list") }
+      );
+    }
+
+    // ===== GATEWAY ADD — Step 3/3: Params =====
+    if (state.startsWith("GW_ADD_PARAMS_") && (await isAdmin(userId))) {
+      let raw = state.replace("GW_ADD_PARAMS_", "");
+      let [name, url] = raw.split("|||");
+      let params = {};
+      let lines = text.split("\n");
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || !line.includes("=")) continue;
+        let idx = line.indexOf("=");
+        let k = line.substring(0, idx).trim();
+        let v = line.substring(idx + 1).trim();
+        if (k) params[k] = v;
+      }
       delete userState[userId];
+
+      if (Object.keys(params).length === 0) {
+        return ctx.reply(
+          `❌ *No valid params!*\n\n` +
+          `Format: \`key=value\` on each line\n\n` +
+          `Try again or use ➕ Add New Gateway.`,
+          { parse_mode: "Markdown" }
+        );
+      }
 
       let gwId = "gw_" + uuidv4().replace(/-/g, "").substring(0, 12);
       await Gateway.create({
         gatewayId: gwId,
         name, url,
-        method: "POST",
+        method: "GET",
+        params,
         active: true
       });
+
+      let paramPreview = Object.entries(params).map(([k, v]) => `   • \`${k}\` = \`${v}\``).join("\n");
+
       return ctx.reply(
         `🎉 *Gateway Added Successfully!*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
         `📛 *Name:* ${name}\n` +
+        `📡 *Method:* GET\n` +
         `🔗 *URL:*\n\`${url}\`\n\n` +
-        `✅ Ready to use!`,
+        `🔑 *Params (${Object.keys(params).length}):*\n${paramPreview}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `✅ *Ready to use!* Every withdrawal will now auto-pay via this gateway.`,
         { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔌 View Gateways", "adm_gateway_list") }
       );
     }
@@ -1798,7 +1943,7 @@ bot.on("message:text", async (ctx, next) => {
       let gw = await getGatewayById(gwId);
       if (!gw) return ctx.reply("❌ Not found!");
       gw.name = text; await gw.save();
-      return ctx.reply(`✅ Name updated to: ${text}`);
+      return ctx.reply(`✅ Name updated to: *${text}*`, { parse_mode: "Markdown" });
     }
 
     // Edit gateway URL
@@ -1811,6 +1956,31 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ URL updated!`);
     }
 
+    // Edit gateway params
+    if (state.startsWith("GW_EDIT_PARAMS_") && (await isAdmin(userId))) {
+      let gwId = state.replace("GW_EDIT_PARAMS_", "");
+      delete userState[userId];
+      let gw = await getGatewayById(gwId);
+      if (!gw) return ctx.reply("❌ Not found!");
+      let params = {};
+      let lines = text.split("\n");
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || !line.includes("=")) continue;
+        let idx = line.indexOf("=");
+        let k = line.substring(0, idx).trim();
+        let v = line.substring(idx + 1).trim();
+        if (k) params[k] = v;
+      }
+      if (Object.keys(params).length === 0) return ctx.reply("❌ No valid params! Use `key=value` format.", { parse_mode: "Markdown" });
+      gw.params = params;
+      await gw.save();
+      return ctx.reply(
+        `✅ *Params updated!* (${Object.keys(params).length} params)`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔌 View Gateway", `gw_view_${gwId}`) }
+      );
+    }
+
     // Keyboard rename
     if (state.startsWith("KBD_RENAME_") && (await isAdmin(userId))) {
       let btnKey = state.replace("KBD_RENAME_", "");
@@ -1821,13 +1991,11 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Renamed to: ${text}`);
     }
 
-    // Support ID
     if (state === "WAITING_FOR_SUPPORT_ID" && (await isAdmin(userId))) {
       delete userState[userId];
       await setConfig("support_username", text);
       return ctx.reply(`✅ Support: ${text}`);
     }
-    // Task time limit
     if (state.startsWith("WAITING_FOR_TASK_TIME_") && (await isAdmin(userId))) {
       let tId = state.replace("WAITING_FOR_TASK_TIME_", "");
       delete userState[userId];
@@ -1836,13 +2004,11 @@ bot.on("message:text", async (ctx, next) => {
       await Task.findOneAndUpdate({ taskId: tId }, { timeLimitMinutes: mins });
       return ctx.reply(`✅ Time: ${mins} min`);
     }
-    // Task alert channel
     if (state === "WAITING_FOR_TASK_ALERT_CHANNEL" && (await isAdmin(userId))) {
       delete userState[userId];
       await setConfig("default_task_alert_channel", text);
       return ctx.reply(`✅ Channel: ${text}`);
     }
-    // User tracker
     if (state === "WAITING_FOR_TRACKER_ID" && (await isAdmin(userId))) {
       delete userState[userId];
       let tid = parseInt(text, 10);
@@ -1856,7 +2022,6 @@ bot.on("message:text", async (ctx, next) => {
         .text("🔙 Back", "admin");
       return ctx.reply(generateTrackerText(u), { reply_markup: kb });
     }
-    // Add balance
     if (state === "WAITING_FOR_ADD_BAL" && (await isAdmin(userId))) {
       delete userState[userId];
       let [tid, amt] = text.split(" ").map(x => x.trim());
@@ -1866,7 +2031,6 @@ bot.on("message:text", async (ctx, next) => {
       await logBalanceHistory(t, "Admin Added", a);
       return ctx.reply(`✅ Added ₹${a}. New: ₹${u.balance.toFixed(2)}`);
     }
-    // Remove balance
     if (state === "WAITING_FOR_REM_BAL" && (await isAdmin(userId))) {
       delete userState[userId];
       let [tid, amt] = text.split(" ").map(x => x.trim());
@@ -1878,7 +2042,6 @@ bot.on("message:text", async (ctx, next) => {
       await logBalanceHistory(t, "Admin Removed", -a);
       return ctx.reply(`✅ Removed. New: ₹${u.balance.toFixed(2)}`);
     }
-    // Min withdraw
     if (state === "WAITING_FOR_MIN_W" && (await isAdmin(userId))) {
       delete userState[userId];
       let a = parseFloat(text);
@@ -1886,7 +2049,6 @@ bot.on("message:text", async (ctx, next) => {
       await setConfig("min_withdraw", a);
       return ctx.reply(`✅ Min: ₹${a}`);
     }
-    // Max withdraw
     if (state === "WAITING_FOR_MAX_W" && (await isAdmin(userId))) {
       delete userState[userId];
       let a = parseFloat(text);
@@ -1894,13 +2056,11 @@ bot.on("message:text", async (ctx, next) => {
       await setConfig("max_withdraw", a);
       return ctx.reply(`✅ Max: ₹${a}`);
     }
-    // Payout channel
     if (state === "WAITING_FOR_P_CHAN" && (await isAdmin(userId))) {
       delete userState[userId];
       await setConfig("payout_channel", text);
       return ctx.reply(`✅ Payout: ${text}`);
     }
-    // Reset balance
     if (state === "WAITING_FOR_RESET_BAL" && (await isAdmin(userId))) {
       delete userState[userId];
       let t = parseInt(text, 10);
@@ -1908,7 +2068,6 @@ bot.on("message:text", async (ctx, next) => {
       await User.findOneAndUpdate({ userId: t }, { balance: 0 });
       return ctx.reply(`✅ Reset done.`);
     }
-    // Channels
     if (state === "WAITING_FOR_CHANNEL_ADD" && (await isAdmin(userId))) {
       delete userState[userId];
       if (text.toLowerCase() === "clear") { await setConfig("forced_channels", []); return ctx.reply("✅ Cleared."); }
@@ -1917,7 +2076,6 @@ bot.on("message:text", async (ctx, next) => {
       await setConfig("forced_channels", ch);
       return ctx.reply(`✅ Channel: ${text}`);
     }
-    // Create task
     if (state === "WAITING_FOR_TASK_CREATE" && (await isAdmin(userId))) {
       delete userState[userId];
       let p = text.split("|").map(x => x.trim());
@@ -1926,7 +2084,6 @@ bot.on("message:text", async (ctx, next) => {
       await Task.create({ taskId: p[0], title: p[1], reward: parseFloat(p[2]), link: p[3], alertChannel: alertCh });
       return ctx.reply(`✅ Task created!`);
     }
-    // Create gift
     if (state === "WAITING_FOR_GIFT_CREATE" && (await isAdmin(userId))) {
       delete userState[userId];
       let p = text.split(" ");
@@ -1934,7 +2091,6 @@ bot.on("message:text", async (ctx, next) => {
       await GiftCode.create({ code: p[0], amount: parseFloat(p[1]), maxUses: parseInt(p[2], 10) });
       return ctx.reply(`✅ Gift code: ${p[0]}`);
     }
-    // Broadcast
     if (state === "WAITING_FOR_BROADCAST" && (await isAdmin(userId))) {
       delete userState[userId];
       let users = await User.find({});
@@ -1942,7 +2098,6 @@ bot.on("message:text", async (ctx, next) => {
       for (let u of users) { try { await ctx.api.sendMessage(u.userId, text); c++; } catch (e) {} }
       return ctx.reply(`✅ Sent to ${c} users`);
     }
-    // Manage admins
     if (state === "WAITING_FOR_ADMIN_ID") {
       delete userState[userId];
       let aid = parseInt(text, 10);
@@ -1952,7 +2107,6 @@ bot.on("message:text", async (ctx, next) => {
       admins.push(aid); await setConfig("admins", admins);
       return ctx.reply(`✅ Added ${aid}`);
     }
-    // Transfer ownership
     if (state === "WAITING_FOR_NEW_OWNER") {
       delete userState[userId];
       let n = parseInt(text, 10);
@@ -1968,7 +2122,6 @@ bot.on("message:text", async (ctx, next) => {
       await User.findOneAndUpdate({ userId }, { walletAccount: text });
       return ctx.reply(`✅ *Wallet saved:* \`${text}\``, { parse_mode: "Markdown" });
     }
-
     if (state === "SET_UPI_ACC") {
       if (!isValidUPI(text)) {
         return ctx.reply(
@@ -1983,7 +2136,6 @@ bot.on("message:text", async (ctx, next) => {
       await User.findOneAndUpdate({ userId }, { upiId: text.trim() });
       return ctx.reply(`✅ *UPI saved:* \`${text.trim()}\``, { parse_mode: "Markdown" });
     }
-
     if (state === "SET_BANK_ACC") {
       let p = text.split("|").map(x => x.trim());
       if (p.length < 3) {
@@ -1996,20 +2148,10 @@ bot.on("message:text", async (ctx, next) => {
       }
       let [accNo, ifsc, bankName] = p;
       if (!isValidAccountNo(accNo)) {
-        return ctx.reply(
-          `❌ *Invalid Account Number!*\n\n` +
-          `Must be 9-18 digits.\n\n` +
-          `Got: \`${accNo}\``,
-          { parse_mode: "Markdown" }
-        );
+        return ctx.reply(`❌ *Invalid Account Number!*\n\nMust be 9-18 digits.`, { parse_mode: "Markdown" });
       }
       if (!isValidIFSC(ifsc)) {
-        return ctx.reply(
-          `❌ *Invalid IFSC Code!*\n\n` +
-          `Format: \`ABCD0123456\`\n\n` +
-          `Example: \`SBIN0001234\``,
-          { parse_mode: "Markdown" }
-        );
+        return ctx.reply(`❌ *Invalid IFSC Code!*\n\nFormat: \`ABCD0123456\``, { parse_mode: "Markdown" });
       }
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, {
@@ -2025,21 +2167,14 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "Markdown" }
       );
     }
-
     if (state === "SET_AMAZON_ACC") {
       if (!isValidEmail(text)) {
-        return ctx.reply(
-          `❌ *Invalid Email!*\n\n` +
-          `Format: \`user@domain.com\`\n\n` +
-          `Examples:\n• \`user@gmail.com\`\n• \`john@yahoo.com\``,
-          { parse_mode: "Markdown" }
-        );
+        return ctx.reply(`❌ *Invalid Email!*\n\nFormat: \`user@domain.com\``, { parse_mode: "Markdown" });
       }
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { amazonEmail: text.trim() });
       return ctx.reply(`✅ *Amazon email:* \`${text.trim()}\``, { parse_mode: "Markdown" });
     }
-
     if (state === "SET_REDEEM_ACC") {
       if (!text || text.length < 3) return ctx.reply("❌ Invalid redeem address!");
       delete userState[userId];
@@ -2123,7 +2258,6 @@ bot.on("message:text", async (ctx, next) => {
   let matchedBtn = layout.find(b => b.name === text);
   let key = matchedBtn ? matchedBtn.buttonKey : null;
 
-  // 💰 My Balance
   if (key === "btn_balance") {
     let msg = `━━━━━━ 💳 *Wallet Overview* ━━━━━━\n\n🔵 Wallet ID ➝ \`${userId}\`\n🧾 Balance ➝ *₹${user.balance.toFixed(2)}*\n\nBuilt with security you can Trust.`;
     let bs = await ibtn("balance_statement", "📊 Balance Statement", "balance_statement");
@@ -2132,7 +2266,6 @@ bot.on("message:text", async (ctx, next) => {
     let lf = await ibtn("live_fund", "💰 Live Fund", "live_fund");
     return ctx.reply(msg, { reply_markup: buildIKB([[bs, cs], [rf], [lf]]), parse_mode: "Markdown" });
   }
-  // 📋 Task Earn
   else if (key === "btn_task") {
     let tasks = await Task.find({});
     if (!tasks.length) return ctx.reply("📋 No tasks.");
@@ -2140,17 +2273,14 @@ bot.on("message:text", async (ctx, next) => {
     for (let t of tasks) { rows.push([await ibtn("open_task_link", `📌 ${t.title} (₹${t.reward})`, `do_task_${t.taskId}`)]); }
     return ctx.reply("📋 *Available Tasks:*", { reply_markup: buildIKB(rows), parse_mode: "Markdown" });
   }
-  // 🎁 Gift Code
   else if (key === "btn_gift") {
     userState[userId] = "WAITING_FOR_GIFT_REDEEM";
     return ctx.reply("🎁 Gift Code\n\n💸 Send Gift Code:");
   }
-  // ⚡ Quick Pay
   else if (key === "btn_quickpay") {
     userState[userId] = "WAITING_FOR_P2P";
     return ctx.reply("💸 Quick Pay\n\nFormat:\nWalletID_or_UserID-Amount");
   }
-  // 💳 Payment Method
   else if (key === "btn_payout") {
     let activeGateway = await getActiveGateway();
     let gatewayName = activeGateway ? activeGateway.name : null;
@@ -2182,7 +2312,6 @@ bot.on("message:text", async (ctx, next) => {
 
     let rows = [[sw], [su], [sb], [sa], [sr]];
 
-    // ✅ Back button ONLY if wallet (gateway or walletAccount) is set
     let walletIsSet = gatewayName !== null || user.walletAccount !== "Not Set";
     if (walletIsSet) {
       let backBtn = await ibtn("back_to_balance", "🔙 Back", "back_to_balance");
@@ -2191,7 +2320,6 @@ bot.on("message:text", async (ctx, next) => {
 
     return ctx.reply(msg, { reply_markup: buildIKB(rows), parse_mode: "Markdown" });
   }
-  // 🚀 Withdraw
   else if (key === "btn_withdraw") {
     let minW = await getConfig("min_withdraw", 1);
     let maxW = await getConfig("max_withdraw", 100);
@@ -2213,7 +2341,6 @@ bot.on("message:text", async (ctx, next) => {
     return ctx.reply(msg, { reply_markup: buildIKB(rows) });
   }
   else {
-    // Gift code fallback
     let g = await GiftCode.findOne({ code: text });
     if (g) {
       if (g.usedUsers.includes(userId)) return ctx.reply("❌ Already used!");
@@ -2366,35 +2493,21 @@ bot.callbackQuery("set_wallet", async (ctx) => {
   await ctx.answerCallbackQuery();
   await ctx.reply("🌐 *Set Wallet*\n\nSend your wallet details:", { parse_mode: "Markdown" });
 });
-
 bot.callbackQuery("set_upi", async (ctx) => {
   userState[ctx.from.id] = "SET_UPI_ACC";
   await ctx.answerCallbackQuery();
-  await ctx.reply(
-    `⚡ *Set UPI ID*\n\n` +
-    `Format: \`username@bank\`\n\n` +
-    `Examples:\n• \`user@ybl\`\n• \`abc@paytm\``,
-    { parse_mode: "Markdown" }
-  );
+  await ctx.reply(`⚡ *Set UPI ID*\n\nFormat: \`username@bank\`\n\nExamples:\n• \`user@ybl\`\n• \`abc@paytm\``, { parse_mode: "Markdown" });
 });
-
 bot.callbackQuery("set_bank", async (ctx) => {
   userState[ctx.from.id] = "SET_BANK_ACC";
   await ctx.answerCallbackQuery();
-  await ctx.reply(
-    `🏦 *Set Bank Account*\n\n` +
-    `Format: \`AccNo | IFSC | BankName\`\n\n` +
-    `Example:\n\`123456789012 | SBIN0001234 | State Bank\``,
-    { parse_mode: "Markdown" }
-  );
+  await ctx.reply(`🏦 *Set Bank Account*\n\nFormat: \`AccNo | IFSC | BankName\`\n\nExample:\n\`123456789012 | SBIN0001234 | State Bank\``, { parse_mode: "Markdown" });
 });
-
 bot.callbackQuery("set_amazon", async (ctx) => {
   userState[ctx.from.id] = "SET_AMAZON_ACC";
   await ctx.answerCallbackQuery();
   await ctx.reply("📧 *Set Amazon Email*\n\nFormat: `user@gmail.com`", { parse_mode: "Markdown" });
 });
-
 bot.callbackQuery("set_redeem", async (ctx) => {
   userState[ctx.from.id] = "SET_REDEEM_ACC";
   await ctx.answerCallbackQuery();
@@ -2412,7 +2525,6 @@ bot.callbackQuery("p2p_select_user", async (ctx) => {
   users.forEach(u => rows.push([{ text: `Wallet: ${u.walletId} (ID: ${u.userId})`, callback_data: `p2p_target_${u.walletId}` }]));
   await ctx.reply("👥 Select user:", { reply_markup: buildIKB(rows) });
 });
-
 bot.callbackQuery(/^p2p_target_/, async (ctx) => {
   let w = ctx.callbackQuery.data.replace("p2p_target_", "");
   await ctx.answerCallbackQuery();
@@ -2449,7 +2561,7 @@ bot.callbackQuery("wd_amazon", async (ctx) => { await promptWD(ctx, "Amazon"); }
 bot.callbackQuery("wd_redeem", async (ctx) => { await promptWD(ctx, "Redeem Code"); });
 
 // ============================================================
-// 🚀 START
+// 🚀 BOT START + DB
 // ============================================================
 bot.catch((err) => console.error("❌ Bot Error:", err));
 
