@@ -1,10 +1,12 @@
 // ============================================================
-// 🤖 TELEGRAM PAYMENT TASK BOT — LATEST VERSION
+// 🤖 TELEGRAM PAYMENT TASK BOT + MINI APP — LATEST VERSION
 // grammy ^1.35.1 | mongoose ^8.13.0 | express ^4.21.2
 // ============================================================
 const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
+const path = require("path");
+const fs = require("fs");
 
 // ============================================================
 // 🌐 EXPRESS SERVER
@@ -14,6 +16,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// ---------- Mini App Static Files ----------
+app.use("/miniapp", express.static(path.join(__dirname, "public")));
 
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -203,6 +208,252 @@ const Channel = mongoose.models.Channel || mongoose.model("Channel", channelSche
 const Config = mongoose.model("Config", configSchema);
 
 // ============================================================
+// 🎯 MINI APP API ENDPOINTS (പുതിയത്)
+// ============================================================
+
+// ----- USER INFO -----
+app.get("/miniapp/api/user/:userId", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const user = await User.findOne({ userId });
+    if (!user) return res.json({ success: false, error: "User not found" });
+
+    let linkedInfo = "Not Linked";
+    if (user.walletAccount && user.walletAccount !== "Not Set") linkedInfo = `Wallet: ${user.walletAccount}`;
+    else if (user.upiId && user.upiId !== "Not Set") linkedInfo = `UPI: ${user.upiId}`;
+    else if (user.bankAccNo && user.bankAccNo !== "Not Set") linkedInfo = `Bank: ${user.bankAccNo}`;
+
+    res.json({
+      success: true,
+      user: {
+        userId: user.userId,
+        firstName: user.firstName,
+        username: user.username,
+        balance: user.balance,
+        withdrawnTotal: user.withdrawnTotal,
+        blockedRefs: user.blockedRefs,
+        referredBy: user.referredBy,
+        joined: user.createdAt,
+        linkedInfo
+      }
+    });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- PAYMENT METHODS -----
+app.get("/miniapp/api/payment-methods/:userId", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const user = await User.findOne({ userId });
+    if (!user) return res.json({ success: false, error: "User not found" });
+
+    const methods = [
+      { name: "Wallet", icon: "👛", value: user.walletAccount || "Not Set" },
+      { name: "UPI", icon: "⚡", value: user.upiId || "Not Set" },
+      { name: "Bank", icon: "🏦", value: (user.bankAccNo && user.bankAccNo !== "Not Set") ? `${user.bankAccNo} (${user.bankIfsc})` : "Not Set" },
+      { name: "Amazon", icon: "📧", value: user.amazonEmail || "Not Set" },
+      { name: "Redeem Code", icon: "🎁", value: user.redeemCodeAddr || "Not Set" }
+    ];
+    res.json({ success: true, methods });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- TASKS LIST -----
+app.get("/miniapp/api/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find({});
+    res.json({ success: true, tasks });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- TASK DETAIL -----
+app.get("/miniapp/api/task/:taskId", async (req, res) => {
+  try {
+    const task = await Task.findOne({ taskId: req.params.taskId });
+    if (!task) return res.json({ success: false, error: "Task not found" });
+    res.json({ success: true, task });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- CLAIM GIFT CODE -----
+app.post("/miniapp/api/claim-gift", async (req, res) => {
+  try {
+    const { userId, code } = req.body;
+    if (!userId || !code) return res.json({ success: false, error: "Missing fields" });
+
+    const uid = parseInt(userId, 10);
+    const upperCode = String(code).trim().toUpperCase();
+
+    const gift = await GiftCode.findOneAndUpdate(
+      { code: upperCode, type: "redeem", usedUsers: { $ne: uid }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } },
+      { $push: { usedUsers: uid } },
+      { new: true }
+    );
+
+    if (!gift) return res.json({ success: false, error: "Invalid or expired gift code!" });
+
+    const user = await User.findOne({ userId: uid });
+    if (!user) return res.json({ success: false, error: "User not found" });
+
+    user.balance += gift.amount;
+    await user.save();
+    await logBalanceHistory(uid, `Gift Redeemed (${gift.code})`, gift.amount);
+
+    res.json({ success: true, amount: gift.amount, newBalance: user.balance, message: `₹${gift.amount} added!` });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- TOTAL BALANCE OF ALL USERS -----
+app.get("/miniapp/api/total-balance", async (req, res) => {
+  try {
+    const users = await User.find({});
+    const totalBalance = users.reduce((s, u) => s + (u.balance || 0), 0);
+    res.json({ success: true, totalBalance, totalUsers: users.length });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- LEADERBOARD (for Profile) -----
+app.get("/miniapp/api/leaderboard", async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ balance: -1 }).limit(50);
+    const list = users.map((u, i) => ({
+      rank: i + 1,
+      userId: u.userId,
+      name: u.firstName || "User",
+      balance: u.balance
+    }));
+    res.json({ success: true, leaderboard: list });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- WITHDRAW REQUEST (from Mini App) -----
+app.post("/miniapp/api/withdraw", async (req, res) => {
+  try {
+    const { userId, amount, method } = req.body;
+    if (!userId || !amount || !method) return res.json({ success: false, error: "Missing fields" });
+
+    const uid = parseInt(userId, 10);
+    const amt = parseFloat(amount);
+    const user = await User.findOne({ userId: uid });
+    if (!user) return res.json({ success: false, error: "User not found" });
+
+    const minW = await getConfig("min_withdraw", 1);
+    const maxW = await getConfig("max_withdraw", 100);
+
+    if (isNaN(amt) || amt < minW || amt > maxW) return res.json({ success: false, error: `Min ₹${minW} | Max ₹${maxW}` });
+    if (user.balance < amt) return res.json({ success: false, error: "Insufficient balance" });
+
+    let details = "";
+    if (method === "Wallet") details = user.walletAccount;
+    else if (method === "UPI") details = user.upiId;
+    else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}`;
+    else return res.json({ success: false, error: "Invalid method" });
+
+    if (!details || details === "Not Set") return res.json({ success: false, error: `${method} not linked!` });
+
+    user.balance -= amt;
+    user.withdrawnTotal = (user.withdrawnTotal || 0) + amt;
+    await user.save();
+    await logBalanceHistory(uid, `Withdrawn via ${method} (MiniApp)`, -amt);
+
+    const withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
+    await Withdrawal.create({ withdrawalId, userId: uid, amount: amt, method, details });
+
+    const payoutChannel = await getConfig("payout_channel", null);
+    if (payoutChannel) {
+      const adminKb = new InlineKeyboard()
+        .text("✅ Approve", `wd_app_${withdrawalId}`)
+        .text("❌ Reject", `wd_rej_${withdrawalId}`);
+      try {
+        await bot.api.sendMessage(payoutChannel,
+          `🔔 Withdrawal #${withdrawalId} (MiniApp)\n\n👤 ${uid}\n💰 ₹${amt}\n💳 ${method}\n📋 ${details}`,
+          { reply_markup: adminKb });
+      } catch (e) {}
+    }
+
+    res.json({ success: true, withdrawalId, message: `Withdrawal of ₹${amt} submitted!` });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- SUBMIT TASK SCREENSHOT (from Mini App) -----
+app.post("/miniapp/api/submit-task", async (req, res) => {
+  try {
+    const { userId, taskId, photoBase64 } = req.body;
+    if (!userId || !taskId || !photoBase64) return res.json({ success: false, error: "Missing fields" });
+
+    const uid = parseInt(userId, 10);
+    const task = await Task.findOne({ taskId });
+    if (!task) return res.json({ success: false, error: "Task not found" });
+    if (task.completedUsers.includes(uid)) return res.json({ success: false, error: "Already completed!" });
+
+    // Convert base64 to buffer
+    const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // Send photo to bot's chat with user first (to get file_id)
+    const submissionId = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await User.findOne({ userId: uid });
+    const userName = user ? (user.firstName || "User") : "User";
+
+    // Send photo to alert channel directly
+    const alertChannel = (task.alertChannel && task.alertChannel !== "Not Set")
+      ? task.alertChannel
+      : await getConfig("default_task_alert_channel", null);
+
+    if (!alertChannel || alertChannel === "Not Set") {
+      return res.json({ success: false, error: "Task alert channel not set. Contact admin." });
+    }
+
+    const caption =
+      `📸 *New Task Submission (MiniApp)!*\n\n👤 Name: ${userName}\n🆔 User ID: \`${uid}\`\n📌 Task: *${task.title}*\n💰 Reward: *₹${task.reward}*\n📅 Date: ${new Date().toLocaleString('en-IN')}`;
+    const kb = new InlineKeyboard()
+      .text("✅ Approve", `task_app_${submissionId}`).text("❌ Reject", `task_rej_${submissionId}`);
+
+    let sentMsg;
+    try {
+      sentMsg = await bot.api.sendPhoto(alertChannel, new (require("grammy").InputFile)(buffer, "proof.jpg"), {
+        caption, parse_mode: "Markdown", reply_markup: kb
+      });
+    } catch (e) {
+      return res.json({ success: false, error: "Failed to send to channel: " + e.message });
+    }
+
+    const photoFileId = sentMsg.photo[sentMsg.photo.length - 1].file_id;
+
+    await TaskSubmission.create({
+      submissionId, userId: uid, userName,
+      taskId: task.taskId, taskTitle: task.title,
+      reward: task.reward, photoFileId, status: "Pending"
+    });
+
+    res.json({ success: true, submissionId, message: "Screenshot submitted! Wait for admin approval." });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- UPDATE PAYMENT METHOD (from Mini App) -----
+app.post("/miniapp/api/update-payment", async (req, res) => {
+  try {
+    const { userId, field, value } = req.body;
+    if (!userId || !field || !value) return res.json({ success: false, error: "Missing fields" });
+
+    const uid = parseInt(userId, 10);
+    const allowed = ["walletAccount", "upiId", "bankAccNo", "bankIfsc", "amazonEmail", "redeemCodeAddr"];
+    if (!allowed.includes(field)) return res.json({ success: false, error: "Invalid field" });
+
+    const update = {};
+    update[field] = value;
+    await User.findOneAndUpdate({ userId: uid }, update);
+    res.json({ success: true, message: "Updated!" });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ----- Mini App Redirect Routes -----
+app.get("/miniapp", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/miniapp/task", (req, res) => res.sendFile(path.join(__dirname, "public", "task.html")));
+app.get("/miniapp/gift", (req, res) => res.sendFile(path.join(__dirname, "public", "gift.html")));
+app.get("/miniapp/profile", (req, res) => res.sendFile(path.join(__dirname, "public", "profile.html")));
+
+// ============================================================
 // 🔧 HELPERS
 // ============================================================
 async function getConfig(key, defaultValue) {
@@ -297,7 +548,6 @@ async function getCurrentKeyboardLayout() {
   return layout;
 }
 
-// 🎨 Build reply keyboard — BACK BUTTON FIX applied
 async function buildKeyboardFromLayout() {
   let layout = await getCurrentKeyboardLayout();
   let styleColor = await getConfig("reply_keyboard_style", "none");
@@ -324,10 +574,12 @@ async function buildKeyboardFromLayout() {
   return {
     keyboard: keyboardRows,
     resize_keyboard: true,
-    is_persistent: false,       // ✅ BACK BUTTON FIX
+    is_persistent: false,
     one_time_keyboard: false
   };
 }
+
+module.exports = { app, bot, User, Task, GiftCode, TaskSubmission, RedeemRequest, Channel, Config, Withdrawal, BalanceHistory, getConfig, setConfig, isAdmin, isOwner, getUser, checkForceJoin, generateTrackerText, STYLE_COLORS, INLINE_STYLE_COLORS, DEFAULT_KEYBOARD_LAYOUT, getCurrentKeyboardLayout, buildKeyboardFromLayout, logBalanceHistory, userState, MAIN_OWNER_ID };
 
 // ============================================================
 // 🎨 CUSTOMIZE THEME PANEL (Reply Keyboard Layout)
@@ -1012,6 +1264,15 @@ bot.callbackQuery("adm_toggle_bot", async (ctx) => {
   await renderSettingsPanel(ctx);
 });
 
+bot.callbackQuery("adm_set_support", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  userState[ctx.from.id] = "WAITING_FOR_SUPPORT_ID";
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText("💬 Send Support Username or ID:", {
+    reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings")
+  }).catch(() => {});
+});
+
 // ============================================================
 // 📢 MANAGE CHANNELS
 // ============================================================
@@ -1123,7 +1384,6 @@ bot.callbackQuery(/^ch_toggle_/, async (ctx) => {
   ch.isActive = !ch.isActive;
   await ch.save();
   await ctx.answerCallbackQuery({ text: ch.isActive ? "🟢 Activated!" : "🔴 Deactivated!" });
-  // Re-render
   let statusIcon = ch.isActive ? "✅ Active" : "❌ Inactive";
   let text = `📢 *${ch.channelId}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n📛 *Title:* ${ch.displayName}\n🆔 *Channel:* \`${ch.channelId}\`\n🔗 *Link:* ${ch.inviteLink}\n👥 *Subscribers:* ${ch.subscriberCount}\n📅 *Added:* ${new Date(ch.addedAt).toLocaleString('en-IN')}\n⚡ *Status:* ${statusIcon}\n\n━━━━━━━━━━━━━━━━━━━━`;
   let kb = new InlineKeyboard()
@@ -1197,9 +1457,20 @@ bot.command("start", async (ctx) => {
       return ctx.reply(joinText, { reply_markup: keyboard, parse_mode: "Markdown" });
     }
 
+    // ✅ MINI APP BUTTON ADDED
     let welcomeText = await getConfig("text_welcome",
-      `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the keyboard buttons below:`);
-    await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout() });
+      `👋 Hello ${ctx.from.first_name || "User"}!\n\nWelcome to Telegram Payment Task Bot! Use the keyboard buttons below or open Mini App 👇`);
+
+    let miniAppUrl = process.env.MINIAPP_URL || (process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL}/miniapp` : null);
+    if (miniAppUrl) {
+      await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout() });
+      await ctx.reply("📱 *Open Mini App:*", {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard().webApp("🚀 Open Mini App", miniAppUrl)
+      });
+    } else {
+      await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout() });
+    }
   } catch (err) { console.error("Error /start:", err); }
 });
 
