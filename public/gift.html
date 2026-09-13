@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Redeem Gift Code - Cash Dominos</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="logo">CASH DOMINOS</div>
+  </header>
+
+  <div class="gift-hero">
+    <div class="gift-icon">🎁</div>
+    <h2>Redeem Gift Code</h2>
+    <p>Enter your code below to get instant cashback in your account</p>
+  </div>
+
+  <div class="gift-form">
+    <label>GIFT CODE</label>
+    <div class="input-row">
+      <input type="text" id="giftCode" placeholder="e.g. FASTIFYGIFT" autocomplete="off" autocapitalize="characters">
+      <button onclick="claimGift()">CLAIM</button>
+    </div>
+    <div id="giftMsg" class="gift-msg"></div>
+  </div>
+
+  <div class="how-it-works">
+    <h4>HOW IT WORKS</h4>
+    <div class="step"><span>1</span> Get a gift code from our Telegram channel or special events</div>
+    <div class="step"><span>2</span> Enter the code above and tap <b>CLAIM</b></div>
+    <div class="step"><span>3</span> Cash is instantly added to your account withdraw anytime!</div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
+    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
+    <a href="/miniapp/gift" class="nav-item active">🎁<span>GIFT</span></a>
+    <a href="/miniapp/profile" class="nav-item">👤<span>PROFILE</span></a>
+  </nav>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
