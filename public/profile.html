@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Profile - Cash Dominos</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="logo">CASH DOMINOS</div>
+  </header>
+
+  <div class="page-title">👤 Profile</div>
+  <p class="page-sub">Your account details</p>
+
+  <!-- TOTAL BALANCE OF ALL USERS -->
+  <div class="total-card">
+    <div class="total-label">💰 TOTAL BALANCE (ALL USERS)</div>
+    <div class="total-balance" id="totalBalance">₹0.00</div>
+    <div class="total-sub" id="totalUsers">Users: 0</div>
+  </div>
+
+  <!-- USER PROFILE -->
+  <div class="profile-card">
+    <div class="profile-avatar" id="profileAvatar">👤</div>
+    <div class="profile-name" id="profileName">Loading...</div>
+    <div class="profile-id" id="profileId">ID: -</div>
+  </div>
+
+  <!-- DETAILS -->
+  <div class="details-card">
+    <div class="detail-row">
+      <span class="detail-label">💰 Balance</span>
+      <span class="detail-value" id="pBalance">₹0.00</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">🏧 Total Withdrawn</span>
+      <span class="detail-value" id="pWithdrawn">₹0.00</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">⛔ Blocked Refs</span>
+      <span class="detail-value" id="pBlocked">0</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">🎴 Linked Account</span>
+      <span class="detail-value" id="pLinked">Not Linked</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">👩‍💻 Referred By</span>
+      <span class="detail-value" id="pReferred">Auto Started</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">📅 Joined</span>
+      <span class="detail-value" id="pJoined">-</span>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
+    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
+    <a href="/miniapp/gift" class="nav-item">🎁<span>GIFT</span></a>
+    <a href="/miniapp/profile" class="nav-item active">👤<span>PROFILE</span></a>
+  </nav>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
