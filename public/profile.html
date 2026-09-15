@@ -6,6 +6,53 @@
 <title>Profile</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* Extra profile styles */
+.profile-avatar {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.profile-avatar:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 50px rgba(0, 255, 136, 0.6);
+}
+
+.detail-value.clickable {
+  cursor: pointer;
+  color: #00ff88;
+}
+.detail-value.clickable:active {
+  opacity: 0.7;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.history-item-left { flex: 1; min-width: 0; }
+.history-item-title { font-size: 13px; font-weight: 700; color: #fff; }
+.history-item-date { font-size: 11px; color: #7a9a7a; margin-top: 2px; }
+.history-item-amount { font-size: 14px; font-weight: 800; flex-shrink: 0; margin-left: 10px; }
+.history-item-amount.positive { color: #00ff88; }
+.history-item-amount.negative { color: #ff5555; }
+
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: #7a9a7a;
+}
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+</style>
 </head>
 <body>
 
@@ -78,6 +125,15 @@
       </div>
     </div>
 
+    <!-- PAYMENT METHODS -->
+    <div class="payment-card glass">
+      <div class="section-title">💳 PAYMENT METHODS</div>
+      <div id="paymentList" class="payment-list">Loading...</div>
+      <button class="history-btn glass-btn" onclick="openPaymentMethods()" style="margin-top:12px;">
+        ✏️ Edit Payment Methods
+      </button>
+    </div>
+
     <!-- PAYMENT HISTORY -->
     <button class="history-btn glass-btn" onclick="openPaymentHistory()">
       📜 Payment History
@@ -126,6 +182,362 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<!-- PAYMENT METHODS MODAL -->
+<div class="modal" id="paymentModal">
+  <div class="modal-content glass">
+    <h3>💳 Update Payment Method</h3>
+    <div id="paymentUpdateList"></div>
+    <button onclick="closePaymentModal()" class="cancel-btn">Close</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 👤 PROFILE PAGE
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+
+let currentUser = null;
+let currentPhotoUrl = null;
+
+// ============================================================
+// 🔔 TOAST
+// ============================================================
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// 👤 LOAD USER
+// ============================================================
+async function loadUser() {
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`/miniapp/api/user/${userId}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      document.getElementById('profileName').textContent = 'Not Found';
+      return;
+    }
+
+    currentUser = data.user;
+
+    // Update profile
+    document.getElementById('profileName').textContent = data.user.firstName || 'User';
+    document.getElementById('profileId').innerHTML = `ID: ${data.user.userId} 📋`;
+    document.getElementById('profileUsername').innerHTML = data.user.username
+      ? `@${data.user.username} 📋`
+      : '@- (Not set)';
+
+    // Details
+    document.getElementById('pBalance').textContent = '₹' + (data.user.balance || 0).toFixed(2);
+    document.getElementById('pWithdrawn').textContent = '₹' + (data.user.withdrawnTotal || 0).toFixed(2);
+    document.getElementById('pLinked').textContent = data.user.linkedInfo || 'Not Linked';
+    document.getElementById('pReferred').textContent = data.user.referredBy || 'Auto Started';
+
+    if (data.user.joined) {
+      let joinedDate = new Date(data.user.joined).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+      document.getElementById('pJoined').textContent = joinedDate;
+    }
+
+    // Load photo
+    await loadProfilePhoto();
+
+    // Load payment methods
+    await loadPaymentMethods();
+
+    // Check admin
+    await checkAdmin();
+
+  } catch (e) {
+    console.error('Load user error:', e);
+    document.getElementById('profileName').textContent = 'Error';
+  }
+}
+
+// ============================================================
+// 📸 LOAD PHOTO
+// ============================================================
+async function loadProfilePhoto() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`/miniapp/api/profile-photo/${userId}`);
+    const data = await res.json();
+
+    if (data.success && data.photoUrl) {
+      currentPhotoUrl = data.photoUrl;
+      const img = document.getElementById('profileAvatarImg');
+      img.src = data.photoUrl;
+      img.style.display = 'block';
+      document.getElementById('profileAvatarFallback').style.display = 'none';
+    }
+  } catch (e) {
+    console.error('Photo error:', e);
+  }
+}
+
+function enlargePhoto() {
+  if (!currentPhotoUrl) {
+    showToast('No photo available');
+    return;
+  }
+  document.getElementById('enlargedPhoto').src = currentPhotoUrl;
+  document.getElementById('photoModal').classList.add('active');
+}
+
+function closePhotoModal() {
+  document.getElementById('photoModal').classList.remove('active');
+}
+
+// ============================================================
+// 📋 COPY
+// ============================================================
+function copyUserId() {
+  if (!userId) return;
+  navigator.clipboard.writeText(userId.toString()).then(() => {
+    showToast('✅ ID copied!');
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  }).catch(() => {
+    showToast('❌ Copy failed');
+  });
+}
+
+function copyUsername() {
+  if (!currentUser?.username) {
+    showToast('No username');
+    return;
+  }
+  navigator.clipboard.writeText('@' + currentUser.username).then(() => {
+    showToast('✅ Username copied!');
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  }).catch(() => {
+    showToast('❌ Copy failed');
+  });
+}
+
+// ============================================================
+// 💳 LOAD PAYMENT METHODS
+// ============================================================
+async function loadPaymentMethods() {
+  if (!userId) return;
+  const listEl = document.getElementById('paymentList');
+
+  try {
+    const res = await fetch(`/miniapp/api/payment-methods/${userId}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      listEl.innerHTML = '<div class="loading">Failed to load</div>';
+      return;
+    }
+
+    let html = '';
+    data.methods.forEach(m => {
+      let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
+      html += `<div class="payment-item">
+        <span>${m.icon} ${m.name}</span>
+        <span>${escapeHtml(display)}</span>
+      </div>`;
+    });
+
+    listEl.innerHTML = html;
+
+  } catch (e) {
+    listEl.innerHTML = '<div class="loading">Error</div>';
+  }
+}
+
+// ============================================================
+// ✏️ EDIT PAYMENT METHODS
+// ============================================================
+function openPaymentMethods() {
+  if (!currentUser) return;
+
+  const listEl = document.getElementById('paymentUpdateList');
+  const fields = [
+    { key: 'walletAccount', name: '🌐 Wallet ID', value: currentUser.walletAccount },
+    { key: 'upiId', name: '⚡ UPI ID', value: currentUser.upiId },
+    { key: 'bankAccNo', name: '🏦 Bank Account', value: currentUser.bankAccNo },
+    { key: 'bankIfsc', name: '🏦 IFSC Code', value: currentUser.bankIfsc },
+    { key: 'amazonEmail', name: '📧 Amazon Email', value: currentUser.amazonEmail },
+    { key: 'redeemCodeAddr', name: '🎁 Redeem Code', value: currentUser.redeemCodeAddr }
+  ];
+
+  let html = '';
+  fields.forEach(f => {
+    let display = (f.value && f.value !== 'Not Set') ? f.value : 'Not Set';
+    html += `<button class="admin-menu-btn" onclick="updatePaymentMethod('${f.key}')">
+      <span class="menu-icon">${f.name.split(' ')[0]}</span>
+      <span class="menu-text">${f.name.split(' ').slice(1).join(' ')} — ${escapeHtml(display)}</span>
+      <span class="menu-arrow">›</span>
+    </button>`;
+  });
+
+  listEl.innerHTML = html;
+  document.getElementById('paymentModal').classList.add('active');
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('active');
+}
+
+async function updatePaymentMethod(field) {
+  const value = prompt(`Enter new value for ${field}:`);
+  if (!value || !value.trim()) return;
+
+  try {
+    const res = await fetch('/miniapp/api/update-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        field: field,
+        value: value.trim()
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Updated!');
+      await loadUser();
+      closePaymentModal();
+    } else {
+      showToast(`❌ ${data.error || 'Failed'}`);
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+// ============================================================
+// 📜 PAYMENT HISTORY
+// ============================================================
+async function openPaymentHistory() {
+  const historyEl = document.getElementById('historyContent');
+  historyEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  document.getElementById('historyModal').classList.add('active');
+
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`/miniapp/api/user/${userId}`);
+    const data = await res.json();
+
+    // Since we don't have a dedicated history API, show a simple message
+    // Or fetch from a new endpoint if created
+    if (data.success) {
+      historyEl.innerHTML = `
+        <div class="history-item">
+          <div class="history-item-left">
+            <div class="history-item-title">💰 Current Balance</div>
+            <div class="history-item-date">Now</div>
+          </div>
+          <div class="history-item-amount positive">₹${(data.user.balance || 0).toFixed(2)}</div>
+        </div>
+        <div class="history-item">
+          <div class="history-item-left">
+            <div class="history-item-title">🏧 Total Withdrawn</div>
+            <div class="history-item-date">All time</div>
+          </div>
+          <div class="history-item-amount negative">₹${(data.user.withdrawnTotal || 0).toFixed(2)}</div>
+        </div>
+        <div class="empty-state" style="margin-top:20px;">
+          <div class="icon">📊</div>
+          <div style="font-size:12px;">Full history coming soon</div>
+        </div>
+      `;
+    }
+  } catch (e) {
+    historyEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  }
+}
+
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('active');
+}
+
+// ============================================================
+// 👑 ADMIN CHECK
+// ============================================================
+async function checkAdmin() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`/miniapp/api/is-admin/${userId}`);
+    const data = await res.json();
+    if (data.success && data.isAdmin) {
+      document.getElementById('adminPanelCard').style.display = 'block';
+    }
+  } catch (e) {}
+}
+
+function openAdminPanel() {
+  window.location.href = '/miniapp/admin';
+}
+
+// ============================================================
+// 📊 TOTAL BALANCE
+// ============================================================
+async function loadTotalBalance() {
+  try {
+    const res = await fetch('/miniapp/api/total-balance');
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('totalBalance').textContent = '₹' + (data.totalBalance || 0).toFixed(2);
+      document.getElementById('totalUsers').textContent = 'Users: ' + (data.totalUsers || 0);
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!userId) {
+    document.body.innerHTML = `
+      <div style="padding:50px;text-align:center;color:#fff;">
+        <h2>⚠️ Open from Telegram</h2>
+      </div>
+    `;
+    return;
+  }
+
+  await loadUser();
+  await loadTotalBalance();
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+
 </body>
 </html>
