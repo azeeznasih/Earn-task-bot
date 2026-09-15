@@ -27,105 +27,159 @@
       </div>
     </header>
 
-    <!-- ADMIN INFO -->
-    <div class="user-card glass">
-      <div class="user-info">
-        <div class="avatar" id="adminAvatar">
-          <span id="adminAvatarFallback">👑</span>
-          <img id="adminAvatarImg" src="" alt="" style="display:none;">
+    <!-- LOADING -->
+    <div id="adminLoading" class="loading">⏳ Loading admin data...</div>
+
+    <!-- NOT ADMIN -->
+    <div id="notAdminMsg" class="empty-state" style="display:none;">
+      <div class="icon">🚫</div>
+      <div>You are not an admin!</div>
+    </div>
+
+    <!-- ADMIN CONTENT -->
+    <div id="adminContent" style="display:none;">
+
+      <!-- ADMIN INFO -->
+      <div class="user-card glass">
+        <div class="user-info">
+          <div class="avatar">
+            <span>👑</span>
+          </div>
+          <div>
+            <div class="username" id="adminName">Admin</div>
+            <div class="userid" id="adminId">ID: -</div>
+          </div>
         </div>
-        <div>
-          <div class="username" id="adminName">Admin</div>
-          <div class="userid" id="adminId">ID: -</div>
+      </div>
+
+      <!-- STATS GRID -->
+      <div class="admin-stats">
+        <div class="stat-card glass">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value" id="statUsers">0</div>
+          <div class="stat-label">Users</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value" id="statBalance">₹0</div>
+          <div class="stat-label">Total Balance</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon">📋</div>
+          <div class="stat-value" id="statTasks">0</div>
+          <div class="stat-label">Tasks</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon">💸</div>
+          <div class="stat-value" id="statWd">0</div>
+          <div class="stat-label">Pending WD</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value" id="statAf">0</div>
+          <div class="stat-label">Pending AF</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-icon">📸</div>
+          <div class="stat-value" id="statSub">0</div>
+          <div class="stat-label">Pending Sub</div>
         </div>
       </div>
-    </div>
 
-    <!-- STATS GRID -->
-    <div class="admin-stats">
-      <div class="stat-card glass">
-        <div class="stat-icon">👥</div>
-        <div class="stat-value" id="statUsers">0</div>
-        <div class="stat-label">Users</div>
+      <!-- MENU TABS -->
+      <div class="admin-tabs glass">
+        <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊 Dashboard</button>
+        <button class="admin-tab" onclick="switchTab('withdrawals')" data-tab="withdrawals">💸 Withdrawals</button>
+        <button class="admin-tab" onclick="switchTab('addfunds')" data-tab="addfunds">💰 Add Fund</button>
+        <button class="admin-tab" onclick="switchTab('submissions')" data-tab="submissions">📸 Tasks</button>
+        <button class="admin-tab" onclick="switchTab('users')" data-tab="users">👥 Users</button>
       </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">💰</div>
-        <div class="stat-value" id="statBalance">₹0</div>
-        <div class="stat-label">Total</div>
+
+      <!-- TAB: DASHBOARD -->
+      <div id="tab-dashboard" class="admin-tab-content">
+        <div class="admin-menu glass">
+          <div class="section-title">⚙️ QUICK ACTIONS</div>
+
+          <button class="admin-menu-btn" onclick="adminAction('Balance Management')">
+            <span class="menu-icon">💰</span>
+            <span class="menu-text">Balance Management</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Tasks Manager')">
+            <span class="menu-icon">📋</span>
+            <span class="menu-text">Tasks Manager</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Gift Codes')">
+            <span class="menu-icon">🎁</span>
+            <span class="menu-text">Gift Codes</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Gateway')">
+            <span class="menu-icon">🌐</span>
+            <span class="menu-text">Gateway</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Broadcast')">
+            <span class="menu-icon">📢</span>
+            <span class="menu-text">Broadcast</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Verification')">
+            <span class="menu-icon">✅</span>
+            <span class="menu-text">Verification</span>
+            <span class="menu-arrow">›</span>
+          </button>
+
+          <button class="admin-menu-btn" onclick="adminAction('Settings')">
+            <span class="menu-icon">⚙️</span>
+            <span class="menu-text">Settings</span>
+            <span class="menu-arrow">›</span>
+          </button>
+        </div>
+
+        <div class="admin-note glass">
+          💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
+        </div>
       </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">📋</div>
-        <div class="stat-value" id="statTasks">0</div>
-        <div class="stat-label">Tasks</div>
+
+      <!-- TAB: WITHDRAWALS -->
+      <div id="tab-withdrawals" class="admin-tab-content" style="display:none;">
+        <div class="section-title glass" style="padding:12px; border-radius:12px;">💸 PENDING WITHDRAWALS</div>
+        <div id="withdrawalList" class="admin-list">
+          <div class="loading">⏳ Loading...</div>
+        </div>
       </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">💸</div>
-        <div class="stat-value" id="statWd">0</div>
-        <div class="stat-label">Pending WD</div>
+
+      <!-- TAB: ADD FUND -->
+      <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
+        <div class="section-title glass" style="padding:12px; border-radius:12px;">💰 PENDING ADD FUND</div>
+        <div id="addFundList" class="admin-list">
+          <div class="loading">⏳ Loading...</div>
+        </div>
       </div>
-    </div>
 
-    <!-- ADMIN MENU -->
-    <div class="admin-menu glass">
-      <div class="section-title">⚙️ ADMIN ACTIONS</div>
+      <!-- TAB: SUBMISSIONS -->
+      <div id="tab-submissions" class="admin-tab-content" style="display:none;">
+        <div class="section-title glass" style="padding:12px; border-radius:12px;">📸 PENDING TASK SUBMISSIONS</div>
+        <div id="submissionList" class="admin-list">
+          <div class="loading">⏳ Loading...</div>
+        </div>
+      </div>
 
-      <button class="admin-menu-btn" onclick="adminAction('Balance Management')">
-        <span class="menu-icon">💰</span>
-        <span class="menu-text">Balance Management</span>
-        <span class="menu-arrow">›</span>
-      </button>
+      <!-- TAB: USERS -->
+      <div id="tab-users" class="admin-tab-content" style="display:none;">
+        <div class="section-title glass" style="padding:12px; border-radius:12px;">👥 ALL USERS</div>
+        <div id="userList" class="admin-list">
+          <div class="loading">⏳ Loading...</div>
+        </div>
+      </div>
 
-      <button class="admin-menu-btn" onclick="adminAction('Users')">
-        <span class="menu-icon">👥</span>
-        <span class="menu-text">Users</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Tasks')">
-        <span class="menu-icon">📋</span>
-        <span class="menu-text">Tasks</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Gifts')">
-        <span class="menu-icon">🎁</span>
-        <span class="menu-text">Gifts</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Gateway')">
-        <span class="menu-icon">🌐</span>
-        <span class="menu-text">Gateway</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Broadcast')">
-        <span class="menu-icon">📢</span>
-        <span class="menu-text">Broadcast</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Verification')">
-        <span class="menu-icon">✅</span>
-        <span class="menu-text">Verification</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Add Fund')">
-        <span class="menu-icon">📊</span>
-        <span class="menu-text">Add Fund</span>
-        <span class="menu-arrow">›</span>
-      </button>
-
-      <button class="admin-menu-btn" onclick="adminAction('Settings')">
-        <span class="menu-icon">⚙️</span>
-        <span class="menu-text">Settings</span>
-        <span class="menu-arrow">›</span>
-      </button>
-    </div>
-
-    <div class="admin-note glass">
-      💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
     </div>
 
     <nav class="bottom-nav glass-nav">
@@ -141,7 +195,7 @@
         <span class="nav-icon">💸</span>
         <span class="nav-label">PAY</span>
       </a>
-      <a href="/miniapp/profile" class="nav-item active">
+      <a href="/miniapp/profile" class="nav-item">
         <span class="nav-icon">👤</span>
         <span class="nav-label">PROFILE</span>
       </a>
@@ -151,51 +205,6 @@
 </div>
 
 <script src="app.js"></script>
-<script>
-  // Admin Panel Load
-  window.addEventListener('DOMContentLoaded', async () => {
-    if (typeof initMiniApp === 'function') {
-      await initMiniApp();
-    }
-    loadAdminStats();
-  });
-
-  async function loadAdminStats() {
-    try {
-      let userId = currentUserId || (tg?.initDataUnsafe?.user?.id) || localStorage.getItem('miniapp_test_id');
-      if (!userId) return;
-
-      // User info
-      const userRes = await fetch(`/miniapp/api/user/${userId}`);
-      const userData = await userRes.json();
-      if (userData.success) {
-        document.getElementById('adminName').textContent = userData.user.firstName || "Admin";
-        document.getElementById('adminId').textContent = 'ID: ' + userData.user.userId;
-      }
-
-      // Total stats
-      const totalRes = await fetch('/miniapp/api/total-balance');
-      const totalData = await totalRes.json();
-      if (totalData.success) {
-        document.getElementById('statUsers').textContent = totalData.totalUsers;
-        document.getElementById('statBalance').textContent = '₹' + totalData.totalBalance.toFixed(0);
-      }
-
-      // Tasks
-      const tasksRes = await fetch('/miniapp/api/tasks');
-      const tasksData = await tasksRes.json();
-      if (tasksData.success) {
-        document.getElementById('statTasks').textContent = tasksData.tasks.length;
-      }
-
-    } catch (e) {
-      console.error("Admin stats error:", e);
-    }
-  }
-
-  function adminAction(name) {
-    alert(`⚙️ ${name}\n\nFull control in Bot /admin`);
-  }
-</script>
+<script src="admin.js"></script>
 </body>
 </html>
