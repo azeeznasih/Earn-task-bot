@@ -8,74 +8,97 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div class="app">
 
-  <header class="topbar">
-    <div class="logo">TASK EARN BOT</div>
-  </header>
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+</div>
 
-  <div class="page-title">💸 Quick Pay</div>
-  <p class="page-sub">Send money to any user instantly</p>
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
 
-  <!-- USER ID INPUT -->
-  <div class="pay-card">
-    <label class="pay-label">📱 RECEIVER USER ID</label>
-    <div class="pay-input-row">
-      <input type="number" id="payUserId" placeholder="Enter Telegram User ID" autocomplete="off">
-      <button class="check-btn" onclick="checkUser()">Check</button>
+  <div class="app">
+
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">TASK EARN BOT</span>
+      </div>
+    </header>
+
+    <div class="page-header">
+      <div class="page-title">💸 Quick Pay</div>
+      <p class="page-sub">Send money to any user instantly</p>
     </div>
-    <div id="userInfoBox" class="user-info-box" style="display:none;">
-      <div class="user-info-avatar" id="userInfoAvatar">👤</div>
-      <div class="user-info-details">
-        <div class="user-info-name" id="userInfoName">-</div>
-        <div class="user-info-id" id="userInfoId">ID: -</div>
+
+    <div class="pay-card glass">
+      <label class="pay-label">📱 RECEIVER USER ID</label>
+      <div class="pay-input-row">
+        <input type="number" id="payUserId" placeholder="Enter Telegram User ID" autocomplete="off">
+        <button class="check-btn" onclick="checkUser()">Check</button>
+      </div>
+      <div id="userInfoBox" class="user-info-box" style="display:none;">
+        <div class="user-info-avatar" id="userInfoAvatar">👤</div>
+        <div class="user-info-details">
+          <div class="user-info-name" id="userInfoName">-</div>
+          <div class="user-info-id" id="userInfoId">ID: -</div>
+        </div>
+      </div>
+      <div id="userCheckMsg" class="check-msg"></div>
+    </div>
+
+    <div class="pay-card glass" id="amountCard" style="display:none;">
+      <label class="pay-label">💰 AMOUNT</label>
+      <div class="amount-input-wrap">
+        <span class="rupee-symbol">₹</span>
+        <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off">
+      </div>
+      <div class="quick-amounts">
+        <button onclick="setAmount(10)">₹10</button>
+        <button onclick="setAmount(50)">₹50</button>
+        <button onclick="setAmount(100)">₹100</button>
+        <button onclick="setAmount(500)">₹500</button>
       </div>
     </div>
-    <div id="userCheckMsg" class="check-msg"></div>
-  </div>
 
-  <!-- AMOUNT INPUT -->
-  <div class="pay-card" id="amountCard" style="display:none;">
-    <label class="pay-label">💰 AMOUNT</label>
-    <div class="amount-input-wrap">
-      <span class="rupee-symbol">₹</span>
-      <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off">
+    <div class="pay-balance-info glass" id="payBalanceInfo" style="display:none;">
+      <span>💵 Your Balance:</span>
+      <span id="payBalance">₹0.00</span>
     </div>
-    <div class="quick-amounts">
-      <button onclick="setAmount(10)">₹10</button>
-      <button onclick="setAmount(50)">₹50</button>
-      <button onclick="setAmount(100)">₹100</button>
-      <button onclick="setAmount(500)">₹500</button>
-    </div>
+
+    <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
+      💸 PAY NOW
+    </button>
+
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item active">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
+
   </div>
-
-  <!-- BALANCE INFO -->
-  <div class="pay-balance-info" id="payBalanceInfo" style="display:none;">
-    <span>💵 Your Balance:</span>
-    <span id="payBalance">₹0.00</span>
-  </div>
-
-  <!-- PAY BUTTON -->
-  <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
-    💸 PAY NOW
-  </button>
-
-  <nav class="bottom-nav">
-    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
-    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
-    <a href="/miniapp/pay" class="nav-item active">💸<span>PAY</span></a>
-    <a href="/miniapp/profile" class="nav-item">👤<span>PROFILE</span></a>
-  </nav>
-
 </div>
 
 <!-- CONFIRM MODAL -->
 <div class="modal" id="confirmModal">
-  <div class="modal-content confirm-modal-content">
+  <div class="modal-content glass confirm-modal-content">
     <div class="confirm-icon">⚠️</div>
     <h3>Confirm Payment</h3>
     <p class="confirm-text">You are about to send:</p>
-
     <div class="confirm-details">
       <div class="confirm-row">
         <span class="confirm-label">To:</span>
@@ -90,7 +113,6 @@
         <span class="confirm-value amount" id="confirmAmount">₹0</span>
       </div>
     </div>
-
     <div class="confirm-buttons">
       <button class="confirm-cancel-btn" onclick="cancelPay()">❌ CANCEL</button>
       <button class="confirm-ok-btn" onclick="confirmPay()">✅ CONFIRM</button>
@@ -100,7 +122,7 @@
 
 <!-- SUCCESS MODAL -->
 <div class="modal" id="successModal">
-  <div class="modal-content confirm-modal-content">
+  <div class="modal-content glass confirm-modal-content">
     <div class="success-icon">✅</div>
     <h3>Payment Successful!</h3>
     <p class="confirm-text" id="successMsg">Money sent successfully.</p>
