@@ -8,45 +8,194 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div class="app">
 
-  <header class="topbar">
-    <div class="logo">👑 ADMIN PANEL</div>
-  </header>
-
-  <div class="page-title">⚙️ Admin Controls</div>
-  <p class="page-sub">Manage your bot</p>
-
-  <div class="admin-menu">
-    <button class="admin-menu-btn" onclick="adminAction('Balance')">💰 Balance</button>
-    <button class="admin-menu-btn" onclick="adminAction('Users')">👥 Users</button>
-    <button class="admin-menu-btn" onclick="adminAction('Tasks')">📋 Tasks</button>
-    <button class="admin-menu-btn" onclick="adminAction('Gifts')">🎁 Gifts</button>
-    <button class="admin-menu-btn" onclick="adminAction('Gateway')">🌐 Gateway</button>
-    <button class="admin-menu-btn" onclick="adminAction('Broadcast')">📢 Broadcast</button>
-    <button class="admin-menu-btn" onclick="adminAction('Verification')">✅ Verification</button>
-    <button class="admin-menu-btn" onclick="adminAction('Theme')">🎨 Theme</button>
-    <button class="admin-menu-btn" onclick="adminAction('Add Fund')">📊 Add Fund</button>
-    <button class="admin-menu-btn" onclick="adminAction('Settings')">⚙️ Settings</button>
-  </div>
-
-  <div class="admin-note">
-    💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
-  </div>
-
-  <nav class="bottom-nav">
-    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
-    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
-    <a href="/miniapp/pay" class="nav-item">💸<span>PAY</span></a>
-    <a href="/miniapp/profile" class="nav-item active">👤<span>PROFILE</span></a>
-  </nav>
-
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
 </div>
 
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
+
+  <div class="app">
+
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">👑</span>
+        <span class="logo-text">ADMIN PANEL</span>
+      </div>
+    </header>
+
+    <!-- ADMIN INFO -->
+    <div class="user-card glass">
+      <div class="user-info">
+        <div class="avatar" id="adminAvatar">
+          <span id="adminAvatarFallback">👑</span>
+          <img id="adminAvatarImg" src="" alt="" style="display:none;">
+        </div>
+        <div>
+          <div class="username" id="adminName">Admin</div>
+          <div class="userid" id="adminId">ID: -</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS GRID -->
+    <div class="admin-stats">
+      <div class="stat-card glass">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="statUsers">0</div>
+        <div class="stat-label">Users</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value" id="statBalance">₹0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value" id="statTasks">0</div>
+        <div class="stat-label">Tasks</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">💸</div>
+        <div class="stat-value" id="statWd">0</div>
+        <div class="stat-label">Pending WD</div>
+      </div>
+    </div>
+
+    <!-- ADMIN MENU -->
+    <div class="admin-menu glass">
+      <div class="section-title">⚙️ ADMIN ACTIONS</div>
+
+      <button class="admin-menu-btn" onclick="adminAction('Balance Management')">
+        <span class="menu-icon">💰</span>
+        <span class="menu-text">Balance Management</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Users')">
+        <span class="menu-icon">👥</span>
+        <span class="menu-text">Users</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Tasks')">
+        <span class="menu-icon">📋</span>
+        <span class="menu-text">Tasks</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Gifts')">
+        <span class="menu-icon">🎁</span>
+        <span class="menu-text">Gifts</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Gateway')">
+        <span class="menu-icon">🌐</span>
+        <span class="menu-text">Gateway</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Broadcast')">
+        <span class="menu-icon">📢</span>
+        <span class="menu-text">Broadcast</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Verification')">
+        <span class="menu-icon">✅</span>
+        <span class="menu-text">Verification</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Add Fund')">
+        <span class="menu-icon">📊</span>
+        <span class="menu-text">Add Fund</span>
+        <span class="menu-arrow">›</span>
+      </button>
+
+      <button class="admin-menu-btn" onclick="adminAction('Settings')">
+        <span class="menu-icon">⚙️</span>
+        <span class="menu-text">Settings</span>
+        <span class="menu-arrow">›</span>
+      </button>
+    </div>
+
+    <div class="admin-note glass">
+      💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
+    </div>
+
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item active">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
 <script>
-function adminAction(name) {
-  alert(`⚙️ ${name}\n\nFull control in Bot /admin`);
-}
+  // Admin Panel Load
+  window.addEventListener('DOMContentLoaded', async () => {
+    if (typeof initMiniApp === 'function') {
+      await initMiniApp();
+    }
+    loadAdminStats();
+  });
+
+  async function loadAdminStats() {
+    try {
+      let userId = currentUserId || (tg?.initDataUnsafe?.user?.id) || localStorage.getItem('miniapp_test_id');
+      if (!userId) return;
+
+      // User info
+      const userRes = await fetch(`/miniapp/api/user/${userId}`);
+      const userData = await userRes.json();
+      if (userData.success) {
+        document.getElementById('adminName').textContent = userData.user.firstName || "Admin";
+        document.getElementById('adminId').textContent = 'ID: ' + userData.user.userId;
+      }
+
+      // Total stats
+      const totalRes = await fetch('/miniapp/api/total-balance');
+      const totalData = await totalRes.json();
+      if (totalData.success) {
+        document.getElementById('statUsers').textContent = totalData.totalUsers;
+        document.getElementById('statBalance').textContent = '₹' + totalData.totalBalance.toFixed(0);
+      }
+
+      // Tasks
+      const tasksRes = await fetch('/miniapp/api/tasks');
+      const tasksData = await tasksRes.json();
+      if (tasksData.success) {
+        document.getElementById('statTasks').textContent = tasksData.tasks.length;
+      }
+
+    } catch (e) {
+      console.error("Admin stats error:", e);
+    }
+  }
+
+  function adminAction(name) {
+    alert(`⚙️ ${name}\n\nFull control in Bot /admin`);
+  }
 </script>
 </body>
 </html>
