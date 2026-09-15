@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Home</title>
+<title>Task Earn Bot</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -48,6 +48,7 @@
         </button>
       </div>
       <div class="balance" id="balance">₹0.00</div>
+      <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
       <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
     </div>
 
@@ -89,6 +90,7 @@
   </div>
 </div>
 
+<!-- Withdraw Modal -->
 <div class="modal" id="withdrawModal">
   <div class="modal-content glass">
     <h3>Withdraw Money</h3>
@@ -98,6 +100,7 @@
   </div>
 </div>
 
+<!-- Payment Modal -->
 <div class="modal" id="paymentModal">
   <div class="modal-content glass">
     <h3>Update Payment Method</h3>
@@ -107,5 +110,27 @@
 </div>
 
 <script src="app.js"></script>
+
+<!-- Add Fund Button Style (inline for reliability) -->
+<style>
+  .addfund-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #00aaff 0%, #0088cc 100%);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
+    transition: transform 0.15s;
+    margin-bottom: 10px;
+    font-family: inherit;
+  }
+  .addfund-btn:active { transform: scale(0.97); }
+</style>
+
 </body>
 </html>
