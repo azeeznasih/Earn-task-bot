@@ -6,6 +6,46 @@
 <title>Quick Pay</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* Extra styles for pay page */
+.user-info-box {
+  animation: fadeIn 0.3s ease;
+}
+
+.check-msg {
+  min-height: 20px;
+}
+
+.pay-now-btn {
+  margin-top: 14px;
+}
+
+.confirm-modal-content {
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 8px;
+  animation: bounceIn 0.5s ease;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal.active {
+  display: flex;
+  animation: modalFade 0.2s ease;
+}
+
+@keyframes modalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
 </head>
 <body>
 
@@ -35,8 +75,8 @@
     <div class="pay-card glass">
       <label class="pay-label">📱 RECEIVER USER ID</label>
       <div class="pay-input-row">
-        <input type="number" id="payUserId" placeholder="Enter Telegram User ID" autocomplete="off">
-        <button class="check-btn" onclick="checkUser()">Check</button>
+        <input type="number" id="payUserId" placeholder="Enter Telegram User ID" autocomplete="off" inputmode="numeric">
+        <button class="check-btn" id="checkBtn" onclick="checkUser()">Check</button>
       </div>
       <div id="userInfoBox" class="user-info-box" style="display:none;">
         <div class="user-info-avatar" id="userInfoAvatar">👤</div>
@@ -52,7 +92,7 @@
       <label class="pay-label">💰 AMOUNT</label>
       <div class="amount-input-wrap">
         <span class="rupee-symbol">₹</span>
-        <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off">
+        <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off" inputmode="decimal">
       </div>
       <div class="quick-amounts">
         <button onclick="setAmount(10)">₹10</button>
@@ -115,7 +155,7 @@
     </div>
     <div class="confirm-buttons">
       <button class="confirm-cancel-btn" onclick="cancelPay()">❌ CANCEL</button>
-      <button class="confirm-ok-btn" onclick="confirmPay()">✅ CONFIRM</button>
+      <button class="confirm-ok-btn" id="confirmBtn" onclick="confirmPay()">✅ CONFIRM</button>
     </div>
   </div>
 </div>
@@ -130,6 +170,298 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script>
+// ============================================================
+// 💸 QUICK PAY PAGE
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const MY_ID = tg?.initDataUnsafe?.user?.id;
+
+let checkedUser = null;   // { userId, firstName, username }
+let myBalance = 0;
+
+// ============================================================
+// 🔔 TOAST
+// ============================================================
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+function showMsg(msg, type = 'error') {
+  const el = document.getElementById('userCheckMsg');
+  el.className = 'check-msg ' + type;
+  el.textContent = msg;
+}
+
+function clearMsg() {
+  document.getElementById('userCheckMsg').textContent = '';
+}
+
+// ============================================================
+// 💰 LOAD MY BALANCE
+// ============================================================
+async function loadMyBalance() {
+  if (!MY_ID) return;
+  try {
+    const res = await fetch(`/miniapp/api/user/${MY_ID}`);
+    const data = await res.json();
+    if (data.success) {
+      myBalance = data.user.balance || 0;
+      document.getElementById('payBalance').textContent = '₹' + myBalance.toFixed(2);
+    }
+  } catch (e) {
+    console.error('Balance load:', e);
+  }
+}
+
+// ============================================================
+// 🔍 CHECK USER
+// ============================================================
+async function checkUser() {
+  clearMsg();
+
+  const input = document.getElementById('payUserId');
+  const userId = input.value.trim();
+  const btn = document.getElementById('checkBtn');
+
+  if (!userId || isNaN(userId)) {
+    showMsg('❌ Enter a valid User ID', 'error');
+    return;
+  }
+
+  if (parseInt(userId) === MY_ID) {
+    showMsg('❌ Cannot send to yourself', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  document.getElementById('userInfoBox').style.display = 'none';
+  document.getElementById('amountCard').style.display = 'none';
+  document.getElementById('payBalanceInfo').style.display = 'none';
+  document.getElementById('payNowBtn').style.display = 'none';
+
+  try {
+    const res = await fetch(`/miniapp/api/check-user/${userId}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      showMsg(`❌ ${data.error || 'User not found'}`, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Check';
+      return;
+    }
+
+    checkedUser = data.user;
+
+    // Update UI
+    document.getElementById('userInfoName').textContent = data.user.firstName || 'User';
+    document.getElementById('userInfoId').textContent = 'ID: ' + data.user.userId;
+
+    const avatar = document.getElementById('userInfoAvatar');
+    if (data.user.photoUrl) {
+      avatar.innerHTML = `<img src="${data.user.photoUrl}" alt="profile">`;
+    } else {
+      avatar.textContent = (data.user.firstName || 'U').charAt(0).toUpperCase();
+    }
+
+    document.getElementById('userInfoBox').style.display = 'flex';
+    document.getElementById('amountCard').style.display = 'block';
+    document.getElementById('payBalanceInfo').style.display = 'flex';
+    document.getElementById('payNowBtn').style.display = 'block';
+
+    showMsg('✅ User found!', 'success');
+
+    // Focus amount input
+    setTimeout(() => document.getElementById('payAmount').focus(), 300);
+
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+  } catch (e) {
+    showMsg('❌ Network error', 'error');
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Check';
+}
+
+// ============================================================
+// 💰 QUICK AMOUNT
+// ============================================================
+function setAmount(amt) {
+  document.getElementById('payAmount').value = amt;
+  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+// ============================================================
+// 💸 INITIATE PAY
+// ============================================================
+function initiatePay() {
+  clearMsg();
+
+  if (!checkedUser) {
+    showToast('❌ Check user first');
+    return;
+  }
+
+  const amtStr = document.getElementById('payAmount').value.trim();
+  const amt = parseFloat(amtStr);
+
+  if (isNaN(amt) || amt <= 0) {
+    showToast('❌ Enter valid amount');
+    return;
+  }
+
+  if (amt > myBalance) {
+    showToast('❌ Insufficient balance');
+    return;
+  }
+
+  // Fill confirm modal
+  document.getElementById('confirmName').textContent = checkedUser.firstName || 'User';
+  document.getElementById('confirmUserId').textContent = checkedUser.userId;
+  document.getElementById('confirmAmount').textContent = '₹' + amt.toFixed(2);
+
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+// ============================================================
+// ❌ CANCEL PAY
+// ============================================================
+function cancelPay() {
+  document.getElementById('confirmModal').classList.remove('active');
+}
+
+// ============================================================
+// ✅ CONFIRM PAY
+// ============================================================
+async function confirmPay() {
+  const amt = parseFloat(document.getElementById('payAmount').value);
+  const btn = document.getElementById('confirmBtn');
+
+  if (!checkedUser || isNaN(amt) || amt <= 0) {
+    showToast('❌ Invalid data');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Sending...';
+
+  try {
+    const res = await fetch('/miniapp/api/quick-pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderId: MY_ID,
+        receiverId: checkedUser.userId,
+        amount: amt
+      })
+    });
+
+    const data = await res.json();
+
+    document.getElementById('confirmModal').classList.remove('active');
+
+    if (!data.success) {
+      showToast(`❌ ${data.error || 'Payment failed'}`);
+      btn.disabled = false;
+      btn.textContent = '✅ CONFIRM';
+      return;
+    }
+
+    // Success
+    document.getElementById('successMsg').textContent =
+      `₹${amt.toFixed(2)} sent to ${checkedUser.firstName || 'User'}`;
+    document.getElementById('successModal').classList.add('active');
+
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+    // Reset form
+    document.getElementById('payUserId').value = '';
+    document.getElementById('payAmount').value = '';
+    document.getElementById('userInfoBox').style.display = 'none';
+    document.getElementById('amountCard').style.display = 'none';
+    document.getElementById('payBalanceInfo').style.display = 'none';
+    document.getElementById('payNowBtn').style.display = 'none';
+    clearMsg();
+
+    checkedUser = null;
+
+    // Reload balance
+    await loadMyBalance();
+
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Network error');
+    document.getElementById('confirmModal').classList.remove('active');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✅ CONFIRM';
+}
+
+// ============================================================
+// ✅ CLOSE SUCCESS
+// ============================================================
+function closeSuccess() {
+  document.getElementById('successModal').classList.remove('active');
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!MY_ID) {
+    document.body.innerHTML = `
+      <div style="padding:50px;text-align:center;color:#fff;">
+        <h2>⚠️ Open from Telegram</h2>
+      </div>
+    `;
+    return;
+  }
+
+  await loadMyBalance();
+
+  // Enter key support
+  document.getElementById('payUserId')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') checkUser();
+  });
+  document.getElementById('payAmount')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') initiatePay();
+  });
+});
+
+// Close modal on backdrop
+document.getElementById('confirmModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'confirmModal') cancelPay();
+});
+document.getElementById('successModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'successModal') closeSuccess();
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+
 </body>
 </html>
