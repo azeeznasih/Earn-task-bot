@@ -6,6 +6,179 @@
 <title>Tasks</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* Task Page Additional Styles */
+.task-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: cardSlideIn 0.4s ease backwards;
+  margin-bottom: 10px;
+}
+
+.task-card:active {
+  border-color: rgba(0, 255, 136, 0.5);
+  transform: scale(0.98);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+}
+
+.task-card.completed {
+  opacity: 0.6;
+  border-color: rgba(0, 255, 136, 0.4);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.task-info { flex: 1; min-width: 0; }
+
+.task-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-reward {
+  color: #00ff88;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-reward-icon {
+  font-size: 12px;
+}
+
+.task-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.task-btn.completed-btn {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Modal specific */
+#taskDetail {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.task-detail-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.task-detail-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.task-detail-reward {
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
+}
+
+.task-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.task-detail-row:last-child { border-bottom: none; }
+.task-detail-label { color: #7a9a7a; font-weight: 600; }
+.task-detail-value { color: #fff; font-weight: 700; max-width: 55%; text-align: right; word-break: break-all; }
+
+.task-open-btn {
+  display: block;
+  width: 100%;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #fff;
+  text-decoration: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  margin: 14px 0 8px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.task-open-btn:active { transform: scale(0.97); }
+
+.task-submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.task-submit-btn:active { transform: scale(0.97); }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #7a9a7a;
+}
+
+.empty-state .icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state .title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.empty-state .sub {
+  font-size: 13px;
+  line-height: 1.5;
+}
+</style>
 </head>
 <body>
 
@@ -97,6 +270,312 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script>
+// ============================================================
+// 📱 TASK PAGE
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+
+let allTasks = [];
+let currentTask = null;
+let currentTaskType = 'photo'; // photo | refer
+
+// ============================================================
+// 🔔 TOAST
+// ============================================================
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// 📋 LOAD TASKS
+// ============================================================
+async function loadTasks() {
+  const listEl = document.getElementById('taskList');
+
+  try {
+    const res = await fetch('/miniapp/api/tasks');
+    const data = await res.json();
+
+    if (!data.success || !data.tasks || data.tasks.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <div class="title">No Tasks Available</div>
+          <div class="sub">Check back later for new tasks!</div>
+        </div>
+      `;
+      return;
+    }
+
+    allTasks = data.tasks;
+
+    let html = '';
+    allTasks.forEach(task => {
+      let isCompleted = task.completedUsers && task.completedUsers.includes(userId);
+      let completedClass = isCompleted ? 'completed' : '';
+      let btnClass = isCompleted ? 'completed-btn' : '';
+      let btnText = isCompleted ? '✅ Done' : 'VIEW';
+
+      html += `
+        <div class="task-card ${completedClass}" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
+          <div class="task-info">
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-reward">
+              <span class="task-reward-icon">💰</span>
+              ₹${task.reward}
+            </div>
+          </div>
+          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+
+  } catch (e) {
+    console.error('Load tasks error:', e);
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <div class="title">Failed to load</div>
+        <div class="sub">${escapeHtml(e.message)}</div>
+      </div>
+    `;
+  }
+}
+
+// ============================================================
+// 📋 OPEN TASK DETAILS
+// ============================================================
+function openTask(taskId) {
+  const task = allTasks.find(t => t.taskId === taskId);
+  if (!task) return;
+
+  currentTask = task;
+
+  // Detect if this is a refer task (based on title or link)
+  currentTaskType = 'photo';
+  if (task.link && (task.link.toLowerCase().includes('refer') || task.title.toLowerCase().includes('refer'))) {
+    currentTaskType = 'refer';
+  }
+
+  const detailEl = document.getElementById('taskDetail');
+  detailEl.innerHTML = `
+    <div class="task-detail-icon">📋</div>
+    <div class="task-detail-title">${escapeHtml(task.title)}</div>
+    <div class="task-detail-reward">₹${task.reward}</div>
+    <div class="task-detail-row">
+      <span class="task-detail-label">Reward</span>
+      <span class="task-detail-value">₹${task.reward}</span>
+    </div>
+    <div class="task-detail-row">
+      <span class="task-detail-label">Task ID</span>
+      <span class="task-detail-value">${escapeHtml(task.taskId)}</span>
+    </div>
+    <a href="${escapeHtml(task.link)}" target="_blank" class="task-open-btn">
+      🔗 Open Task Link
+    </a>
+    <button class="task-submit-btn" onclick="startSubmit()">
+      ${currentTaskType === 'refer' ? '🔗 Submit Refer ID' : '📸 Submit Screenshot'}
+    </button>
+  `;
+
+  document.getElementById('taskModal').classList.add('active');
+}
+
+function closeTaskModal() {
+  document.getElementById('taskModal').classList.remove('active');
+}
+
+// ============================================================
+// 📸 START SUBMIT
+// ============================================================
+function startSubmit() {
+  closeTaskModal();
+
+  if (currentTaskType === 'refer') {
+    document.getElementById('referModal').classList.add('active');
+    setTimeout(() => document.getElementById('referInput').focus(), 300);
+  } else {
+    document.getElementById('uploadModal').classList.add('active');
+  }
+}
+
+function closeUploadModal() {
+  document.getElementById('uploadModal').classList.remove('active');
+  document.getElementById('screenshotInput').value = '';
+}
+
+function closeReferModal() {
+  document.getElementById('referModal').classList.remove('active');
+  document.getElementById('referInput').value = '';
+}
+
+// ============================================================
+// 📸 HANDLE SCREENSHOT UPLOAD
+// ============================================================
+async function handleScreenshot(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!currentTask) {
+    showToast('❌ No task selected');
+    return;
+  }
+
+  closeUploadModal();
+  showToast('⏳ Uploading screenshot...');
+
+  try {
+    // Convert to base64
+    const base64 = await fileToBase64(file);
+
+    const res = await fetch('/miniapp/api/submit-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        taskId: currentTask.taskId,
+        photoBase64: base64
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Screenshot submitted!');
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      currentTask = null;
+      // Reload tasks
+      setTimeout(() => loadTasks(), 500);
+    } else {
+      showToast(`❌ ${data.error || 'Submit failed'}`);
+    }
+  } catch (e) {
+    console.error('Submit error:', e);
+    showToast('❌ Network error. Try again.');
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================
+// 🔗 SUBMIT REFER
+// ============================================================
+async function submitRefer() {
+  const input = document.getElementById('referInput');
+  const value = input.value.trim();
+
+  if (!value) {
+    showToast('❌ Enter refer link or ID');
+    return;
+  }
+
+  if (!currentTask) {
+    showToast('❌ No task selected');
+    return;
+  }
+
+  closeReferModal();
+  showToast('⏳ Submitting...');
+
+  try {
+    const res = await fetch('/miniapp/api/submit-refer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        taskId: currentTask.taskId,
+        referValue: value
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Refer submitted!');
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      currentTask = null;
+      setTimeout(() => loadTasks(), 500);
+    } else {
+      showToast(`❌ ${data.error || 'Submit failed'}`);
+    }
+  } catch (e) {
+    console.error('Refer submit error:', e);
+    showToast('❌ Network error');
+  }
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!userId) {
+    document.getElementById('taskList').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <div class="title">Open from Telegram</div>
+        <div class="sub">This page works inside Telegram Mini App.</div>
+      </div>
+    `;
+    return;
+  }
+
+  await loadTasks();
+
+  // Enter key for refer
+  document.getElementById('referInput')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitRefer();
+  });
+});
+
+// Close modals on backdrop click
+document.getElementById('taskModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'taskModal') closeTaskModal();
+});
+document.getElementById('uploadModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'uploadModal') closeUploadModal();
+});
+document.getElementById('referModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'referModal') closeReferModal();
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+
 </body>
 </html>
