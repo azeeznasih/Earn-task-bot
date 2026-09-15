@@ -5,14 +5,13 @@ const tg = window.Telegram?.WebApp;
 let currentUser = null;
 let currentUserId = null;
 let receiverUser = null;
+let currentTask = null;
 
 // ============================================================
 // 🆔 Get User ID
 // ============================================================
 function getUserId() {
-  if (tg && tg.initDataUnsafe?.user?.id) {
-    return String(tg.initDataUnsafe.user.id);
-  }
+  if (tg && tg.initDataUnsafe?.user?.id) return String(tg.initDataUnsafe.user.id);
   let testId = localStorage.getItem('miniapp_test_id');
   if (!testId) {
     testId = prompt("Enter Test User ID:", "8061612320") || "8061612320";
@@ -22,7 +21,7 @@ function getUserId() {
 }
 
 // ============================================================
-// 🚀 Init
+// 🚀 INIT
 // ============================================================
 async function initMiniApp() {
   if (tg) {
@@ -64,9 +63,7 @@ async function loadUser() {
     if (payBalanceEl) payBalanceEl.textContent = '₹' + (data.user.balance || 0).toFixed(2);
 
     await loadPaymentMethods();
-  } catch (e) {
-    console.error("loadUser:", e);
-  }
+  } catch (e) { console.error("loadUser:", e); }
 }
 
 // ============================================================
@@ -254,6 +251,7 @@ async function loadTasks() {
 }
 
 function openTaskDetail(task) {
+  currentTask = task;
   const modal = document.getElementById('taskModal');
   const detail = document.getElementById('taskDetail');
   if (!modal) return;
@@ -264,28 +262,120 @@ function openTaskDetail(task) {
     <p style="color:#7a9a7a; font-size:13px; margin-bottom:16px;">
       🔗 <a href="${task.link}" target="_blank" style="color:#00ff88;">Open Task Link</a>
     </p>
-    <div style="background:#0a0f0a; border-radius:10px; padding:14px; font-size:13px; line-height:1.7; color:#ccc;">
+    <div style="background:#0a0f0a; border-radius:10px; padding:14px; font-size:13px; line-height:1.7; color:#ccc; margin-bottom:16px;">
       <b style="color:#fff;">📸 How to complete:</b><br>
       1️⃣ Click the task link above<br>
-      2️⃣ Take a screenshot as proof<br>
-      3️⃣ Go back to the bot and send the screenshot<br><br>
+      2️⃣ Take a screenshot OR copy refer ID<br>
+      3️⃣ Upload screenshot OR paste refer ID below<br><br>
       <b style="color:#00ff88;">⏳ Admin will verify and credit ₹${task.reward}</b>
     </div>
-    <button onclick="goToBotForScreenshot()" style="width:100%; background:#00ff88; color:#000; border:none; padding:14px; border-radius:10px; font-weight:800; font-size:14px; margin-top:16px; cursor:pointer;">
-      📤 Send Screenshot in Bot
+
+    <button onclick="openUploadModal()" style="width:100%; background:#00ff88; color:#000; border:none; padding:14px; border-radius:10px; font-weight:800; font-size:14px; margin-bottom:8px; cursor:pointer;">
+      📸 Upload Screenshot
+    </button>
+
+    <button onclick="openReferModal()" style="width:100%; background:#2b7fff; color:#fff; border:none; padding:14px; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">
+      🔗 Send Refer ID / Link
     </button>
   `;
   modal.classList.add('active');
 }
 
-function goToBotForScreenshot() {
-  if (tg) tg.close();
-  else alert("Please go back to the Telegram bot and send your screenshot.");
-}
-
 function closeTaskModal() {
   const modal = document.getElementById('taskModal');
   if (modal) modal.classList.remove('active');
+}
+
+function openUploadModal() {
+  const modal = document.getElementById('uploadModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeUploadModal() {
+  const modal = document.getElementById('uploadModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function openReferModal() {
+  const modal = document.getElementById('referModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeReferModal() {
+  const modal = document.getElementById('referModal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleScreenshot(event) {
+  const file = event.target.files[0];
+  if (!file || !currentTask) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("❌ File too large! Max 5MB");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const base64 = e.target.result;
+
+    closeUploadModal();
+    closeTaskModal();
+
+    alert("⏳ Uploading screenshot...");
+
+    try {
+      const res = await fetch('/miniapp/api/submit-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUserId,
+          taskId: currentTask.taskId,
+          photoBase64: base64
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ Screenshot submitted! Wait for admin approval.");
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (e) {
+      alert("❌ Error: " + e.message);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitRefer() {
+  const referValue = document.getElementById('referInput')?.value.trim();
+  if (!referValue) return alert("❌ Enter refer ID or link");
+  if (!currentTask) return alert("❌ No task selected");
+
+  closeReferModal();
+  closeTaskModal();
+
+  alert("⏳ Submitting...");
+
+  try {
+    const res = await fetch('/miniapp/api/submit-refer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUserId,
+        taskId: currentTask.taskId,
+        referValue: referValue
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("✅ Refer ID submitted! Wait for admin approval.");
+    } else {
+      alert("❌ " + data.error);
+    }
+  } catch (e) {
+    alert("❌ Error: " + e.message);
+  }
 }
 
 // ============================================================
@@ -315,7 +405,6 @@ async function checkUser() {
       msg.textContent = "✅ User found!";
       msg.className = 'check-msg success';
 
-      // Show user info box
       if (box) {
         box.style.display = 'flex';
         document.getElementById('userInfoName').textContent = receiverUser.firstName || "User";
@@ -328,7 +417,6 @@ async function checkUser() {
         }
       }
 
-      // Show amount card + balance + pay button
       if (amountCard) amountCard.style.display = 'block';
       if (balanceInfo) balanceInfo.style.display = 'flex';
       if (payBtn) payBtn.style.display = 'block';
@@ -361,7 +449,6 @@ function initiatePay() {
   const balance = currentUser?.balance || 0;
   if (amount > balance) return alert("❌ Insufficient balance!");
 
-  // Fill confirm modal
   document.getElementById('confirmName').textContent = receiverUser.firstName || "User";
   document.getElementById('confirmUserId').textContent = receiverUser.userId;
   document.getElementById('confirmAmount').textContent = '₹' + amount.toFixed(2);
@@ -403,7 +490,6 @@ async function confirmPay() {
       const successModal = document.getElementById('successModal');
       if (successModal) successModal.classList.add('active');
 
-      // Reset form
       document.getElementById('payUserId').value = '';
       document.getElementById('payAmount').value = '';
       document.getElementById('userInfoBox').style.display = 'none';
@@ -468,6 +554,20 @@ async function loadProfile() {
       set('pJoined', d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }));
     }
   } catch (e) { console.error(e); }
+
+  // ✅ Admin Check
+  try {
+    const adminRes = await fetch(`/miniapp/api/is-admin/${currentUserId}`);
+    const adminData = await adminRes.json();
+    if (adminData.success && adminData.isAdmin) {
+      const adminCard = document.getElementById('adminPanelCard');
+      if (adminCard) adminCard.style.display = 'block';
+    }
+  } catch (e) { console.error(e); }
+}
+
+function openAdminPanel() {
+  window.location.href = '/miniapp/admin';
 }
 
 // ============================================================
