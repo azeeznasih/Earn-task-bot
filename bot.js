@@ -4944,3 +4944,185 @@ mongoose.connect(MONGO_URI)
     bot.start({ onStart: (info) => console.log(`🚀 Bot @${info.username} running!`) });
   })
   .catch((err) => console.error("❌ DB Error:", err));
+
+// ============================================================
+// 👑 MINI APP — ADMIN APIs
+// ============================================================
+
+// ----- PENDING WITHDRAWALS -----
+app.get("/miniapp/api/admin/pending-withdrawals", async (req, res) => {
+  try {
+    const wds = await Withdrawal.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, withdrawals: wds });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- APPROVE WITHDRAWAL -----
+app.post("/miniapp/api/admin/approve-wd/:id", async (req, res) => {
+  try {
+    const wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
+    if (!wd || wd.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    let txnNumber = generateTxnNumber();
+    let gateway = await Gateway.findOne({ isActive: true });
+    let gatewayName = gateway ? gateway.name : "TASK EARN";
+
+    wd.status = "Approved";
+    wd.gateway = gatewayName;
+    wd.txnNumber = txnNumber;
+    wd.approvedBy = "MiniApp Admin";
+    wd.approvedAt = new Date();
+    await wd.save();
+
+    // Notify user
+    try {
+      await bot.api.sendMessage(wd.userId,
+        `🎁Your Withdrawal of Rs.${wd.amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
+        `🏦 Destination ==> ${wd.details}\n` +
+        `🚀Transaction ID ==> ${txnNumber}\n` +
+        `🗓 Date ==> ${formatDateTime(wd.approvedAt)}\n\n` +
+        `✅Please Check Your ${gatewayName} Account!`);
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- REJECT WITHDRAWAL -----
+app.post("/miniapp/api/admin/reject-wd/:id", async (req, res) => {
+  try {
+    const wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
+    if (!wd || wd.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    wd.status = "Rejected";
+    wd.approvedBy = "MiniApp Admin";
+    wd.approvedAt = new Date();
+    await wd.save();
+
+    // Refund
+    let user = await getUser(wd.userId);
+    user.balance += wd.amount;
+    user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
+    await user.save();
+    await logBalanceHistory(wd.userId, "Withdrawal Refunded", wd.amount);
+
+    try {
+      await bot.api.sendMessage(wd.userId, `❌ Withdrawal of ₹${wd.amount} rejected & refunded.`);
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- PENDING ADD FUNDS -----
+app.get("/miniapp/api/admin/pending-addfunds", async (req, res) => {
+  try {
+    const afs = await AddFund.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, addFunds: afs });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- APPROVE ADD FUND -----
+app.post("/miniapp/api/admin/approve-af/:id", async (req, res) => {
+  try {
+    const af = await AddFund.findOne({ requestId: req.params.id });
+    if (!af || af.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    af.status = "Approved";
+    af.approvedBy = "MiniApp Admin";
+    af.approvedAt = new Date();
+    await af.save();
+
+    let user = await getUser(af.userId);
+    user.balance += af.amount;
+    await user.save();
+    await logBalanceHistory(af.userId, `Add Fund Approved (#${af.requestId})`, af.amount);
+
+    try {
+      await bot.api.sendMessage(af.userId,
+        `✅ *Add Fund Approved!*\n\n💰 ₹${af.amount} added\n\n💵 New Balance: ₹${user.balance.toFixed(2)}`,
+        { parse_mode: "Markdown" });
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- REJECT ADD FUND -----
+app.post("/miniapp/api/admin/reject-af/:id", async (req, res) => {
+  try {
+    const af = await AddFund.findOne({ requestId: req.params.id });
+    if (!af || af.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    af.status = "Rejected";
+    af.approvedBy = "MiniApp Admin";
+    af.approvedAt = new Date();
+    await af.save();
+
+    try {
+      await bot.api.sendMessage(af.userId, `❌ Add Fund Rejected\n\n₹${af.amount}\n\nContact support.`);
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- PENDING SUBMISSIONS -----
+app.get("/miniapp/api/admin/pending-submissions", async (req, res) => {
+  try {
+    const subs = await TaskSubmission.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, submissions: subs });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- APPROVE SUBMISSION -----
+app.post("/miniapp/api/admin/approve-sub/:id", async (req, res) => {
+  try {
+    const sub = await TaskSubmission.findOne({ submissionId: req.params.id });
+    if (!sub || sub.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    sub.status = "Approved";
+    await sub.save();
+
+    let user = await getUser(sub.userId);
+    user.balance += sub.reward;
+    await user.save();
+    await logBalanceHistory(sub.userId, `Task Approved (${sub.taskTitle})`, sub.reward);
+    await Task.updateOne({ taskId: sub.taskId }, { $addToSet: { completedUsers: sub.userId } });
+
+    try {
+      await bot.api.sendMessage(sub.userId,
+        `🎉 *Payment Received!*\n\n📌 ${sub.taskTitle}\n💰 ₹${sub.reward}\n✅ Approved`,
+        { parse_mode: "Markdown" });
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- REJECT SUBMISSION -----
+app.post("/miniapp/api/admin/reject-sub/:id", async (req, res) => {
+  try {
+    const sub = await TaskSubmission.findOne({ submissionId: req.params.id });
+    if (!sub || sub.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    sub.status = "Rejected";
+    await sub.save();
+
+    try {
+      await bot.api.sendMessage(sub.userId,
+        `❌ *Task Rejected!*\n\n📌 ${sub.taskTitle}\n💰 ₹${sub.reward}\n\nProof not valid.`,
+        { parse_mode: "Markdown" });
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ----- ALL USERS -----
+app.get("/miniapp/api/admin/all-users", async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ balance: -1 }).limit(100);
+    res.json({ success: true, users });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
