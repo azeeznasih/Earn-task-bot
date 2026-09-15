@@ -949,3 +949,201 @@ html, body {
   margin-bottom: 12px;
   opacity: 0.5;
 }
+
+/* ============ ADMIN STATS ============ */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-card {
+  border-radius: 16px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat-icon { font-size: 22px; margin-bottom: 6px; }
+.stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+.stat-label {
+  font-size: 10px;
+  color: #7a9a7a;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ============ ADMIN TABS ============ */
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+
+.admin-tab {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #7a9a7a;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.admin-tab.active {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+}
+
+/* ============ ADMIN MENU ============ */
+.admin-menu { border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+.admin-menu .section-title {
+  font-size: 11px;
+  color: #7a9a7a;
+  letter-spacing: 1.5px;
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+
+.admin-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #fff;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.admin-menu-btn:active {
+  background: rgba(0, 255, 136, 0.1);
+  transform: translateX(4px);
+}
+.menu-icon { font-size: 20px; }
+.menu-text { flex: 1; text-align: left; }
+.menu-arrow { color: #7a9a7a; font-size: 22px; }
+
+.admin-note {
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 13px;
+  color: #7a9a7a;
+  text-align: center;
+  line-height: 1.5;
+}
+.admin-note b { color: #00ff88; }
+
+/* ============ ADMIN ITEMS ============ */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.admin-item {
+  border-radius: 16px;
+  padding: 14px;
+  animation: cardSlideIn 0.3s ease backwards;
+}
+
+.admin-item-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-item-id {
+  font-size: 12px;
+  color: #7a9a7a;
+  font-weight: 700;
+}
+
+.admin-item-amount {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00ff88;
+}
+
+.admin-item-row {
+  font-size: 12px;
+  color: #ccc;
+  margin-bottom: 6px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.admin-item-row b { color: #7a9a7a; margin-right: 4px; }
+.admin-item-row code {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #00ff88;
+  font-size: 11px;
+}
+
+.admin-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-approve, .btn-reject {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.btn-approve {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+}
+.btn-reject {
+  background: rgba(255, 85, 85, 0.15);
+  color: #ff5555;
+  border: 1px solid rgba(255, 85, 85, 0.3);
+}
+.btn-approve:active, .btn-reject:active { transform: scale(0.95); }
+
+/* ============ ADMIN PANEL BUTTON (Profile) ============ */
+.admin-panel-card { margin-bottom: 14px; }
+.admin-panel-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+  transition: transform 0.15s;
+}
+.admin-panel-btn:active { transform: scale(0.97); }
