@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Admin Panel</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="logo">👑 ADMIN PANEL</div>
+  </header>
+
+  <div class="page-title">⚙️ Admin Controls</div>
+  <p class="page-sub">Manage your bot</p>
+
+  <div class="admin-menu">
+    <button class="admin-menu-btn" onclick="adminAction('Balance')">💰 Balance</button>
+    <button class="admin-menu-btn" onclick="adminAction('Users')">👥 Users</button>
+    <button class="admin-menu-btn" onclick="adminAction('Tasks')">📋 Tasks</button>
+    <button class="admin-menu-btn" onclick="adminAction('Gifts')">🎁 Gifts</button>
+    <button class="admin-menu-btn" onclick="adminAction('Gateway')">🌐 Gateway</button>
+    <button class="admin-menu-btn" onclick="adminAction('Broadcast')">📢 Broadcast</button>
+    <button class="admin-menu-btn" onclick="adminAction('Verification')">✅ Verification</button>
+    <button class="admin-menu-btn" onclick="adminAction('Theme')">🎨 Theme</button>
+    <button class="admin-menu-btn" onclick="adminAction('Add Fund')">📊 Add Fund</button>
+    <button class="admin-menu-btn" onclick="adminAction('Settings')">⚙️ Settings</button>
+  </div>
+
+  <div class="admin-note">
+    💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
+    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
+    <a href="/miniapp/pay" class="nav-item">💸<span>PAY</span></a>
+    <a href="/miniapp/profile" class="nav-item active">👤<span>PROFILE</span></a>
+  </nav>
+
+</div>
+
+<script>
+function adminAction(name) {
+  alert(`⚙️ ${name}\n\nFull control in Bot /admin`);
+}
+</script>
+</body>
+</html>
