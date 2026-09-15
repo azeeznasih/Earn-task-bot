@@ -10,7 +10,6 @@
 <body>
 <div class="app">
 
-  <!-- HEADER -->
   <header class="topbar">
     <div class="logo">TASK EARN BOT</div>
   </header>
@@ -63,7 +62,13 @@
     </div>
   </div>
 
-  <!-- BOTTOM NAV -->
+  <!-- ADMIN PANEL BUTTON (Admin only) -->
+  <div class="admin-panel-card" id="adminPanelCard" style="display:none;">
+    <button class="admin-panel-btn" onclick="openAdminPanel()">
+      👑 Admin Panel
+    </button>
+  </div>
+
   <nav class="bottom-nav">
     <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
     <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
