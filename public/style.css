@@ -2,16 +2,17 @@
    TASK EARN BOT — Mini App Styles
    ============================================================ */
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
-html, body { background: #0a0f0a; color: #fff; min-height: 100vh; overflow-x: hidden; }
-body { overscroll-behavior: none; }
-.app { max-width: 480px; margin: 0 auto; padding: 16px 16px 110px; }
+html, body { background: #0a0f0a; color: #fff; min-height: 100vh; overflow-x: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+body { overscroll-behavior-y: contain; overscroll-behavior-x: none; }
+.app { max-width: 480px; margin: 0 auto; padding: 16px 16px 120px; animation: pageSlideIn 0.4s ease; min-height: 100vh; }
+@keyframes pageSlideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ============ HEADER ============ */
 .topbar { text-align: center; padding: 14px 0; }
 .logo { font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #fff; }
 
 /* ============ USER CARD ============ */
-.user-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.user-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 16px; margin-bottom: 14px; animation: cardSlideIn 0.5s ease backwards; animation-delay: 0.05s; }
 .user-info { display: flex; align-items: center; gap: 12px; }
 .avatar { width: 52px; height: 52px; background: #1e2e1e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid #00ff88; overflow: hidden; position: relative; flex-shrink: 0; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -19,14 +20,14 @@ body { overscroll-behavior: none; }
 .userid { color: #7a9a7a; font-size: 12px; margin-top: 2px; }
 
 /* ============ BALANCE CARD ============ */
-.balance-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 24px 16px; margin-bottom: 14px; text-align: center; }
+.balance-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 24px 16px; margin-bottom: 14px; text-align: center; animation: cardSlideIn 0.5s ease backwards; animation-delay: 0.1s; }
 .balance-card .label { color: #7a9a7a; font-size: 11px; letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 600; }
 .balance { font-size: 42px; font-weight: 800; color: #00ff88; margin-bottom: 18px; line-height: 1; }
 .withdraw-btn { width: 100%; background: #00ff88; color: #000; border: none; padding: 15px; border-radius: 12px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; cursor: pointer; transition: transform 0.1s; }
 .withdraw-btn:active { transform: scale(0.97); }
 
 /* ============ LINKED CARD ============ */
-.linked-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+.linked-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; animation: cardSlideIn 0.5s ease backwards; animation-delay: 0.15s; }
 .linked-left { display: flex; align-items: center; gap: 12px; }
 .linked-icon { width: 42px; height: 42px; background: #1e2e1e; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .linked-label { font-size: 10px; color: #7a9a7a; letter-spacing: 1px; font-weight: 600; }
@@ -34,7 +35,7 @@ body { overscroll-behavior: none; }
 .change-btn { background: #1e2e1e; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer; }
 
 /* ============ PAYMENT CARD ============ */
-.payment-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.payment-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 16px; margin-bottom: 14px; animation: cardSlideIn 0.5s ease backwards; animation-delay: 0.2s; }
 .section-title { font-size: 12px; color: #7a9a7a; letter-spacing: 1.5px; margin-bottom: 12px; font-weight: 700; }
 .payment-list { display: flex; flex-direction: column; gap: 8px; }
 .payment-item { display: flex; justify-content: space-between; align-items: center; background: #0a0f0a; padding: 12px 14px; border-radius: 10px; border: 1px solid #1e2e1e; }
@@ -42,14 +43,15 @@ body { overscroll-behavior: none; }
 .payment-item span:last-child { color: #00ff88; font-size: 12px; max-width: 55%; text-align: right; word-break: break-all; }
 
 /* ============ BOTTOM NAV ============ */
-.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #0f150f; border-top: 1px solid #1e2e1e; display: flex; justify-content: space-around; padding: 12px 0 16px; z-index: 50; backdrop-filter: blur(10px); }
-.nav-item { color: #7a9a7a; text-decoration: none; text-align: center; font-size: 11px; display: flex; flex-direction: column; gap: 5px; align-items: center; font-weight: 600; letter-spacing: 0.5px; flex: 1; padding: 6px 0; transition: all 0.3s ease; position: relative; }
-.nav-item span { font-size: 11px; transition: all 0.3s ease; }
-.nav-item:active { transform: scale(0.9); }
-.nav-item.active { color: #4da6ff; }
-.nav-item.active span { color: #4da6ff; }
-.nav-item.active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 30px; height: 3px; background: #4da6ff; border-radius: 0 0 4px 4px; animation: slideDown 0.3s ease; }
-@keyframes slideDown { from { width: 0; opacity: 0; } to { width: 30px; opacity: 1; } }
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(15, 21, 15, 0.95); border-top: 1px solid #1e2e1e; display: flex; justify-content: space-around; padding: 12px 0 20px; z-index: 9999; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5); }
+.nav-item { color: #7a9a7a; text-decoration: none; text-align: center; font-size: 11px; display: flex; flex-direction: column; gap: 5px; align-items: center; font-weight: 600; letter-spacing: 0.5px; flex: 1; padding: 8px 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; cursor: pointer; }
+.nav-item span { font-size: 11px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.nav-item:active { transform: scale(0.85); }
+.nav-item:active span { transform: scale(1.1); }
+.nav-item.active { color: #4da6ff; transform: translateY(-3px); }
+.nav-item.active span { color: #4da6ff; font-weight: 800; text-shadow: 0 0 12px rgba(77, 166, 255, 0.6); }
+.nav-item.active::before { content: ''; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); width: 0; height: 3px; background: linear-gradient(90deg, transparent, #4da6ff, transparent); border-radius: 4px; animation: navGlow 0.5s ease forwards; box-shadow: 0 0 10px #4da6ff; }
+@keyframes navGlow { from { width: 0; opacity: 0; } to { width: 40px; opacity: 1; } }
 
 /* ============ PAGE TITLES ============ */
 .page-title { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
@@ -70,13 +72,11 @@ body { overscroll-behavior: none; }
 .total-label { color: #7affb0; font-size: 11px; letter-spacing: 1.5px; font-weight: 700; }
 .total-balance { font-size: 36px; font-weight: 800; color: #00ff88; margin: 8px 0; }
 .total-sub { color: #7a9a7a; font-size: 12px; }
-
 .profile-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 20px; margin-bottom: 14px; text-align: center; }
 .profile-avatar { width: 70px; height: 70px; background: #1e2e1e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 12px; border: 2px solid #00ff88; overflow: hidden; position: relative; }
 .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .profile-name { font-size: 18px; font-weight: 700; }
 .profile-id { color: #7a9a7a; font-size: 13px; margin-top: 4px; }
-
 .details-card { background: #111a11; border: 1px solid #1e2e1e; border-radius: 16px; padding: 8px 16px; margin-bottom: 14px; }
 .detail-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #1e2e1e; font-size: 14px; }
 .detail-row:last-child { border-bottom: none; }
@@ -90,34 +90,27 @@ body { overscroll-behavior: none; }
 .pay-input-row input { flex: 1; background: #0a0f0a; border: 1px solid #1e2e1e; color: #fff; padding: 14px; border-radius: 10px; font-size: 14px; outline: none; font-weight: 600; }
 .pay-input-row input:focus { border-color: #00ff88; }
 .check-btn { background: #00ff88; color: #000; border: none; padding: 0 20px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
-
 .user-info-box { display: flex; align-items: center; gap: 12px; background: #0a0f0a; border: 1px solid #00ff88; border-radius: 12px; padding: 12px; margin-top: 12px; animation: fadeIn 0.3s ease; }
 .user-info-avatar { width: 48px; height: 48px; background: #1e2e1e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; flex-shrink: 0; border: 2px solid #00ff88; }
 .user-info-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .user-info-details { flex: 1; }
 .user-info-name { font-weight: 700; font-size: 15px; color: #fff; }
 .user-info-id { color: #7a9a7a; font-size: 12px; margin-top: 2px; }
-
 .check-msg { margin-top: 10px; font-size: 13px; font-weight: 600; text-align: center; }
 .check-msg.success { color: #00ff88; }
 .check-msg.error { color: #ff5555; }
-
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
 .amount-input-wrap { display: flex; align-items: center; background: #0a0f0a; border: 1px solid #1e2e1e; border-radius: 10px; padding: 0 14px; }
 .amount-input-wrap:focus-within { border-color: #00ff88; }
 .rupee-symbol { font-size: 22px; font-weight: 800; color: #00ff88; }
 .amount-input-wrap input { flex: 1; background: transparent; border: none; color: #fff; padding: 14px 8px; font-size: 20px; font-weight: 700; outline: none; }
 .amount-input-wrap input::placeholder { color: #4a5a4a; }
-
 .quick-amounts { display: flex; gap: 8px; margin-top: 12px; }
 .quick-amounts button { flex: 1; background: #1e2e1e; color: #fff; border: 1px solid #2e3e2e; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
 .quick-amounts button:active { background: #00ff88; color: #000; transform: scale(0.95); }
-
 .pay-balance-info { display: flex; justify-content: space-between; background: #111a11; border: 1px solid #1e2e1e; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; font-size: 14px; }
 .pay-balance-info span:first-child { color: #7a9a7a; font-weight: 600; }
 .pay-balance-info span:last-child { color: #00ff88; font-weight: 800; }
-
 .pay-now-btn { width: 100%; background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%); color: #000; border: none; padding: 18px; border-radius: 14px; font-weight: 800; font-size: 16px; letter-spacing: 1px; cursor: pointer; box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3); transition: all 0.2s; }
 .pay-now-btn:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(0, 255, 136, 0.5); }
 
@@ -127,14 +120,12 @@ body { overscroll-behavior: none; }
 .success-icon { font-size: 56px; margin-bottom: 8px; }
 .confirm-modal-content h3 { font-size: 20px; margin-bottom: 8px; }
 .confirm-text { color: #7a9a7a; font-size: 13px; margin-bottom: 16px; }
-
 .confirm-details { background: #0a0f0a; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
 .confirm-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; }
 .confirm-label { color: #7a9a7a; }
 .confirm-value { color: #fff; font-weight: 700; }
 .confirm-row.highlight { border-top: 1px solid #1e2e1e; margin-top: 8px; padding-top: 12px; }
 .confirm-value.amount { color: #00ff88; font-size: 18px; }
-
 .confirm-buttons { display: flex; gap: 10px; }
 .confirm-cancel-btn { flex: 1; background: #2a1a1a; color: #ff5555; border: 1px solid #4a2a2a; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
 .confirm-cancel-btn:active { background: #3a1a1a; }
@@ -156,7 +147,25 @@ body { overscroll-behavior: none; }
 .withdraw-method-btn:active { border-color: #00ff88; }
 .withdraw-method-btn .icon { font-size: 20px; }
 
+/* ============ UPLOAD BUTTON ============ */
+.upload-btn { width: 100%; background: #00ff88; color: #000; border: none; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 14px; margin-bottom: 8px; cursor: pointer; }
+.upload-btn:active { transform: scale(0.97); }
+
+/* ============ ADMIN PANEL BUTTON ============ */
+.admin-panel-card { margin-bottom: 14px; }
+.admin-panel-btn { width: 100%; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: #fff; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4); transition: transform 0.2s; }
+.admin-panel-btn:active { transform: scale(0.97); }
+
+/* ============ ADMIN MENU ============ */
+.admin-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.admin-menu-btn { background: #111a11; border: 1px solid #1e2e1e; color: #fff; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; transition: all 0.2s; }
+.admin-menu-btn:active { background: #1e2e1e; border-color: #00ff88; }
+.admin-note { background: #0a0f0a; border: 1px solid #1e2e1e; border-radius: 12px; padding: 14px; font-size: 13px; color: #7a9a7a; text-align: center; }
+
 /* ============ LOADING & EMPTY ============ */
 .loading { text-align: center; color: #7a9a7a; padding: 30px; font-size: 13px; }
 .empty-state { text-align: center; color: #7a9a7a; padding: 40px 20px; font-size: 14px; }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+/* ============ CARD ANIMATIONS ============ */
+@keyframes cardSlideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
