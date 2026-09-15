@@ -4,8 +4,437 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Device Verification</title>
-<link rel="stylesheet" href="verify.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* ============================================================
+   VERIFY PAGE — Styles (inline)
+   ============================================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: #000;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: radial-gradient(ellipse at top, #0a1a10 0%, #000 70%);
+}
+
+.verify-app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ============ TOP BAR ============ */
+.verify-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0 12px;
+  gap: 12px;
+}
+
+.back-btn {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-btn:active {
+  transform: scale(0.95);
+}
+
+.topbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #00ff88;
+}
+
+.status-badge .dot {
+  width: 8px;
+  height: 8px;
+  background: #00ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00ff88;
+  animation: pulseDot 1.5s infinite;
+}
+
+.status-badge.danger {
+  background: rgba(255, 77, 77, 0.08);
+  border-color: rgba(255, 77, 77, 0.3);
+  color: #ff4d4d;
+}
+
+.status-badge.danger .dot {
+  background: #ff4d4d;
+  box-shadow: 0 0 10px #ff4d4d;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============ USER TOP INFO ============ */
+.user-top-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+}
+
+.user-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.15);
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-id {
+  font-size: 12px;
+  color: #7a9a7a;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 2px;
+}
+
+.user-handle {
+  font-size: 12px;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+/* ============ MAIN CARD ============ */
+.main-card {
+  background: linear-gradient(145deg, rgba(0, 255, 136, 0.08), rgba(0, 255, 136, 0.02));
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: 22px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.main-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+  animation: cardShine 3s infinite;
+}
+
+@keyframes cardShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.card-label {
+  font-size: 11px;
+  color: #7affb0;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.card-status-icon {
+  font-size: 20px;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 10px;
+  color: #7a9a7a;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.field-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+}
+
+.id-value {
+  color: #00ff88;
+}
+
+.name-value {
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.field-handle {
+  font-size: 13px;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.card-bot-photo {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 255, 136, 0.15);
+  display: flex;
+  justify-content: center;
+}
+
+.card-bot-photo img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #00ff88;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+}
+
+/* ============ STATUS SECTION ============ */
+.status-section {
+  text-align: center;
+  padding: 6px 0;
+}
+
+.status-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 8px;
+}
+
+.status-title.error {
+  color: #ff4d4d;
+}
+
+.status-title.success {
+  color: #00ff88;
+}
+
+.status-subtitle {
+  font-size: 13px;
+  color: #7a9a7a;
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* ============ BOT INFO CARD ============ */
+.bot-info-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+}
+
+.bot-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.15);
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.bot-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bot-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.bot-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-status {
+  font-size: 12px;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.bot-check {
+  font-size: 20px;
+  color: #00ff88;
+}
+
+/* ============ CONTINUE BUTTON ============ */
+.continue-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  padding: 16px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+  transition: transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.continue-btn:active {
+  transform: scale(0.97);
+}
+
+/* ============ FOOTER ============ */
+.verify-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #7a9a7a;
+  padding: 8px 0;
+  margin-top: auto;
+}
+
+.lock-icon {
+  font-size: 14px;
+}
+
+/* ============ TOAST ============ */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  z-index: 10000;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
+  animation: toastUp 0.3s ease;
+}
+
+@keyframes toastUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+</style>
 </head>
 <body>
 <div class="verify-app">
@@ -52,7 +481,7 @@
       </div>
     </div>
 
-    <div class="card-bot-photo" id="cardBotPhoto">
+    <div class="card-bot-photo" id="cardBotPhoto" style="display:none;">
       <img id="botPhotoImg" src="" alt="Bot">
     </div>
   </div>
@@ -66,13 +495,14 @@
   <!-- BOT INFO CARD -->
   <div class="bot-info-card">
     <div class="bot-avatar" id="botAvatar">
-      <img id="botPhotoSmall" src="" alt="Bot">
+      <span>🤖</span>
+      <img id="botPhotoSmall" src="" alt="Bot" style="display:none;">
     </div>
     <div class="bot-details">
       <div class="bot-name" id="botName">TASK EARN BOT</div>
-      <div class="bot-status" id="botStatus">Account verified</div>
+      <div class="bot-status" id="botStatus">Verifying access...</div>
     </div>
-    <div class="bot-check">✅</div>
+    <div class="bot-check" id="botCheck">⏳</div>
   </div>
 
   <!-- CONTINUE BUTTON -->
@@ -88,6 +518,270 @@
 
 </div>
 
-<script src="verify.js"></script>
+<script>
+// ============================================================
+// ✅ VERIFY PAGE — Complete Logic
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+const tgUser = tg?.initDataUnsafe?.user;
+
+let deviceHash = null;
+let verified = false;
+
+// ============================================================
+// 🔔 TOAST
+// ============================================================
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ============================================================
+// 🔒 DEVICE HASH GENERATOR
+// ============================================================
+async function generateDeviceHash() {
+  // Combine: Telegram user data + device info
+  const deviceData = [
+    tgUser?.id || 'unknown',
+    tgUser?.language_code || 'unknown',
+    navigator.userAgent || '',
+    navigator.platform || '',
+    screen.width + 'x' + screen.height,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+  ].join('|');
+
+  // Generate SHA-256 hash
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(deviceData);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  } catch (e) {
+    // Fallback: simple hash
+    let hash = 0;
+    for (let i = 0; i < deviceData.length; i++) {
+      hash = ((hash << 5) - hash) + deviceData.charCodeAt(i);
+      hash |= 0;
+    }
+    return 'h_' + Math.abs(hash).toString(16);
+  }
+}
+
+// ============================================================
+// 👤 LOAD USER INFO
+// ============================================================
+function loadUserInfo() {
+  if (!tgUser) return;
+
+  document.getElementById('userName').textContent = tgUser.first_name || 'User';
+  document.getElementById('userId').textContent = 'ID: ' + (tgUser.id || '-');
+  document.getElementById('userHandle').textContent = tgUser.username ? '@' + tgUser.username : '@-';
+
+  document.getElementById('cardTelegramId').textContent = tgUser.id || '-';
+  document.getElementById('cardName').textContent = tgUser.first_name || 'User';
+  document.getElementById('cardHandle').textContent = tgUser.username ? '@' + tgUser.username : '@-';
+}
+
+// ============================================================
+// 📸 LOAD USER PHOTO
+// ============================================================
+async function loadUserPhoto() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`/miniapp/api/profile-photo/${userId}`);
+    const data = await res.json();
+    if (data.success && data.photoUrl) {
+      const img = document.getElementById('userImg');
+      img.src = data.photoUrl;
+      img.style.display = 'block';
+      document.getElementById('userFallback').style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// 🚀 MAIN VERIFY FLOW
+// ============================================================
+async function runVerification() {
+  if (!userId) {
+    setStatus('error', '⚠️ Please open from Telegram', 'This page requires Telegram.');
+    return;
+  }
+
+  try {
+    // 1. Generate device hash
+    document.getElementById('statusSubtitle').textContent = 'Reading device info...';
+    deviceHash = await generateDeviceHash();
+
+    // 2. Fetch verification status from server
+    document.getElementById('statusSubtitle').textContent = 'Checking verification status...';
+    const res = await fetch(`/miniapp/api/verify/${userId}`);
+    const data = await res.json();
+
+    // 3. Load bot info
+    if (data.success) {
+      if (data.botName) document.getElementById('botName').textContent = data.botName;
+      if (data.botPhotoUrl) {
+        const botImg = document.getElementById('botPhotoImg');
+        botImg.src = data.botPhotoUrl;
+        botImg.style.display = 'block';
+        document.getElementById('cardBotPhoto').style.display = 'flex';
+        const smallImg = document.getElementById('botPhotoSmall');
+        smallImg.src = data.botPhotoUrl;
+        smallImg.style.display = 'block';
+        document.querySelector('#botAvatar span').style.display = 'none';
+      }
+    }
+
+    // 4. If verification disabled → auto-success
+    if (data.verifyEnabled === false) {
+      setStatus('success', '✅ Verified', 'Device verification is disabled.');
+      setBadge('Verified', false);
+      setBotStatus('Access granted', '✅');
+      document.getElementById('cardStatusIcon').textContent = '✅';
+      document.getElementById('continueBtn').style.display = 'flex';
+      verified = true;
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      return;
+    }
+
+    // 5. If already verified → success
+    if (data.verified === true) {
+      setStatus('success', '✅ Already Verified', 'Your device is verified. Welcome back!');
+      setBadge('Verified', false);
+      setBotStatus('Account verified', '✅');
+      document.getElementById('cardStatusIcon').textContent = '✅';
+      document.getElementById('continueBtn').style.display = 'flex';
+      verified = true;
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      return;
+    }
+
+    // 6. Submit for verification
+    document.getElementById('statusSubtitle').textContent = 'Verifying your device...';
+    const submitRes = await fetch('/miniapp/api/verify/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        deviceHash: deviceHash
+      })
+    });
+
+    const submitData = await submitRes.json();
+
+    if (submitData.success && submitData.verified) {
+      setStatus('success', '✅ Verified', 'Your device has been verified successfully!');
+      setBadge('Verified', false);
+      setBotStatus('Account verified', '✅');
+      document.getElementById('cardStatusIcon').textContent = '✅';
+      document.getElementById('continueBtn').style.display = 'flex';
+      verified = true;
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } else {
+      // Rejected — device already used
+      const reason = submitData.reason || 'This device has already been used by another account.';
+      setStatus('error', '🚫 Verification Failed', reason);
+      setBadge('Blocked', true);
+      setBotStatus('Access denied', '❌');
+      document.getElementById('cardStatusIcon').textContent = '❌';
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    }
+
+  } catch (e) {
+    console.error('Verify error:', e);
+    setStatus('error', '⚠️ Verification Error', 'Something went wrong. Please try again.');
+    setBadge('Error', true);
+    setBotStatus('Error', '❌');
+  }
+}
+
+// ============================================================
+// 🎨 STATUS HELPERS
+// ============================================================
+function setStatus(type, title, subtitle) {
+  const titleEl = document.getElementById('statusTitle');
+  titleEl.textContent = title;
+  titleEl.className = 'status-title ' + (type === 'error' ? 'error' : 'success');
+
+  document.getElementById('statusSubtitle').textContent = subtitle;
+}
+
+function setBadge(text, isDanger) {
+  document.getElementById('statusText').textContent = text;
+  const badge = document.getElementById('statusBadge');
+  if (isDanger) {
+    badge.classList.add('danger');
+  } else {
+    badge.classList.remove('danger');
+  }
+}
+
+function setBotStatus(text, icon) {
+  document.getElementById('botStatus').textContent = text;
+  document.getElementById('botCheck').textContent = icon;
+}
+
+// ============================================================
+// 🚀 CONTINUE TO BOT
+// ============================================================
+function continueToBot() {
+  if (!verified) {
+    showToast('❌ Verification required');
+    return;
+  }
+
+  // Try to close Mini App
+  if (tg) {
+    if (tg.close) {
+      tg.close();
+    }
+  } else {
+    window.location.href = '/miniapp';
+  }
+}
+
+// ============================================================
+// ← BACK
+// ============================================================
+function goBack() {
+  if (tg) {
+    tg.close();
+  } else {
+    window.history.back();
+  }
+}
+
+// ============================================================
+// 🎬 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  loadUserInfo();
+  await loadUserPhoto();
+  await runVerification();
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
 </body>
 </html>
