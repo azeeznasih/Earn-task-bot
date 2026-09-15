@@ -9,20 +9,17 @@
 </head>
 <body>
 
-<!-- 🌈 ANIMATED BACKGROUND -->
 <div class="bg-animation">
   <div class="bg-blob blob-1"></div>
   <div class="bg-blob blob-2"></div>
   <div class="bg-blob blob-3"></div>
 </div>
 
-<!-- 📱 IPHONE FRAME -->
 <div class="iphone-frame">
   <div class="iphone-notch"></div>
 
   <div class="app">
 
-    <!-- HEADER -->
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">⚡</span>
@@ -30,7 +27,6 @@
       </div>
     </header>
 
-    <!-- USER CARD -->
     <div class="user-card glass">
       <div class="user-info">
         <div class="avatar" id="avatar">
@@ -44,11 +40,10 @@
       </div>
     </div>
 
-    <!-- BALANCE CARD with REFRESH -->
     <div class="balance-card glass">
       <div class="balance-header">
         <div class="label">AVAILABLE BALANCE</div>
-        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn" title="Refresh">
+        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
           <span class="refresh-icon">🔄</span>
         </button>
       </div>
@@ -56,7 +51,6 @@
       <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
     </div>
 
-    <!-- LINKED ACCOUNT -->
     <div class="linked-card glass">
       <div class="linked-left">
         <div class="linked-icon">🔗</div>
@@ -68,13 +62,11 @@
       <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
     </div>
 
-    <!-- PAYMENT METHODS -->
     <div class="payment-card glass">
       <div class="section-title">💳 PAYMENT METHODS</div>
       <div id="paymentList" class="payment-list">Loading...</div>
     </div>
 
-    <!-- BOTTOM NAV -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item active">
         <span class="nav-icon">🏠</span>
@@ -97,7 +89,6 @@
   </div>
 </div>
 
-<!-- WITHDRAW MODAL -->
 <div class="modal" id="withdrawModal">
   <div class="modal-content glass">
     <h3>Withdraw Money</h3>
@@ -107,7 +98,6 @@
   </div>
 </div>
 
-<!-- PAYMENT METHOD MODAL -->
 <div class="modal" id="paymentModal">
   <div class="modal-content glass">
     <h3>Update Payment Method</h3>
