@@ -8,59 +8,98 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div class="app">
 
-  <header class="topbar">
-    <div class="logo">TASK EARN BOT</div>
-  </header>
+<!-- 🌈 ANIMATED BACKGROUND -->
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+</div>
 
-  <div class="user-card">
-    <div class="user-info">
-      <div class="avatar" id="avatar">
-        <span id="avatarFallback">👤</span>
-        <img id="avatarImg" src="" alt="" style="display:none;">
+<!-- 📱 IPHONE FRAME -->
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
+
+  <div class="app">
+
+    <!-- HEADER -->
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">TASK EARN BOT</span>
       </div>
-      <div>
-        <div class="username" id="username">Loading...</div>
-        <div class="userid" id="userid">ID: -</div>
+    </header>
+
+    <!-- USER CARD -->
+    <div class="user-card glass">
+      <div class="user-info">
+        <div class="avatar" id="avatar">
+          <span id="avatarFallback">👤</span>
+          <img id="avatarImg" src="" alt="" style="display:none;">
+        </div>
+        <div>
+          <div class="username" id="username">Loading...</div>
+          <div class="userid" id="userid">ID: -</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="balance-card">
-    <div class="label">AVAILABLE BALANCE</div>
-    <div class="balance" id="balance">₹0.00</div>
-    <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
-  </div>
-
-  <div class="linked-card">
-    <div class="linked-left">
-      <div class="linked-icon">🔗</div>
-      <div>
-        <div class="linked-label">LINKED ACCOUNT</div>
-        <div class="linked-status" id="linkedStatus">Not Linked</div>
+    <!-- BALANCE CARD with REFRESH -->
+    <div class="balance-card glass">
+      <div class="balance-header">
+        <div class="label">AVAILABLE BALANCE</div>
+        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn" title="Refresh">
+          <span class="refresh-icon">🔄</span>
+        </button>
       </div>
+      <div class="balance" id="balance">₹0.00</div>
+      <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
     </div>
-    <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+
+    <!-- LINKED ACCOUNT -->
+    <div class="linked-card glass">
+      <div class="linked-left">
+        <div class="linked-icon">🔗</div>
+        <div>
+          <div class="linked-label">LINKED ACCOUNT</div>
+          <div class="linked-status" id="linkedStatus">Not Linked</div>
+        </div>
+      </div>
+      <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+    </div>
+
+    <!-- PAYMENT METHODS -->
+    <div class="payment-card glass">
+      <div class="section-title">💳 PAYMENT METHODS</div>
+      <div id="paymentList" class="payment-list">Loading...</div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item active">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
+
   </div>
-
-  <div class="payment-card">
-    <div class="section-title">💳 PAYMENT METHODS</div>
-    <div id="paymentList" class="payment-list">Loading...</div>
-  </div>
-
-  <nav class="bottom-nav">
-    <a href="/miniapp" class="nav-item active">🏠<span>HOME</span></a>
-    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
-    <a href="/miniapp/pay" class="nav-item">💸<span>PAY</span></a>
-    <a href="/miniapp/profile" class="nav-item">👤<span>PROFILE</span></a>
-  </nav>
-
 </div>
 
 <!-- WITHDRAW MODAL -->
 <div class="modal" id="withdrawModal">
-  <div class="modal-content">
+  <div class="modal-content glass">
     <h3>Withdraw Money</h3>
     <p>Choose withdraw method:</p>
     <div id="withdrawMethods"></div>
@@ -70,7 +109,7 @@
 
 <!-- PAYMENT METHOD MODAL -->
 <div class="modal" id="paymentModal">
-  <div class="modal-content">
+  <div class="modal-content glass">
     <h3>Update Payment Method</h3>
     <div id="paymentUpdateList"></div>
     <button onclick="closePaymentModal()" class="cancel-btn">Close</button>
