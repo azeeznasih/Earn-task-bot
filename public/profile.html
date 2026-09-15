@@ -8,75 +8,124 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div class="app">
 
-  <header class="topbar">
-    <div class="logo">TASK EARN BOT</div>
-  </header>
-
-  <div class="page-title">👤 Profile</div>
-  <p class="page-sub">Your account details</p>
-
-  <!-- TOTAL BALANCE OF ALL USERS -->
-  <div class="total-card">
-    <div class="total-label">💰 TOTAL BALANCE (ALL USERS)</div>
-    <div class="total-balance" id="totalBalance">₹0.00</div>
-    <div class="total-sub" id="totalUsers">Users: 0</div>
-  </div>
-
-  <!-- USER PROFILE CARD -->
-  <div class="profile-card">
-    <div class="profile-avatar" id="profileAvatar">
-      <span id="profileAvatarFallback">👤</span>
-      <img id="profileAvatarImg" src="" alt="" style="display:none;">
-    </div>
-    <div class="profile-name" id="profileName">Loading...</div>
-    <div class="profile-id" id="profileId">ID: -</div>
-  </div>
-
-  <!-- DETAILS -->
-  <div class="details-card">
-    <div class="detail-row">
-      <span class="detail-label">💰 Balance</span>
-      <span class="detail-value" id="pBalance">₹0.00</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">🏧 Total Withdrawn</span>
-      <span class="detail-value" id="pWithdrawn">₹0.00</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">⛔ Blocked Refs</span>
-      <span class="detail-value" id="pBlocked">0</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">🎴 Linked Account</span>
-      <span class="detail-value" id="pLinked">Not Linked</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">👩‍💻 Referred By</span>
-      <span class="detail-value" id="pReferred">Auto Started</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">📅 Joined</span>
-      <span class="detail-value" id="pJoined">-</span>
-    </div>
-  </div>
-
-  <!-- ADMIN PANEL BUTTON (Admin only) -->
-  <div class="admin-panel-card" id="adminPanelCard" style="display:none;">
-    <button class="admin-panel-btn" onclick="openAdminPanel()">
-      👑 Admin Panel
-    </button>
-  </div>
-
-  <nav class="bottom-nav">
-    <a href="/miniapp" class="nav-item">🏠<span>HOME</span></a>
-    <a href="/miniapp/task" class="nav-item">📋<span>TASK</span></a>
-    <a href="/miniapp/pay" class="nav-item">💸<span>PAY</span></a>
-    <a href="/miniapp/profile" class="nav-item active">👤<span>PROFILE</span></a>
-  </nav>
-
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
 </div>
+
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
+
+  <div class="app">
+
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">TASK EARN BOT</span>
+      </div>
+    </header>
+
+    <div class="page-header">
+      <div class="page-title">👤 Profile</div>
+      <p class="page-sub">Your account details</p>
+    </div>
+
+    <!-- TOTAL BALANCE -->
+    <div class="total-card glass">
+      <div class="total-label">💰 TOTAL BALANCE (ALL USERS)</div>
+      <div class="total-balance" id="totalBalance">₹0.00</div>
+      <div class="total-sub" id="totalUsers">Users: 0</div>
+    </div>
+
+    <!-- PROFILE CARD -->
+    <div class="profile-card glass">
+      <div class="profile-avatar" id="profileAvatar" onclick="enlargePhoto()">
+        <span id="profileAvatarFallback">👤</span>
+        <img id="profileAvatarImg" src="" alt="" style="display:none;">
+      </div>
+      <div class="profile-name" id="profileName">Loading...</div>
+      <div class="profile-id" id="profileId" onclick="copyUserId()">
+        ID: - 📋
+      </div>
+      <div class="profile-username" id="profileUsername" onclick="copyUsername()">
+        @- 📋
+      </div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="details-card glass">
+      <div class="detail-row">
+        <span class="detail-label">💰 Balance</span>
+        <span class="detail-value" id="pBalance">₹0.00</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">🏧 Total Withdrawn</span>
+        <span class="detail-value" id="pWithdrawn">₹0.00</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">🎴 Linked Account</span>
+        <span class="detail-value" id="pLinked">Not Linked</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">👩‍💻 Referred By</span>
+        <span class="detail-value" id="pReferred">Auto Started</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">📅 Joined</span>
+        <span class="detail-value" id="pJoined">-</span>
+      </div>
+    </div>
+
+    <!-- PAYMENT HISTORY -->
+    <button class="history-btn glass-btn" onclick="openPaymentHistory()">
+      📜 Payment History
+    </button>
+
+    <!-- ADMIN PANEL -->
+    <div class="admin-panel-card" id="adminPanelCard" style="display:none;">
+      <button class="admin-panel-btn" onclick="openAdminPanel()">
+        👑 Admin Panel
+      </button>
+    </div>
+
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item active">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
+
+  </div>
+</div>
+
+<!-- PHOTO MODAL -->
+<div class="photo-modal" id="photoModal" onclick="closePhotoModal()">
+  <img id="enlargedPhoto" src="" alt="">
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal" id="historyModal">
+  <div class="modal-content glass">
+    <h3>📜 Payment History</h3>
+    <div id="historyContent" style="max-height:60vh; overflow-y:auto;">Loading...</div>
+    <button onclick="closeHistory()" class="cancel-btn">Close</button>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
