@@ -7,10 +7,14 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* Admin extra styles */
+/* ═══════════════════════════════════════════════════════
+   ADMIN PANEL — Complete Styles
+   ═══════════════════════════════════════════════════════ */
+
 .admin-tab-content {
   animation: fadeIn 0.3s ease;
 }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -75,6 +79,7 @@
   font-size: 13px;
   cursor: pointer;
   transition: transform 0.15s;
+  font-family: inherit;
 }
 .btn-approve {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -94,6 +99,204 @@
   color: #7a9a7a;
 }
 .empty-admin .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+/* Customization section */
+.customize-card {
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.customize-title {
+  font-size: 13px;
+  color: #00ff88;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customize-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.customize-row input {
+  flex: 1;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  font-family: inherit;
+}
+
+.customize-row input:focus {
+  border-color: #00ff88;
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+}
+
+.customize-row button {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+}
+
+.btn-reset {
+  background: rgba(255, 85, 85, 0.15);
+  color: #ff5555;
+  border: 1px solid rgba(255, 85, 85, 0.3) !important;
+}
+
+.customize-row button:active { transform: scale(0.95); }
+
+/* Admin management */
+.admin-list-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.admin-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ff88, #00aaff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #000;
+  flex-shrink: 0;
+}
+
+.admin-user-info { flex: 1; min-width: 0; }
+.admin-user-name { font-size: 14px; font-weight: 700; color: #fff; }
+.admin-user-id { font-size: 11px; color: #7a9a7a; margin-top: 2px; font-family: 'SF Mono', monospace; }
+
+.admin-user-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-user-actions button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.admin-user-actions .btn-profile {
+  background: rgba(0, 170, 255, 0.15);
+  color: #00aaff;
+}
+
+.admin-user-actions .btn-remove {
+  background: rgba(255, 85, 85, 0.15);
+  color: #ff5555;
+}
+
+/* Add new block */
+.add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.add-row input {
+  flex: 1;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+.add-row button {
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Section divider */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 12px;
+  color: #7a9a7a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Save all button */
+.save-all-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.save-all-btn:active { transform: scale(0.97); }
 </style>
 </head>
 <body>
@@ -112,7 +315,7 @@
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">👑</span>
-        <span class="logo-text">ADMIN PANEL</span>
+        <span class="logo-text" id="appLogo">ADMIN PANEL</span>
       </div>
     </header>
 
@@ -176,16 +379,18 @@
         </div>
       </div>
 
-      <!-- MENU TABS -->
+      <!-- TABS (scrollable) -->
       <div class="admin-tabs glass">
-        <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊 Dashboard</button>
+        <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊</button>
         <button class="admin-tab" onclick="switchTab('withdrawals')" data-tab="withdrawals">💸 WD</button>
         <button class="admin-tab" onclick="switchTab('addfunds')" data-tab="addfunds">💰 AF</button>
         <button class="admin-tab" onclick="switchTab('submissions')" data-tab="submissions">📸 Tasks</button>
         <button class="admin-tab" onclick="switchTab('users')" data-tab="users">👥 Users</button>
+        <button class="admin-tab" onclick="switchTab('customize')" data-tab="customize">🎨</button>
+        <button class="admin-tab" onclick="switchTab('admins')" data-tab="admins">👑</button>
       </div>
 
-      <!-- TAB: DASHBOARD -->
+      <!-- ═══ TAB: DASHBOARD ═══ -->
       <div id="tab-dashboard" class="admin-tab-content">
         <div class="admin-menu glass">
           <div class="section-title">⚙️ QUICK ACTIONS</div>
@@ -208,21 +413,9 @@
             <span class="menu-arrow">›</span>
           </button>
 
-          <button class="admin-menu-btn" onclick="adminAction('Gateway')">
-            <span class="menu-icon">🌐</span>
-            <span class="menu-text">Gateway</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
           <button class="admin-menu-btn" onclick="adminAction('Broadcast')">
             <span class="menu-icon">📢</span>
             <span class="menu-text">Broadcast</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
-          <button class="admin-menu-btn" onclick="adminAction('Verification')">
-            <span class="menu-icon">✅</span>
-            <span class="menu-text">Verification</span>
             <span class="menu-arrow">›</span>
           </button>
 
@@ -238,7 +431,7 @@
         </div>
       </div>
 
-      <!-- TAB: WITHDRAWALS -->
+      <!-- ═══ TAB: WITHDRAWALS ═══ -->
       <div id="tab-withdrawals" class="admin-tab-content" style="display:none;">
         <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
           <div class="section-title" style="margin-bottom:0;">💸 PENDING WITHDRAWALS</div>
@@ -248,7 +441,7 @@
         </div>
       </div>
 
-      <!-- TAB: ADD FUND -->
+      <!-- ═══ TAB: ADD FUND ═══ -->
       <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
         <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
           <div class="section-title" style="margin-bottom:0;">💰 PENDING ADD FUND</div>
@@ -258,7 +451,7 @@
         </div>
       </div>
 
-      <!-- TAB: SUBMISSIONS -->
+      <!-- ═══ TAB: SUBMISSIONS ═══ -->
       <div id="tab-submissions" class="admin-tab-content" style="display:none;">
         <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
           <div class="section-title" style="margin-bottom:0;">📸 PENDING TASK SUBMISSIONS</div>
@@ -268,7 +461,7 @@
         </div>
       </div>
 
-      <!-- TAB: USERS -->
+      <!-- ═══ TAB: USERS ═══ -->
       <div id="tab-users" class="admin-tab-content" style="display:none;">
         <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
           <div class="section-title" style="margin-bottom:0;">👥 ALL USERS</div>
@@ -276,6 +469,75 @@
         <div id="userList" class="admin-list">
           <div class="loading">⏳ Loading...</div>
         </div>
+      </div>
+
+      <!-- ═══ TAB: CUSTOMIZE ═══ -->
+      <div id="tab-customize" class="admin-tab-content" style="display:none;">
+
+        <!-- App Logo -->
+        <div class="customize-card">
+          <div class="customize-title">⚡ APP LOGO</div>
+          <div class="customize-row">
+            <input type="text" id="cust_logo" placeholder="Task Earn Bot">
+            <button class="btn-save" onclick="saveCustomize('app_logo', 'cust_logo')">Save</button>
+            <button class="btn-reset" onclick="resetCustomize('app_logo', 'cust_logo')">Reset</button>
+          </div>
+        </div>
+
+        <!-- Button Names -->
+        <div class="customize-card">
+          <div class="customize-title">🔘 BUTTON NAMES</div>
+
+          <div class="customize-row">
+            <input type="text" id="cust_home" placeholder="HOME">
+            <button class="btn-save" onclick="saveCustomize('btn_home', 'cust_home')">Save</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_home', 'cust_home')">Reset</button>
+          </div>
+
+          <div class="customize-row">
+            <input type="text" id="cust_task" placeholder="TASK">
+            <button class="btn-save" onclick="saveCustomize('btn_task', 'cust_task')">Save</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_task', 'cust_task')">Reset</button>
+          </div>
+
+          <div class="customize-row">
+            <input type="text" id="cust_pay" placeholder="PAY">
+            <button class="btn-save" onclick="saveCustomize('btn_pay', 'cust_pay')">Save</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_pay', 'cust_pay')">Reset</button>
+          </div>
+
+          <div class="customize-row">
+            <input type="text" id="cust_profile" placeholder="PROFILE">
+            <button class="btn-save" onclick="saveCustomize('btn_profile', 'cust_profile')">Save</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_profile', 'cust_profile')">Reset</button>
+          </div>
+        </div>
+
+        <!-- Reset All -->
+        <button class="save-all-btn" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);" onclick="resetAllCustomize()">
+          🔄 Reset All to Default
+        </button>
+
+      </div>
+
+      <!-- ═══ TAB: ADMINS ═══ -->
+      <div id="tab-admins" class="admin-tab-content" style="display:none;">
+
+        <div class="customize-card">
+          <div class="customize-title">👑 ADMIN MANAGEMENT</div>
+
+          <div class="add-row">
+            <input type="text" id="newAdminId" placeholder="Enter User ID" inputmode="numeric">
+            <button onclick="addAdmin()">➕ Add</button>
+          </div>
+        </div>
+
+        <div class="section-divider">CURRENT ADMINS</div>
+
+        <div id="adminsList" class="admin-list-simple">
+          <div class="loading">⏳ Loading...</div>
+        </div>
+
       </div>
 
     </div>
@@ -304,7 +566,7 @@
 
 <script>
 // ============================================================
-// 👑 ADMIN PANEL — Mini App
+// 👑 ADMIN PANEL — Mini App (Complete)
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -318,11 +580,22 @@ if (tg) {
 const userId = tg?.initDataUnsafe?.user?.id;
 
 let isAdminUser = false;
+let isOwner = false;
+let appConfig = {};
+
+// Default values for reset
+const DEFAULTS = {
+  app_logo: "Task Earn Bot",
+  btn_home: "HOME",
+  btn_task: "TASK",
+  btn_pay: "PAY",
+  btn_profile: "PROFILE"
+};
 
 // ============================================================
-// 🔔 TOAST
+// 🎨 UTILITIES
 // ============================================================
-function showToast(msg) {
+function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -335,7 +608,7 @@ function showToast(msg) {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, duration);
 }
 
 function escapeHtml(str) {
@@ -350,6 +623,27 @@ function formatDate(d) {
   });
 }
 
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
 // ============================================================
 // 🚀 INIT
 // ============================================================
@@ -360,92 +654,92 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Check admin
-  try {
-    const res = await fetch(`/miniapp/api/is-admin/${userId}`);
-    const data = await res.json();
+  const data = await apiCall(`/miniapp/api/is-admin/${userId}`);
 
-    if (!data.success || !data.isAdmin) {
-      document.getElementById('adminLoading').style.display = 'none';
-      document.getElementById('notAdminMsg').style.display = 'block';
-      return;
-    }
-
-    isAdminUser = true;
-    document.getElementById('adminLoading').style.display = 'none';
-    document.getElementById('adminContent').style.display = 'block';
-
-    // Load admin info
-    await loadAdminInfo();
-    await loadStats();
-    await loadWithdrawals();
-    await loadAddFunds();
-    await loadSubmissions();
-    await loadUsers();
-
-  } catch (e) {
-    console.error('Admin check:', e);
+  if (!data.success || !data.isAdmin) {
     document.getElementById('adminLoading').style.display = 'none';
     document.getElementById('notAdminMsg').style.display = 'block';
+    return;
+  }
+
+  isAdminUser = true;
+  isOwner = data.isOwner || false;
+
+  document.getElementById('adminLoading').style.display = 'none';
+  document.getElementById('adminContent').style.display = 'block';
+
+  await loadConfig();
+  await loadAdminInfo();
+  await loadStats();
+  await loadWithdrawals();
+  await loadAddFunds();
+  await loadSubmissions();
+  await loadUsers();
+  await loadCustomize();
+
+  // Admins tab — only for owner
+  if (isOwner) {
+    await loadAdmins();
   }
 });
+
+// ============================================================
+// 🎨 LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    const logo = document.getElementById('appLogo');
+    if (logo && appConfig.appLogo) logo.textContent = 'ADMIN — ' + appConfig.appLogo;
+  }
+}
 
 // ============================================================
 // 👤 ADMIN INFO
 // ============================================================
 async function loadAdminInfo() {
-  try {
-    const res = await fetch(`/miniapp/api/user/${userId}`);
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('adminName').textContent = data.user.firstName || 'Admin';
-      document.getElementById('adminId').textContent = 'ID: ' + data.user.userId;
-    }
-  } catch (e) {}
+  const data = await apiCall(`/miniapp/api/user/${userId}`);
+  if (data.success) {
+    document.getElementById('adminName').textContent = data.user.firstName || 'Admin';
+    document.getElementById('adminId').textContent = 'ID: ' + data.user.userId;
+  }
 }
 
 // ============================================================
 // 📊 LOAD STATS
 // ============================================================
 async function loadStats() {
-  try {
-    // Total users + balance
-    const res1 = await fetch('/miniapp/api/total-balance');
-    const data1 = await res1.json();
-    if (data1.success) {
-      document.getElementById('statUsers').textContent = data1.totalUsers || 0;
-      document.getElementById('statBalance').textContent = '₹' + (data1.totalBalance || 0).toFixed(0);
-    }
+  // Total users + balance
+  const d1 = await apiCall('/miniapp/api/total-balance');
+  if (d1.success) {
+    document.getElementById('statUsers').textContent = d1.totalUsers || 0;
+    document.getElementById('statBalance').textContent = '₹' + (d1.totalBalance || 0).toFixed(0);
+  }
 
-    // Tasks
-    const res2 = await fetch('/miniapp/api/tasks');
-    const data2 = await res2.json();
-    if (data2.success) {
-      document.getElementById('statTasks').textContent = data2.tasks?.length || 0;
-    }
+  // Tasks
+  const d2 = await apiCall('/miniapp/api/tasks');
+  if (d2.success) {
+    document.getElementById('statTasks').textContent = d2.tasks?.length || 0;
+  }
 
-    // Pending withdrawals
-    const res3 = await fetch('/miniapp/api/admin/pending-withdrawals');
-    const data3 = await res3.json();
-    if (data3.success) {
-      document.getElementById('statWd').textContent = data3.withdrawals?.length || 0;
-    }
+  // Pending WD
+  const d3 = await apiCall('/miniapp/api/admin/pending-withdrawals');
+  if (d3.success) {
+    document.getElementById('statWd').textContent = d3.withdrawals?.length || 0;
+  }
 
-    // Pending add funds
-    const res4 = await fetch('/miniapp/api/admin/pending-addfunds');
-    const data4 = await res4.json();
-    if (data4.success) {
-      document.getElementById('statAf').textContent = data4.addFunds?.length || 0;
-    }
+  // Pending AF
+  const d4 = await apiCall('/miniapp/api/admin/pending-addfunds');
+  if (d4.success) {
+    document.getElementById('statAf').textContent = d4.addFunds?.length || 0;
+  }
 
-    // Pending submissions
-    const res5 = await fetch('/miniapp/api/admin/pending-submissions');
-    const data5 = await res5.json();
-    if (data5.success) {
-      document.getElementById('statSub').textContent = data5.submissions?.length || 0;
-    }
-  } catch (e) {
-    console.error('Stats error:', e);
+  // Pending Subs
+  const d5 = await apiCall('/miniapp/api/admin/pending-submissions');
+  if (d5.success) {
+    document.getElementById('statSub').textContent = d5.submissions?.length || 0;
   }
 }
 
@@ -453,307 +747,439 @@ async function loadStats() {
 // 🔀 SWITCH TAB
 // ============================================================
 function switchTab(tab) {
-  // Update buttons
+  haptic('light');
+
   document.querySelectorAll('.admin-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
 
-  // Update content
   document.querySelectorAll('.admin-tab-content').forEach(el => {
     el.style.display = 'none';
   });
   document.getElementById('tab-' + tab).style.display = 'block';
 
-  // Reload data
   if (tab === 'withdrawals') loadWithdrawals();
   else if (tab === 'addfunds') loadAddFunds();
   else if (tab === 'submissions') loadSubmissions();
   else if (tab === 'users') loadUsers();
-
-  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  else if (tab === 'customize') loadCustomize();
+  else if (tab === 'admins' && isOwner) loadAdmins();
 }
 
 // ============================================================
-// 💸 LOAD WITHDRAWALS
+// 💸 WITHDRAWALS
 // ============================================================
 async function loadWithdrawals() {
   const listEl = document.getElementById('withdrawalList');
   listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
 
-  try {
-    const res = await fetch('/miniapp/api/admin/pending-withdrawals');
-    const data = await res.json();
+  const data = await apiCall('/miniapp/api/admin/pending-withdrawals');
 
-    if (!data.success || !data.withdrawals || data.withdrawals.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-admin">
-          <div class="icon">📭</div>
-          <div>No pending withdrawals</div>
-        </div>
-      `;
-      return;
-    }
-
-    let html = '';
-    data.withdrawals.forEach(wd => {
-      html += `
-        <div class="admin-item" id="wd-${wd.withdrawalId}">
-          <div class="admin-item-header">
-            <div class="admin-item-id">#${wd.withdrawalId}</div>
-            <div class="admin-item-amount">₹${wd.amount.toFixed(2)}</div>
-          </div>
-          <div class="admin-item-row"><b>User:</b> <code>${wd.userId}</code></div>
-          <div class="admin-item-row"><b>Method:</b> ${escapeHtml(wd.method)}</div>
-          <div class="admin-item-row"><b>To:</b> <code>${escapeHtml(wd.details)}</code></div>
-          <div class="admin-item-row"><b>Date:</b> ${formatDate(wd.createdAt)}</div>
-          <div class="admin-item-actions">
-            <button class="btn-approve" onclick="approveWd('${wd.withdrawalId}')">✅ Approve</button>
-            <button class="btn-reject" onclick="rejectWd('${wd.withdrawalId}')">❌ Reject</button>
-          </div>
-        </div>
-      `;
-    });
-    listEl.innerHTML = html;
-
-  } catch (e) {
-    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
+  if (!data.success || !data.withdrawals || data.withdrawals.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-admin">
+        <div class="icon">📭</div>
+        <div>No pending withdrawals</div>
+      </div>
+    `;
+    return;
   }
+
+  let html = '';
+  data.withdrawals.forEach(wd => {
+    html += `
+      <div class="admin-item" id="wd-${wd.withdrawalId}">
+        <div class="admin-item-header">
+          <div class="admin-item-id">#${wd.withdrawalId}</div>
+          <div class="admin-item-amount">₹${wd.amount.toFixed(2)}</div>
+        </div>
+        <div class="admin-item-row"><b>User:</b> <code>${wd.userId}</code></div>
+        <div class="admin-item-row"><b>Method:</b> ${escapeHtml(wd.method)}</div>
+        <div class="admin-item-row"><b>To:</b> <code>${escapeHtml(wd.details)}</code></div>
+        <div class="admin-item-row"><b>Date:</b> ${formatDate(wd.createdAt)}</div>
+        <div class="admin-item-actions">
+          <button class="btn-approve" onclick="approveWd('${wd.withdrawalId}')">✅ Approve</button>
+          <button class="btn-reject" onclick="rejectWd('${wd.withdrawalId}')">❌ Reject</button>
+        </div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
 }
 
 async function approveWd(id) {
   if (!confirm(`Approve withdrawal #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/approve-wd/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('✅ Approved!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      document.getElementById('wd-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) {
-    showToast('❌ Network error');
+  const data = await apiCall(`/miniapp/api/admin/approve-wd/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('✅ Approved!');
+    haptic('success');
+    document.getElementById('wd-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
   }
 }
 
 async function rejectWd(id) {
   if (!confirm(`Reject withdrawal #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/reject-wd/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('❌ Rejected & Refunded');
-      document.getElementById('wd-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) {
-    showToast('❌ Network error');
+  const data = await apiCall(`/miniapp/api/admin/reject-wd/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('❌ Rejected & Refunded');
+    haptic('success');
+    document.getElementById('wd-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
   }
 }
 
 // ============================================================
-// 💰 LOAD ADD FUNDS
+// 💰 ADD FUNDS
 // ============================================================
 async function loadAddFunds() {
   const listEl = document.getElementById('addFundList');
   listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
 
-  try {
-    const res = await fetch('/miniapp/api/admin/pending-addfunds');
-    const data = await res.json();
+  const data = await apiCall('/miniapp/api/admin/pending-addfunds');
 
-    if (!data.success || !data.addFunds || data.addFunds.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-admin">
-          <div class="icon">📭</div>
-          <div>No pending add funds</div>
-        </div>
-      `;
-      return;
-    }
-
-    let html = '';
-    data.addFunds.forEach(af => {
-      html += `
-        <div class="admin-item" id="af-${af.requestId}">
-          <div class="admin-item-header">
-            <div class="admin-item-id">#${af.requestId}</div>
-            <div class="admin-item-amount">₹${af.amount.toFixed(2)}</div>
-          </div>
-          <div class="admin-item-row"><b>User:</b> ${escapeHtml(af.userName)}</div>
-          <div class="admin-item-row"><b>ID:</b> <code>${af.userId}</code></div>
-          <div class="admin-item-row"><b>Method:</b> ${escapeHtml(af.method)}</div>
-          <div class="admin-item-row"><b>UTR:</b> <code>${escapeHtml(af.proofFileId || '-')}</code></div>
-          <div class="admin-item-row"><b>Date:</b> ${formatDate(af.createdAt)}</div>
-          <div class="admin-item-actions">
-            <button class="btn-approve" onclick="approveAf('${af.requestId}')">✅ Approve</button>
-            <button class="btn-reject" onclick="rejectAf('${af.requestId}')">❌ Reject</button>
-          </div>
-        </div>
-      `;
-    });
-    listEl.innerHTML = html;
-
-  } catch (e) {
-    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
+  if (!data.success || !data.addFunds || data.addFunds.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-admin">
+        <div class="icon">📭</div>
+        <div>No pending add funds</div>
+      </div>
+    `;
+    return;
   }
+
+  let html = '';
+  data.addFunds.forEach(af => {
+    html += `
+      <div class="admin-item" id="af-${af.requestId}">
+        <div class="admin-item-header">
+          <div class="admin-item-id">#${af.requestId}</div>
+          <div class="admin-item-amount">₹${af.amount.toFixed(2)}</div>
+        </div>
+        <div class="admin-item-row"><b>User:</b> ${escapeHtml(af.userName)}</div>
+        <div class="admin-item-row"><b>ID:</b> <code>${af.userId}</code></div>
+        <div class="admin-item-row"><b>Method:</b> ${escapeHtml(af.method)}</div>
+        <div class="admin-item-row"><b>UTR:</b> <code>${escapeHtml(af.proofFileId || '-')}</code></div>
+        <div class="admin-item-row"><b>Date:</b> ${formatDate(af.createdAt)}</div>
+        <div class="admin-item-actions">
+          <button class="btn-approve" onclick="approveAf('${af.requestId}')">✅ Approve</button>
+          <button class="btn-reject" onclick="rejectAf('${af.requestId}')">❌ Reject</button>
+        </div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
 }
 
 async function approveAf(id) {
   if (!confirm(`Approve add fund #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/approve-af/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('✅ Approved!');
-      document.getElementById('af-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) { showToast('❌ Network error'); }
+  const data = await apiCall(`/miniapp/api/admin/approve-af/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('✅ Approved!');
+    haptic('success');
+    document.getElementById('af-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+  }
 }
 
 async function rejectAf(id) {
   if (!confirm(`Reject add fund #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/reject-af/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('❌ Rejected');
-      document.getElementById('af-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) { showToast('❌ Network error'); }
+  const data = await apiCall(`/miniapp/api/admin/reject-af/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('❌ Rejected');
+    document.getElementById('af-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+  }
 }
 
 // ============================================================
-// 📸 LOAD SUBMISSIONS
+// 📸 SUBMISSIONS
 // ============================================================
 async function loadSubmissions() {
   const listEl = document.getElementById('submissionList');
   listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
 
-  try {
-    const res = await fetch('/miniapp/api/admin/pending-submissions');
-    const data = await res.json();
+  const data = await apiCall('/miniapp/api/admin/pending-submissions');
 
-    if (!data.success || !data.submissions || data.submissions.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-admin">
-          <div class="icon">📭</div>
-          <div>No pending submissions</div>
-        </div>
-      `;
-      return;
-    }
-
-    let html = '';
-    data.submissions.forEach(sub => {
-      html += `
-        <div class="admin-item" id="sub-${sub.submissionId}">
-          <div class="admin-item-header">
-            <div class="admin-item-id">#${sub.submissionId}</div>
-            <div class="admin-item-amount">₹${sub.reward.toFixed(2)}</div>
-          </div>
-          <div class="admin-item-row"><b>User:</b> ${escapeHtml(sub.userName)}</div>
-          <div class="admin-item-row"><b>ID:</b> <code>${sub.userId}</code></div>
-          <div class="admin-item-row"><b>Task:</b> ${escapeHtml(sub.taskTitle)}</div>
-          <div class="admin-item-row"><b>Date:</b> ${formatDate(sub.createdAt)}</div>
-          <div class="admin-item-actions">
-            <button class="btn-approve" onclick="approveSub('${sub.submissionId}')">✅ Approve</button>
-            <button class="btn-reject" onclick="rejectSub('${sub.submissionId}')">❌ Reject</button>
-          </div>
-        </div>
-      `;
-    });
-    listEl.innerHTML = html;
-
-  } catch (e) {
-    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
+  if (!data.success || !data.submissions || data.submissions.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-admin">
+        <div class="icon">📭</div>
+        <div>No pending submissions</div>
+      </div>
+    `;
+    return;
   }
+
+  let html = '';
+  data.submissions.forEach(sub => {
+    const isRefer = sub.photoFileId && sub.photoFileId.startsWith('REFER:');
+    const referValue = isRefer ? sub.photoFileId.replace('REFER:', '') : '';
+
+    html += `
+      <div class="admin-item" id="sub-${sub.submissionId}">
+        <div class="admin-item-header">
+          <div class="admin-item-id">#${sub.submissionId}</div>
+          <div class="admin-item-amount">₹${sub.reward.toFixed(2)}</div>
+        </div>
+        <div class="admin-item-row"><b>User:</b> ${escapeHtml(sub.userName)}</div>
+        <div class="admin-item-row"><b>ID:</b> <code>${sub.userId}</code></div>
+        <div class="admin-item-row"><b>Task:</b> ${escapeHtml(sub.taskTitle)}</div>
+        ${isRefer ? `<div class="admin-item-row"><b>Refer:</b> <code>${escapeHtml(referValue)}</code></div>` : ''}
+        <div class="admin-item-row"><b>Type:</b> ${isRefer ? '🔗 Refer' : '📸 Photo'}</div>
+        <div class="admin-item-row"><b>Date:</b> ${formatDate(sub.createdAt)}</div>
+        <div class="admin-item-actions">
+          <button class="btn-approve" onclick="approveSub('${sub.submissionId}')">✅ Approve</button>
+          <button class="btn-reject" onclick="rejectSub('${sub.submissionId}')">❌ Reject</button>
+        </div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
 }
 
 async function approveSub(id) {
   if (!confirm(`Approve submission #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/approve-sub/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('✅ Approved!');
-      document.getElementById('sub-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) { showToast('❌ Network error'); }
+  const data = await apiCall(`/miniapp/api/admin/approve-sub/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('✅ Approved!');
+    haptic('success');
+    document.getElementById('sub-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+  }
 }
 
 async function rejectSub(id) {
   if (!confirm(`Reject submission #${id}?`)) return;
-  try {
-    const res = await fetch(`/miniapp/api/admin/reject-sub/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('❌ Rejected');
-      document.getElementById('sub-' + id)?.remove();
-      loadStats();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) { showToast('❌ Network error'); }
+  const data = await apiCall(`/miniapp/api/admin/reject-sub/${id}`, { method: 'POST' });
+  if (data.success) {
+    showToast('❌ Rejected');
+    document.getElementById('sub-' + id)?.remove();
+    loadStats();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+  }
 }
 
 // ============================================================
-// 👥 LOAD USERS
+// 👥 USERS
 // ============================================================
 async function loadUsers() {
   const listEl = document.getElementById('userList');
   listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
 
-  try {
-    const res = await fetch('/miniapp/api/admin/all-users');
-    const data = await res.json();
+  const data = await apiCall('/miniapp/api/admin/all-users');
 
-    if (!data.success || !data.users || data.users.length === 0) {
-      listEl.innerHTML = '<div class="empty-admin">No users</div>';
-      return;
-    }
+  if (!data.success || !data.users || data.users.length === 0) {
+    listEl.innerHTML = '<div class="empty-admin">No users</div>';
+    return;
+  }
 
-    let html = '';
-    data.users.forEach((u, i) => {
-      html += `
-        <div class="admin-item">
-          <div class="admin-item-header">
-            <div class="admin-item-id">#${i + 1}</div>
-            <div class="admin-item-amount">₹${(u.balance || 0).toFixed(2)}</div>
-          </div>
-          <div class="admin-item-row"><b>Name:</b> ${escapeHtml(u.firstName || 'User')}</div>
-          <div class="admin-item-row"><b>ID:</b> <code>${u.userId}</code></div>
-          <div class="admin-item-row"><b>Username:</b> ${u.username ? '@' + escapeHtml(u.username) : '-'}</div>
-          <div class="admin-item-row"><b>Withdrawn:</b> ₹${(u.withdrawnTotal || 0).toFixed(2)}</div>
+  let html = '';
+  data.users.forEach((u, i) => {
+    html += `
+      <div class="admin-item">
+        <div class="admin-item-header">
+          <div class="admin-item-id">#${i + 1}</div>
+          <div class="admin-item-amount">₹${(u.balance || 0).toFixed(2)}</div>
         </div>
-      `;
-    });
-    listEl.innerHTML = html;
+        <div class="admin-item-row"><b>Name:</b> ${escapeHtml(u.firstName || 'User')}</div>
+        <div class="admin-item-row"><b>ID:</b> <code>${u.userId}</code></div>
+        <div class="admin-item-row"><b>Username:</b> ${u.username ? '@' + escapeHtml(u.username) : '-'}</div>
+        <div class="admin-item-row"><b>Withdrawn:</b> ₹${(u.withdrawnTotal || 0).toFixed(2)}</div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
+}
 
-  } catch (e) {
+// ============================================================
+// 🎨 CUSTOMIZE — Load current values
+// ============================================================
+async function loadCustomize() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    document.getElementById('cust_logo').value = appConfig.appLogo || DEFAULTS.app_logo;
+    document.getElementById('cust_home').value = appConfig.btn_home || DEFAULTS.btn_home;
+    document.getElementById('cust_task').value = appConfig.btn_task || DEFAULTS.btn_task;
+    document.getElementById('cust_pay').value = appConfig.btn_pay || DEFAULTS.btn_pay;
+    document.getElementById('cust_profile').value = appConfig.btn_profile || DEFAULTS.btn_profile;
+  }
+}
+
+// Save single field
+async function saveCustomize(key, inputId) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim();
+
+  if (!value) {
+    showToast('❌ Enter a value');
+    haptic('error');
+    return;
+  }
+
+  const data = await apiCall('/miniapp/api/admin/save-config', {
+    method: 'POST',
+    body: JSON.stringify({ userId, key, value })
+  });
+
+  if (data.success) {
+    showToast('✅ Saved!');
+    haptic('success');
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
+  }
+}
+
+// Reset single field to default
+async function resetCustomize(key, inputId) {
+  if (!confirm(`Reset ${key} to default?`)) return;
+
+  const defaultValue = DEFAULTS[key] || '';
+  const input = document.getElementById(inputId);
+  input.value = defaultValue;
+
+  const data = await apiCall('/miniapp/api/admin/save-config', {
+    method: 'POST',
+    body: JSON.stringify({ userId, key, value: defaultValue })
+  });
+
+  if (data.success) {
+    showToast('🔄 Reset to default!');
+    haptic('success');
+  }
+}
+
+// Reset all
+async function resetAllCustomize() {
+  if (!confirm('Reset ALL customization to default?')) return;
+
+  for (const [key, value] of Object.entries(DEFAULTS)) {
+    await apiCall('/miniapp/api/admin/save-config', {
+      method: 'POST',
+      body: JSON.stringify({ userId, key, value })
+    });
+  }
+
+  showToast('🔄 All reset to default!');
+  haptic('success');
+  await loadCustomize();
+  await loadConfig();
+}
+
+// ============================================================
+// 👑 ADMINS MANAGEMENT
+// ============================================================
+async function loadAdmins() {
+  const listEl = document.getElementById('adminsList');
+  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+
+  const data = await apiCall('/miniapp/api/admin/list');
+  if (!data.success || !data.admins) {
     listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
+    return;
+  }
+
+  let html = '';
+  data.admins.forEach(a => {
+    const isOwnerRow = a.role === 'owner';
+    html += `
+      <div class="admin-user-row">
+        <div class="admin-user-avatar">${isOwnerRow ? '👑' : '👤'}</div>
+        <div class="admin-user-info">
+          <div class="admin-user-name">${escapeHtml(a.name || 'Admin')}${isOwnerRow ? ' (Owner)' : ''}</div>
+          <div class="admin-user-id">${a.userId}</div>
+        </div>
+        <div class="admin-user-actions">
+          ${!isOwnerRow ? `<button class="btn-remove" onclick="removeAdmin(${a.userId})">🗑️</button>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  listEl.innerHTML = html;
+}
+
+async function addAdmin() {
+  const input = document.getElementById('newAdminId');
+  const newId = input.value.trim();
+
+  if (!newId || isNaN(newId)) {
+    showToast('❌ Enter valid User ID');
+    haptic('error');
+    return;
+  }
+
+  const data = await apiCall('/miniapp/api/admin/add', {
+    method: 'POST',
+    body: JSON.stringify({ userId: newId, requesterId: userId })
+  });
+
+  if (data.success) {
+    showToast('✅ Admin added!');
+    haptic('success');
+    input.value = '';
+    await loadAdmins();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
+  }
+}
+
+async function removeAdmin(adminId) {
+  if (!confirm(`Remove admin ${adminId}?`)) return;
+
+  const data = await apiCall(`/miniapp/api/admin/remove/${adminId}`, {
+    method: 'POST',
+    body: JSON.stringify({ requesterId: userId })
+  });
+
+  if (data.success) {
+    showToast('🗑️ Removed');
+    haptic('success');
+    await loadAdmins();
+  } else {
+    showToast('❌ ' + (data.error || 'Failed'));
   }
 }
 
 // ============================================================
-// 🎯 ADMIN QUICK ACTIONS
+// 🎯 QUICK ACTIONS
 // ============================================================
 function adminAction(name) {
   showToast(`ℹ️ ${name} — Bot-ൽ /admin use ചെയ്യൂ`);
 }
+
+// ============================================================
+// EXPOSE
+// ============================================================
+window.switchTab = switchTab;
+window.approveWd = approveWd;
+window.rejectWd = rejectWd;
+window.approveAf = approveAf;
+window.rejectAf = rejectAf;
+window.approveSub = approveSub;
+window.rejectSub = rejectSub;
+window.saveCustomize = saveCustomize;
+window.resetCustomize = resetCustomize;
+window.resetAllCustomize = resetAllCustomize;
+window.addAdmin = addAdmin;
+window.removeAdmin = removeAdmin;
+window.adminAction = adminAction;
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 </script>
