@@ -9,128 +9,124 @@
 </head>
 <body>
 
+<!-- ═══ BACKGROUND ANIMATION ═══ -->
 <div class="bg-animation">
   <div class="bg-blob blob-1"></div>
   <div class="bg-blob blob-2"></div>
   <div class="bg-blob blob-3"></div>
 </div>
 
-<div class="iphone-frame">
-  <div class="iphone-notch"></div>
+<!-- ═══ APP CONTAINER ═══ -->
+<div class="app-container">
 
-  <div class="app">
-
-    <header class="topbar">
-      <div class="logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text">TASK EARN BOT</span>
-      </div>
-    </header>
-
-    <div class="user-card glass">
-      <div class="user-info">
-        <div class="avatar" id="avatar">
-          <span id="avatarFallback">👤</span>
-          <img id="avatarImg" src="" alt="" style="display:none;">
-        </div>
-        <div>
-          <div class="username" id="username">Loading...</div>
-          <div class="userid" id="userid">ID: -</div>
-        </div>
-      </div>
+  <!-- ═══ HEADER (Fixed Top) ═══ -->
+  <header class="topbar">
+    <div class="logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text" id="appLogo">TASK EARN BOT</span>
     </div>
+  </header>
 
-    <div class="balance-card glass">
-      <div class="balance-header">
-        <div class="label">AVAILABLE BALANCE</div>
-        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
-          <span class="refresh-icon">🔄</span>
-        </button>
-      </div>
-      <div class="balance" id="balance">₹0.00</div>
-      <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
-      <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
-    </div>
+  <!-- ═══ MAIN CONTENT (Scrollable) ═══ -->
+  <main class="main-content" id="mainContent">
 
-    <div class="linked-card glass">
-      <div class="linked-left">
-        <div class="linked-icon">🔗</div>
-        <div>
-          <div class="linked-label">LINKED ACCOUNT</div>
-          <div class="linked-status" id="linkedStatus">Not Linked</div>
+    <!-- ═══ HOME BLOCKS — Dynamic (Rendered by JS) ═══ -->
+    <div id="homeBlocks">
+      <!-- Default blocks — fallback -->
+      
+      <!-- User Card -->
+      <div class="user-card glass" id="defaultUserCard">
+        <div class="user-info">
+          <div class="avatar" id="avatar">
+            <span id="avatarFallback">👤</span>
+            <img id="avatarImg" src="" alt="" style="display:none;">
+          </div>
+          <div>
+            <div class="username" id="username">Loading...</div>
+            <div class="userid" id="userid">ID: -</div>
+          </div>
         </div>
       </div>
-      <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+
+      <!-- Balance Card -->
+      <div class="balance-card glass" id="defaultBalanceCard">
+        <div class="balance-header">
+          <div class="label">AVAILABLE BALANCE</div>
+          <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
+            <span class="refresh-icon">🔄</span>
+          </button>
+        </div>
+        <div class="balance" id="balance">₹0.00</div>
+        <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
+        <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
+      </div>
+
+      <!-- Linked Account -->
+      <div class="linked-card glass" id="defaultLinkedCard">
+        <div class="linked-left">
+          <div class="linked-icon">🔗</div>
+          <div>
+            <div class="linked-label">LINKED ACCOUNT</div>
+            <div class="linked-status" id="linkedStatus">Not Linked</div>
+          </div>
+        </div>
+        <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="payment-card glass" id="defaultPaymentCard">
+        <div class="section-title">💳 PAYMENT METHODS</div>
+        <div id="paymentList" class="payment-list">Loading...</div>
+      </div>
+
     </div>
+    <!-- END: homeBlocks -->
 
-    <div class="payment-card glass">
-      <div class="section-title">💳 PAYMENT METHODS</div>
-      <div id="paymentList" class="payment-list">Loading...</div>
-    </div>
+  </main>
 
-    <nav class="bottom-nav glass-nav">
-      <a href="/miniapp" class="nav-item active">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
-      </a>
-      <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
-      </a>
-      <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
-      </a>
-      <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
-      </a>
-    </nav>
+  <!-- ═══ BOTTOM NAV (Fixed Bottom - Always Visible) ═══ -->
+  <nav class="bottom-nav">
+    <a href="/miniapp" class="nav-item active">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label" id="nav-home">HOME</span>
+    </a>
+    <a href="/miniapp/task" class="nav-item">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label" id="nav-task">TASK</span>
+    </a>
+    <a href="/miniapp/pay" class="nav-item">
+      <span class="nav-icon">💸</span>
+      <span class="nav-label" id="nav-pay">PAY</span>
+    </a>
+    <a href="/miniapp/profile" class="nav-item">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label" id="nav-profile">PROFILE</span>
+    </a>
+  </nav>
 
-  </div>
 </div>
+<!-- END: app-container -->
 
-<!-- Withdraw Modal -->
+<!-- ═══ WITHDRAW MODAL ═══ -->
 <div class="modal" id="withdrawModal">
   <div class="modal-content glass">
-    <h3>Withdraw Money</h3>
+    <h3>💸 Withdraw Money</h3>
     <p>Choose withdraw method:</p>
     <div id="withdrawMethods"></div>
     <button onclick="closeWithdraw()" class="cancel-btn">Cancel</button>
   </div>
 </div>
 
-<!-- Payment Modal -->
+<!-- ═══ PAYMENT MODAL ═══ -->
 <div class="modal" id="paymentModal">
   <div class="modal-content glass">
-    <h3>Update Payment Method</h3>
+    <h3>💳 Update Payment Method</h3>
     <div id="paymentUpdateList"></div>
     <button onclick="closePaymentModal()" class="cancel-btn">Close</button>
   </div>
 </div>
 
 <script src="app.js"></script>
-
-<!-- Add Fund Button Style (inline for reliability) -->
-<style>
-  .addfund-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #00aaff 0%, #0088cc 100%);
-    color: #fff;
-    border: none;
-    padding: 15px;
-    border-radius: 14px;
-    font-weight: 800;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
-    transition: transform 0.15s;
-    margin-bottom: 10px;
-    font-family: inherit;
-  }
-  .addfund-btn:active { transform: scale(0.97); }
-</style>
 
 </body>
 </html>
