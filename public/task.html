@@ -7,7 +7,11 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* Task Page Additional Styles */
+/* ═══════════════════════════════════════════════════════
+   TASK PAGE — Complete Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* Task List Card */
 .task-card {
   display: flex;
   align-items: center;
@@ -56,9 +60,7 @@
   gap: 4px;
 }
 
-.task-reward-icon {
-  font-size: 12px;
-}
+.task-reward-icon { font-size: 12px; }
 
 .task-btn {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -73,6 +75,7 @@
   white-space: nowrap;
   flex-shrink: 0;
   margin-left: 10px;
+  font-family: inherit;
 }
 
 .task-btn.completed-btn {
@@ -83,16 +86,10 @@
   cursor: default;
 }
 
-/* Modal specific */
-#taskDetail {
-  text-align: center;
-  margin-bottom: 16px;
-}
+/* Task Detail Modal */
+#taskDetail { text-align: center; margin-bottom: 16px; }
 
-.task-detail-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
+.task-detail-icon { font-size: 48px; margin-bottom: 12px; }
 
 .task-detail-title {
   font-size: 20px;
@@ -123,6 +120,48 @@
 .task-detail-label { color: #7a9a7a; font-weight: 600; }
 .task-detail-value { color: #fff; font-weight: 700; max-width: 55%; text-align: right; word-break: break-all; }
 
+/* Steps in task detail */
+.task-steps {
+  text-align: left;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+
+.task-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.task-step-item:last-child { border-bottom: none; }
+
+.task-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #00ff88;
+  flex-shrink: 0;
+}
+
+.task-step-text {
+  flex: 1;
+  font-size: 13px;
+  color: #fff;
+  line-height: 1.4;
+}
+
+/* Open Task Button */
 .task-open-btn {
   display: block;
   width: 100%;
@@ -136,10 +175,12 @@
   margin: 14px 0 8px;
   text-align: center;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .task-open-btn:active { transform: scale(0.97); }
 
+/* Submit Button */
 .task-submit-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -151,10 +192,29 @@
   font-size: 14px;
   cursor: pointer;
   margin-top: 8px;
+  font-family: inherit;
 }
 
 .task-submit-btn:active { transform: scale(0.97); }
 
+/* Upload / Refer referal button */
+.refer-send-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ff9500, #ff6b00);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  font-family: inherit;
+}
+
+.refer-send-btn:active { transform: scale(0.97); }
+
+/* Empty State */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -174,10 +234,47 @@
   color: #fff;
 }
 
-.empty-state .sub {
-  font-size: 13px;
-  line-height: 1.5;
+.empty-state .sub { font-size: 13px; line-height: 1.5; }
+
+/* Upload preview */
+.upload-preview {
+  margin: 12px 0;
+  text-align: center;
 }
+
+.upload-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 255, 136, 0.3);
+}
+
+/* Extra buttons row */
+.task-extra-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.task-extra-row button {
+  flex: 1;
+}
+
+/* Refer status inside modal */
+.refer-status-box {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  color: #00ff88;
+  font-size: 12px;
+  font-weight: 600;
+  word-break: break-all;
+  display: none;
+}
+
+.refer-status-box.show { display: block; }
 </style>
 </head>
 <body>
@@ -196,7 +293,7 @@
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">⚡</span>
-        <span class="logo-text">TASK EARN BOT</span>
+        <span class="logo-text" id="appLogo">TASK EARN BOT</span>
       </div>
     </header>
 
@@ -212,26 +309,26 @@
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
+        <span class="nav-label" id="nav-home">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item active">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
+        <span class="nav-label" id="nav-task">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
         <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
         <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<!-- TASK MODAL -->
+<!-- ═══ TASK DETAIL MODAL ═══ -->
 <div class="modal" id="taskModal">
   <div class="modal-content glass">
     <div id="taskDetail"></div>
@@ -239,7 +336,7 @@
   </div>
 </div>
 
-<!-- UPLOAD MODAL -->
+<!-- ═══ UPLOAD MODAL ═══ -->
 <div class="modal" id="uploadModal">
   <div class="modal-content glass">
     <h3>📸 Upload Screenshot</h3>
@@ -250,7 +347,7 @@
   </div>
 </div>
 
-<!-- REFER MODAL -->
+<!-- ═══ REFER MODAL ═══ -->
 <div class="modal" id="referModal">
   <div class="modal-content glass">
     <h3>🔗 Send Refer Link / Bot ID</h3>
@@ -272,7 +369,7 @@
 
 <script>
 // ============================================================
-// 📱 TASK PAGE
+// 📱 TASK PAGE — Complete Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -287,12 +384,13 @@ const userId = tg?.initDataUnsafe?.user?.id;
 
 let allTasks = [];
 let currentTask = null;
-let currentTaskType = 'photo'; // photo | refer
+let currentTaskType = 'photo';
+let selectedScreenshot = null;
 
 // ============================================================
-// 🔔 TOAST
+// 🎨 UTILITIES
 // ============================================================
-function showToast(msg) {
+function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -305,12 +403,54 @@ function showToast(msg) {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, duration);
 }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    const logoText = document.getElementById('appLogo');
+    if (logoText && res.config.appLogo) logoText.textContent = res.config.appLogo;
+
+    const navHome = document.getElementById('nav-home');
+    const navTask = document.getElementById('nav-task');
+    const navPay = document.getElementById('nav-pay');
+    const navProfile = document.getElementById('nav-profile');
+
+    if (navHome && res.config.btn_home) navHome.textContent = res.config.btn_home;
+    if (navTask && res.config.btn_task) navTask.textContent = res.config.btn_task;
+    if (navPay && res.config.btn_pay) navPay.textContent = res.config.btn_pay;
+    if (navProfile && res.config.btn_profile) navProfile.textContent = res.config.btn_profile;
+  }
 }
 
 // ============================================================
@@ -319,56 +459,43 @@ function escapeHtml(str) {
 async function loadTasks() {
   const listEl = document.getElementById('taskList');
 
-  try {
-    const res = await fetch('/miniapp/api/tasks');
-    const data = await res.json();
+  const data = await apiCall('/miniapp/api/tasks');
 
-    if (!data.success || !data.tasks || data.tasks.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-state">
-          <div class="icon">📭</div>
-          <div class="title">No Tasks Available</div>
-          <div class="sub">Check back later for new tasks!</div>
-        </div>
-      `;
-      return;
-    }
-
-    allTasks = data.tasks;
-
-    let html = '';
-    allTasks.forEach(task => {
-      let isCompleted = task.completedUsers && task.completedUsers.includes(userId);
-      let completedClass = isCompleted ? 'completed' : '';
-      let btnClass = isCompleted ? 'completed-btn' : '';
-      let btnText = isCompleted ? '✅ Done' : 'VIEW';
-
-      html += `
-        <div class="task-card ${completedClass}" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
-          <div class="task-info">
-            <div class="task-title">${escapeHtml(task.title)}</div>
-            <div class="task-reward">
-              <span class="task-reward-icon">💰</span>
-              ₹${task.reward}
-            </div>
-          </div>
-          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
-        </div>
-      `;
-    });
-
-    listEl.innerHTML = html;
-
-  } catch (e) {
-    console.error('Load tasks error:', e);
+  if (!data.success || !data.tasks || data.tasks.length === 0) {
     listEl.innerHTML = `
       <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div class="title">Failed to load</div>
-        <div class="sub">${escapeHtml(e.message)}</div>
+        <div class="icon">📭</div>
+        <div class="title">No Tasks Available</div>
+        <div class="sub">Check back later for new tasks!</div>
       </div>
     `;
+    return;
   }
+
+  allTasks = data.tasks;
+
+  let html = '';
+  allTasks.forEach(task => {
+    const isCompleted = task.completedUsers && task.completedUsers.includes(userId);
+    const completedClass = isCompleted ? 'completed' : '';
+    const btnClass = isCompleted ? 'completed-btn' : '';
+    const btnText = isCompleted ? '✅ Done' : 'VIEW';
+
+    html += `
+      <div class="task-card ${completedClass}" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
+        <div class="task-info">
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          <div class="task-reward">
+            <span class="task-reward-icon">💰</span>
+            ₹${task.reward}
+          </div>
+        </div>
+        <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
 }
 
 // ============================================================
@@ -380,17 +507,40 @@ function openTask(taskId) {
 
   currentTask = task;
 
-  // Detect if this is a refer task (based on title or link)
-  currentTaskType = 'photo';
-  if (task.link && (task.link.toLowerCase().includes('refer') || task.title.toLowerCase().includes('refer'))) {
-    currentTaskType = 'refer';
+  // ✅ Determine task type
+  currentTaskType = task.taskType || 'photo';
+  if (!task.taskType) {
+    if (task.link && (task.link.toLowerCase().includes('refer') || task.title.toLowerCase().includes('refer'))) {
+      currentTaskType = 'refer';
+    }
   }
 
+  // Build steps
+  const steps = task.steps || [
+    "Click the link below",
+    "Complete the task",
+    "Take screenshot & submit"
+  ];
+
+  let stepsHtml = '';
+  steps.forEach((s, i) => {
+    stepsHtml += `
+      <div class="task-step-item">
+        <div class="task-step-num">${i + 1}</div>
+        <div class="task-step-text">${escapeHtml(s)}</div>
+      </div>
+    `;
+  });
+
+  // ✅ Build submit buttons — BOTH options available
   const detailEl = document.getElementById('taskDetail');
   detailEl.innerHTML = `
     <div class="task-detail-icon">📋</div>
     <div class="task-detail-title">${escapeHtml(task.title)}</div>
     <div class="task-detail-reward">₹${task.reward}</div>
+
+    <div class="task-steps">${stepsHtml}</div>
+
     <div class="task-detail-row">
       <span class="task-detail-label">Reward</span>
       <span class="task-detail-value">₹${task.reward}</span>
@@ -399,15 +549,24 @@ function openTask(taskId) {
       <span class="task-detail-label">Task ID</span>
       <span class="task-detail-value">${escapeHtml(task.taskId)}</span>
     </div>
+
     <a href="${escapeHtml(task.link)}" target="_blank" class="task-open-btn">
       🔗 Open Task Link
     </a>
-    <button class="task-submit-btn" onclick="startSubmit()">
-      ${currentTaskType === 'refer' ? '🔗 Submit Refer ID' : '📸 Submit Screenshot'}
-    </button>
+
+    <!-- ✅ Both options: Screenshot + Refer -->
+    <div class="task-extra-row">
+      <button class="task-submit-btn" onclick="startPhotoSubmit()">
+        📸 Submit Screenshot
+      </button>
+      <button class="refer-send-btn" onclick="startReferSubmit()">
+        🔗 Send Refer
+      </button>
+    </div>
   `;
 
   document.getElementById('taskModal').classList.add('active');
+  haptic('light');
 }
 
 function closeTaskModal() {
@@ -415,22 +574,25 @@ function closeTaskModal() {
 }
 
 // ============================================================
-// 📸 START SUBMIT
+// 📸 START PHOTO SUBMIT
 // ============================================================
-function startSubmit() {
+function startPhotoSubmit() {
   closeTaskModal();
-
-  if (currentTaskType === 'refer') {
-    document.getElementById('referModal').classList.add('active');
-    setTimeout(() => document.getElementById('referInput').focus(), 300);
-  } else {
-    document.getElementById('uploadModal').classList.add('active');
-  }
+  document.getElementById('uploadModal').classList.add('active');
 }
 
 function closeUploadModal() {
   document.getElementById('uploadModal').classList.remove('active');
   document.getElementById('screenshotInput').value = '';
+}
+
+// ============================================================
+// 🔗 START REFER SUBMIT
+// ============================================================
+function startReferSubmit() {
+  closeTaskModal();
+  document.getElementById('referModal').classList.add('active');
+  setTimeout(() => document.getElementById('referInput').focus(), 300);
 }
 
 function closeReferModal() {
@@ -439,7 +601,7 @@ function closeReferModal() {
 }
 
 // ============================================================
-// 📸 HANDLE SCREENSHOT UPLOAD
+// 📸 HANDLE SCREENSHOT
 // ============================================================
 async function handleScreenshot(event) {
   const file = event.target.files[0];
@@ -447,50 +609,54 @@ async function handleScreenshot(event) {
 
   if (!currentTask) {
     showToast('❌ No task selected');
+    haptic('error');
+    return;
+  }
+
+  // Size check
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('❌ File too large (max 5MB)');
+    haptic('error');
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    showToast('❌ Please select an image');
+    haptic('error');
     return;
   }
 
   closeUploadModal();
-  showToast('⏳ Uploading screenshot...');
+  showToast('⏳ Uploading...');
+  haptic('light');
+
+  const formData = new FormData();
+  formData.append('photo', file);
+  formData.append('userId', userId);
+  formData.append('taskId', currentTask.taskId);
 
   try {
-    // Convert to base64
-    const base64 = await fileToBase64(file);
-
-    const res = await fetch('/miniapp/api/submit-task', {
+    const res = await fetch('/miniapp/api/task/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        taskId: currentTask.taskId,
-        photoBase64: base64
-      })
+      body: formData
     });
 
     const data = await res.json();
 
     if (data.success) {
       showToast('✅ Screenshot submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      haptic('success');
       currentTask = null;
-      // Reload tasks
       setTimeout(() => loadTasks(), 500);
     } else {
       showToast(`❌ ${data.error || 'Submit failed'}`);
+      haptic('error');
     }
   } catch (e) {
     console.error('Submit error:', e);
     showToast('❌ Network error. Try again.');
+    haptic('error');
   }
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ============================================================
@@ -502,41 +668,47 @@ async function submitRefer() {
 
   if (!value) {
     showToast('❌ Enter refer link or ID');
+    haptic('error');
+    return;
+  }
+
+  // Validate: URL or 10-digit bot ID
+  const isUrl = /^https?:\/\/.+/.test(value) || /^t\.me\/.+/.test(value);
+  const isBotId = /^\d{10}$/.test(value);
+
+  if (!isUrl && !isBotId) {
+    showToast('❌ Invalid format. URL or 10-digit ID');
+    haptic('error');
     return;
   }
 
   if (!currentTask) {
     showToast('❌ No task selected');
+    haptic('error');
     return;
   }
 
   closeReferModal();
   showToast('⏳ Submitting...');
+  haptic('light');
 
-  try {
-    const res = await fetch('/miniapp/api/submit-refer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        taskId: currentTask.taskId,
-        referValue: value
-      })
-    });
+  const res = await apiCall('/miniapp/api/submit-refer', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: userId,
+      taskId: currentTask.taskId,
+      referValue: value
+    })
+  });
 
-    const data = await res.json();
-
-    if (data.success) {
-      showToast('✅ Refer submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      currentTask = null;
-      setTimeout(() => loadTasks(), 500);
-    } else {
-      showToast(`❌ ${data.error || 'Submit failed'}`);
-    }
-  } catch (e) {
-    console.error('Refer submit error:', e);
-    showToast('❌ Network error');
+  if (res.success) {
+    showToast('✅ Refer submitted!');
+    haptic('success');
+    currentTask = null;
+    setTimeout(() => loadTasks(), 500);
+  } else {
+    showToast(`❌ ${res.error || 'Submit failed'}`);
+    haptic('error');
   }
 }
 
@@ -555,6 +727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  await loadConfig();
   await loadTasks();
 
   // Enter key for refer
@@ -563,7 +736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-// Close modals on backdrop click
+// Backdrop close
 document.getElementById('taskModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'taskModal') closeTaskModal();
 });
@@ -575,6 +748,16 @@ document.getElementById('referModal')?.addEventListener('click', (e) => {
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.openTask = openTask;
+window.closeTaskModal = closeTaskModal;
+window.startPhotoSubmit = startPhotoSubmit;
+window.startReferSubmit = startReferSubmit;
+window.closeUploadModal = closeUploadModal;
+window.closeReferModal = closeReferModal;
+window.handleScreenshot = handleScreenshot;
+window.submitRefer = submitRefer;
 </script>
 
 </body>
