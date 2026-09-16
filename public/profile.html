@@ -7,7 +7,10 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* Extra profile styles */
+/* ═══════════════════════════════════════════════════════
+   PROFILE PAGE — Complete Styles
+   ═══════════════════════════════════════════════════════ */
+
 .profile-avatar {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -25,6 +28,7 @@
   opacity: 0.7;
 }
 
+/* History */
 .history-item {
   display: flex;
   justify-content: space-between;
@@ -42,6 +46,7 @@
 .history-item-amount.positive { color: #00ff88; }
 .history-item-amount.negative { color: #ff5555; }
 
+/* Empty state */
 .empty-state {
   text-align: center;
   padding: 30px 20px;
@@ -52,6 +57,136 @@
   margin-bottom: 12px;
   opacity: 0.5;
 }
+
+/* Profile stats grid */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.profile-stat-card {
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+  text-align: center;
+}
+
+.profile-stat-icon { font-size: 22px; margin-bottom: 6px; }
+.profile-stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+.profile-stat-label {
+  font-size: 10px;
+  color: #7a9a7a;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Referral section */
+.referral-card {
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 14px;
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  backdrop-filter: blur(20px);
+}
+
+.referral-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.referral-code {
+  flex: 1;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 13px;
+  color: #00ff88;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.referral-copy-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.referral-copy-btn:active {
+  transform: scale(0.95);
+}
+
+/* Share link button */
+.share-btn {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #fff;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.share-btn:active {
+  transform: scale(0.97);
+}
+
+/* Menu buttons */
+.menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: rgba(17, 26, 17, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.menu-btn:active {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+  transform: translateX(4px);
+}
+
+.menu-btn .menu-icon { font-size: 20px; }
+.menu-btn .menu-text { flex: 1; text-align: left; }
+.menu-btn .menu-arrow { color: #7a9a7a; font-size: 22px; }
 </style>
 </head>
 <body>
@@ -70,7 +205,7 @@
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">⚡</span>
-        <span class="logo-text">TASK EARN BOT</span>
+        <span class="logo-text" id="appLogo">TASK EARN BOT</span>
       </div>
     </header>
 
@@ -79,14 +214,7 @@
       <p class="page-sub">Your account details</p>
     </div>
 
-    <!-- TOTAL BALANCE -->
-    <div class="total-card glass">
-      <div class="total-label">💰 TOTAL BALANCE (ALL USERS)</div>
-      <div class="total-balance" id="totalBalance">₹0.00</div>
-      <div class="total-sub" id="totalUsers">Users: 0</div>
-    </div>
-
-    <!-- PROFILE CARD -->
+    <!-- ═══ PROFILE CARD ═══ -->
     <div class="profile-card glass">
       <div class="profile-avatar" id="profileAvatar" onclick="enlargePhoto()">
         <span id="profileAvatarFallback">👤</span>
@@ -101,16 +229,32 @@
       </div>
     </div>
 
-    <!-- DETAILS -->
+    <!-- ═══ STATS ═══ -->
+    <div class="profile-stats">
+      <div class="profile-stat-card">
+        <div class="profile-stat-icon">💰</div>
+        <div class="profile-stat-value" id="pBalance">₹0.00</div>
+        <div class="profile-stat-label">BALANCE</div>
+      </div>
+      <div class="profile-stat-card">
+        <div class="profile-stat-icon">🏧</div>
+        <div class="profile-stat-value" id="pWithdrawn">₹0.00</div>
+        <div class="profile-stat-label">WITHDRAWN</div>
+      </div>
+      <div class="profile-stat-card">
+        <div class="profile-stat-icon">📋</div>
+        <div class="profile-stat-value" id="pTasks">0</div>
+        <div class="profile-stat-label">TASKS DONE</div>
+      </div>
+      <div class="profile-stat-card">
+        <div class="profile-stat-icon">👥</div>
+        <div class="profile-stat-value" id="pReferrals">0</div>
+        <div class="profile-stat-label">REFERRALS</div>
+      </div>
+    </div>
+
+    <!-- ═══ DETAILS CARD ═══ -->
     <div class="details-card glass">
-      <div class="detail-row">
-        <span class="detail-label">💰 Balance</span>
-        <span class="detail-value" id="pBalance">₹0.00</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">🏧 Total Withdrawn</span>
-        <span class="detail-value" id="pWithdrawn">₹0.00</span>
-      </div>
       <div class="detail-row">
         <span class="detail-label">🎴 Linked Account</span>
         <span class="detail-value" id="pLinked">Not Linked</span>
@@ -123,9 +267,28 @@
         <span class="detail-label">📅 Joined</span>
         <span class="detail-value" id="pJoined">-</span>
       </div>
+      <div class="detail-row">
+        <span class="detail-label">🟢 Status</span>
+        <span class="detail-value" id="pStatus">Active</span>
+      </div>
     </div>
 
-    <!-- PAYMENT METHODS -->
+    <!-- ═══ REFERRAL CARD ═══ -->
+    <div class="referral-card">
+      <div class="section-title">🎁 YOUR REFERRAL LINK</div>
+      <div style="color: #7a9a7a; font-size: 12px; margin-top: 8px;">
+        Share this link and earn rewards!
+      </div>
+      <div class="referral-row">
+        <div class="referral-code" id="referralCode">Loading...</div>
+        <button class="referral-copy-btn" onclick="copyReferral()">📋 COPY</button>
+      </div>
+      <button class="share-btn" onclick="shareReferral()">
+        📤 Share Referral Link
+      </button>
+    </div>
+
+    <!-- ═══ PAYMENT METHODS ═══ -->
     <div class="payment-card glass">
       <div class="section-title">💳 PAYMENT METHODS</div>
       <div id="paymentList" class="payment-list">Loading...</div>
@@ -134,12 +297,26 @@
       </button>
     </div>
 
-    <!-- PAYMENT HISTORY -->
-    <button class="history-btn glass-btn" onclick="openPaymentHistory()">
-      📜 Payment History
+    <!-- ═══ MENU BUTTONS ═══ -->
+    <button class="menu-btn" onclick="openPaymentHistory()">
+      <span class="menu-icon">📜</span>
+      <span class="menu-text">Payment History</span>
+      <span class="menu-arrow">›</span>
     </button>
 
-    <!-- ADMIN PANEL -->
+    <button class="menu-btn" onclick="openSupport()">
+      <span class="menu-icon">💬</span>
+      <span class="menu-text">Contact Support</span>
+      <span class="menu-arrow">›</span>
+    </button>
+
+    <button class="menu-btn" onclick="openHowTo()">
+      <span class="menu-icon">📚</span>
+      <span class="menu-text">How To Earn</span>
+      <span class="menu-arrow">›</span>
+    </button>
+
+    <!-- ═══ ADMIN PANEL (Admin only) ═══ -->
     <div class="admin-panel-card" id="adminPanelCard" style="display:none;">
       <button class="admin-panel-btn" onclick="openAdminPanel()">
         👑 Admin Panel
@@ -149,31 +326,31 @@
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
+        <span class="nav-label" id="nav-home">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
+        <span class="nav-label" id="nav-task">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
         <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item active">
         <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<!-- PHOTO MODAL -->
+<!-- ═══ PHOTO MODAL ═══ -->
 <div class="photo-modal" id="photoModal" onclick="closePhotoModal()">
   <img id="enlargedPhoto" src="" alt="">
 </div>
 
-<!-- HISTORY MODAL -->
+<!-- ═══ HISTORY MODAL ═══ -->
 <div class="modal" id="historyModal">
   <div class="modal-content glass">
     <h3>📜 Payment History</h3>
@@ -182,7 +359,7 @@
   </div>
 </div>
 
-<!-- PAYMENT METHODS MODAL -->
+<!-- ═══ PAYMENT METHODS MODAL ═══ -->
 <div class="modal" id="paymentModal">
   <div class="modal-content glass">
     <h3>💳 Update Payment Method</h3>
@@ -191,9 +368,45 @@
   </div>
 </div>
 
+<!-- ═══ SUPPORT MODAL ═══ -->
+<div class="modal" id="supportModal">
+  <div class="modal-content glass" style="text-align: center;">
+    <h3>💬 Contact Support</h3>
+    <p style="color: #7a9a7a; font-size: 13px; margin: 12px 0;">
+      Need help? Reach out to us!
+    </p>
+    <button class="upload-btn" onclick="gotoSupport()">💬 Open Support Chat</button>
+    <button onclick="closeSupport()" class="cancel-btn">Close</button>
+  </div>
+</div>
+
+<!-- ═══ HOW TO EARN MODAL ═══ -->
+<div class="modal" id="howToModal">
+  <div class="modal-content glass">
+    <h3>📚 How To Earn</h3>
+    <div style="margin-top: 14px; line-height: 1.8; font-size: 13px; color: #ccc;">
+      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">1. 📋 Complete Tasks</b><br>
+      Go to Tasks → Choose a task → Complete → Submit screenshot</p>
+
+      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">2. 🎁 Refer Friends</b><br>
+      Share your referral link → Get rewards for each friend who joins</p>
+
+      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">3. 💰 Withdraw Money</b><br>
+      Reach minimum balance → Withdraw via Wallet/UPI/Bank/Amazon/Redeem</p>
+
+      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">4. 💸 Quick Pay</b><br>
+      Send money to other users instantly via their User ID</p>
+
+      <p><b style="color: #00ff88;">5. 🎉 Daily Bonuses</b><br>
+      Keep an eye on the bot for special bonus offers!</p>
+    </div>
+    <button onclick="closeHowTo()" class="cancel-btn">Close</button>
+  </div>
+</div>
+
 <script>
 // ============================================================
-// 👤 PROFILE PAGE
+// 👤 PROFILE PAGE — Complete Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -208,11 +421,12 @@ const userId = tg?.initDataUnsafe?.user?.id;
 
 let currentUser = null;
 let currentPhotoUrl = null;
+let appConfig = {};
 
 // ============================================================
-// 🔔 TOAST
+// 🎨 UTILITIES
 // ============================================================
-function showToast(msg) {
+function showToast(msg, duration = 2000) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -225,12 +439,56 @@ function showToast(msg) {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2000);
+  }, duration);
 }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    const logo = document.getElementById('appLogo');
+    if (logo && appConfig.appLogo) logo.textContent = appConfig.appLogo;
+
+    const navHome = document.getElementById('nav-home');
+    const navTask = document.getElementById('nav-task');
+    const navPay = document.getElementById('nav-pay');
+    const navProfile = document.getElementById('nav-profile');
+
+    if (navHome && appConfig.btn_home) navHome.textContent = appConfig.btn_home;
+    if (navTask && appConfig.btn_task) navTask.textContent = appConfig.btn_task;
+    if (navPay && appConfig.btn_pay) navPay.textContent = appConfig.btn_pay;
+    if (navProfile && appConfig.btn_profile) navProfile.textContent = appConfig.btn_profile;
+  }
 }
 
 // ============================================================
@@ -239,50 +497,53 @@ function escapeHtml(str) {
 async function loadUser() {
   if (!userId) return;
 
-  try {
-    const res = await fetch(`/miniapp/api/user/${userId}`);
-    const data = await res.json();
+  const data = await apiCall(`/miniapp/api/user/${userId}`);
 
-    if (!data.success) {
-      document.getElementById('profileName').textContent = 'Not Found';
-      return;
-    }
-
-    currentUser = data.user;
-
-    // Update profile
-    document.getElementById('profileName').textContent = data.user.firstName || 'User';
-    document.getElementById('profileId').innerHTML = `ID: ${data.user.userId} 📋`;
-    document.getElementById('profileUsername').innerHTML = data.user.username
-      ? `@${data.user.username} 📋`
-      : '@- (Not set)';
-
-    // Details
-    document.getElementById('pBalance').textContent = '₹' + (data.user.balance || 0).toFixed(2);
-    document.getElementById('pWithdrawn').textContent = '₹' + (data.user.withdrawnTotal || 0).toFixed(2);
-    document.getElementById('pLinked').textContent = data.user.linkedInfo || 'Not Linked';
-    document.getElementById('pReferred').textContent = data.user.referredBy || 'Auto Started';
-
-    if (data.user.joined) {
-      let joinedDate = new Date(data.user.joined).toLocaleDateString('en-IN', {
-        day: '2-digit', month: 'short', year: 'numeric'
-      });
-      document.getElementById('pJoined').textContent = joinedDate;
-    }
-
-    // Load photo
-    await loadProfilePhoto();
-
-    // Load payment methods
-    await loadPaymentMethods();
-
-    // Check admin
-    await checkAdmin();
-
-  } catch (e) {
-    console.error('Load user error:', e);
-    document.getElementById('profileName').textContent = 'Error';
+  if (!data.success) {
+    document.getElementById('profileName').textContent = 'Not Found';
+    return;
   }
+
+  currentUser = data.user;
+
+  // Profile
+  document.getElementById('profileName').textContent = data.user.firstName || 'User';
+  document.getElementById('profileId').innerHTML = `ID: ${data.user.userId} 📋`;
+  document.getElementById('profileUsername').innerHTML = data.user.username
+    ? `@${data.user.username} 📋`
+    : '@- (Not set)';
+
+  // Stats
+  document.getElementById('pBalance').textContent = '₹' + (data.user.balance || 0).toFixed(2);
+  document.getElementById('pWithdrawn').textContent = '₹' + (data.user.withdrawnTotal || 0).toFixed(2);
+  document.getElementById('pTasks').textContent = data.user.totalTasks || 0;
+  document.getElementById('pReferrals').textContent = data.user.totalReferrals || 0;
+
+  // Details
+  document.getElementById('pLinked').textContent = data.user.linkedInfo || 'Not Linked';
+  document.getElementById('pReferred').textContent = data.user.referredBy || 'Auto Started';
+
+  if (data.user.joined) {
+    let joinedDate = new Date(data.user.joined).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    });
+    document.getElementById('pJoined').textContent = joinedDate;
+  }
+
+  document.getElementById('pStatus').textContent = data.user.isBanned ? '🚫 Banned' : '🟢 Active';
+
+  // Referral link
+  const botUsername = appConfig.botUsername || 'TaskEarnBot';
+  document.getElementById('referralCode').textContent = `t.me/${botUsername}?start=ref_${userId}`;
+
+  // Load photo
+  await loadProfilePhoto();
+
+  // Load payment methods
+  await loadPaymentMethods();
+
+  // Check admin
+  await checkAdmin();
 }
 
 // ============================================================
@@ -290,19 +551,15 @@ async function loadUser() {
 // ============================================================
 async function loadProfilePhoto() {
   if (!userId) return;
-  try {
-    const res = await fetch(`/miniapp/api/profile-photo/${userId}`);
-    const data = await res.json();
 
-    if (data.success && data.photoUrl) {
-      currentPhotoUrl = data.photoUrl;
-      const img = document.getElementById('profileAvatarImg');
-      img.src = data.photoUrl;
-      img.style.display = 'block';
-      document.getElementById('profileAvatarFallback').style.display = 'none';
-    }
-  } catch (e) {
-    console.error('Photo error:', e);
+  const data = await apiCall(`/miniapp/api/profile-photo/${userId}`);
+
+  if (data.success && data.photoUrl) {
+    currentPhotoUrl = data.photoUrl;
+    const img = document.getElementById('profileAvatarImg');
+    img.src = data.photoUrl;
+    img.style.display = 'block';
+    document.getElementById('profileAvatarFallback').style.display = 'none';
   }
 }
 
@@ -313,6 +570,7 @@ function enlargePhoto() {
   }
   document.getElementById('enlargedPhoto').src = currentPhotoUrl;
   document.getElementById('photoModal').classList.add('active');
+  haptic('light');
 }
 
 function closePhotoModal() {
@@ -320,15 +578,16 @@ function closePhotoModal() {
 }
 
 // ============================================================
-// 📋 COPY
+// 📋 COPY FUNCTIONS
 // ============================================================
 function copyUserId() {
   if (!userId) return;
   navigator.clipboard.writeText(userId.toString()).then(() => {
     showToast('✅ ID copied!');
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    haptic('success');
   }).catch(() => {
     showToast('❌ Copy failed');
+    haptic('error');
   });
 }
 
@@ -339,10 +598,33 @@ function copyUsername() {
   }
   navigator.clipboard.writeText('@' + currentUser.username).then(() => {
     showToast('✅ Username copied!');
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    haptic('success');
+  });
+}
+
+function copyReferral() {
+  const link = document.getElementById('referralCode').textContent;
+  if (!link) return;
+
+  navigator.clipboard.writeText('https://' + link).then(() => {
+    showToast('✅ Referral link copied!');
+    haptic('success');
   }).catch(() => {
     showToast('❌ Copy failed');
+    haptic('error');
   });
+}
+
+function shareReferral() {
+  const link = document.getElementById('referralCode').textContent;
+  const shareUrl = `https://t.me/share/url?url=https://${link}&text=Join Task Earn Bot and earn money!`;
+
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(shareUrl);
+  } else {
+    window.open(shareUrl, '_blank');
+  }
+  haptic('light');
 }
 
 // ============================================================
@@ -352,29 +634,23 @@ async function loadPaymentMethods() {
   if (!userId) return;
   const listEl = document.getElementById('paymentList');
 
-  try {
-    const res = await fetch(`/miniapp/api/payment-methods/${userId}`);
-    const data = await res.json();
+  const data = await apiCall(`/miniapp/api/payment-methods/${userId}`);
 
-    if (!data.success) {
-      listEl.innerHTML = '<div class="loading">Failed to load</div>';
-      return;
-    }
-
-    let html = '';
-    data.methods.forEach(m => {
-      let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
-      html += `<div class="payment-item">
-        <span>${m.icon} ${m.name}</span>
-        <span>${escapeHtml(display)}</span>
-      </div>`;
-    });
-
-    listEl.innerHTML = html;
-
-  } catch (e) {
-    listEl.innerHTML = '<div class="loading">Error</div>';
+  if (!data.success) {
+    listEl.innerHTML = '<div class="loading">Failed to load</div>';
+    return;
   }
+
+  let html = '';
+  data.methods.forEach(m => {
+    let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
+    html += `<div class="payment-item">
+      <span>${m.icon} ${m.name}</span>
+      <span>${escapeHtml(display)}</span>
+    </div>`;
+  });
+
+  listEl.innerHTML = html;
 }
 
 // ============================================================
@@ -405,6 +681,7 @@ function openPaymentMethods() {
 
   listEl.innerHTML = html;
   document.getElementById('paymentModal').classList.add('active');
+  haptic('light');
 }
 
 function closePaymentModal() {
@@ -415,28 +692,23 @@ async function updatePaymentMethod(field) {
   const value = prompt(`Enter new value for ${field}:`);
   if (!value || !value.trim()) return;
 
-  try {
-    const res = await fetch('/miniapp/api/update-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        field: field,
-        value: value.trim()
-      })
-    });
+  const data = await apiCall('/miniapp/api/update-payment', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: userId,
+      field: field,
+      value: value.trim()
+    })
+  });
 
-    const data = await res.json();
-
-    if (data.success) {
-      showToast('✅ Updated!');
-      await loadUser();
-      closePaymentModal();
-    } else {
-      showToast(`❌ ${data.error || 'Failed'}`);
-    }
-  } catch (e) {
-    showToast('❌ Network error');
+  if (data.success) {
+    showToast('✅ Updated!');
+    haptic('success');
+    await loadUser();
+    closePaymentModal();
+  } else {
+    showToast(`❌ ${data.error || 'Failed'}`);
+    haptic('error');
   }
 }
 
@@ -447,40 +719,44 @@ async function openPaymentHistory() {
   const historyEl = document.getElementById('historyContent');
   historyEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
   document.getElementById('historyModal').classList.add('active');
+  haptic('light');
 
   if (!userId) return;
 
-  try {
-    const res = await fetch(`/miniapp/api/user/${userId}`);
-    const data = await res.json();
+  const data = await apiCall(`/miniapp/api/user/${userId}/history?limit=50`);
 
-    // Since we don't have a dedicated history API, show a simple message
-    // Or fetch from a new endpoint if created
-    if (data.success) {
-      historyEl.innerHTML = `
-        <div class="history-item">
-          <div class="history-item-left">
-            <div class="history-item-title">💰 Current Balance</div>
-            <div class="history-item-date">Now</div>
-          </div>
-          <div class="history-item-amount positive">₹${(data.user.balance || 0).toFixed(2)}</div>
-        </div>
-        <div class="history-item">
-          <div class="history-item-left">
-            <div class="history-item-title">🏧 Total Withdrawn</div>
-            <div class="history-item-date">All time</div>
-          </div>
-          <div class="history-item-amount negative">₹${(data.user.withdrawnTotal || 0).toFixed(2)}</div>
-        </div>
-        <div class="empty-state" style="margin-top:20px;">
-          <div class="icon">📊</div>
-          <div style="font-size:12px;">Full history coming soon</div>
-        </div>
-      `;
-    }
-  } catch (e) {
-    historyEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  if (!data.success || !data.history || data.history.length === 0) {
+    historyEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div>No transactions yet</div>
+      </div>
+    `;
+    return;
   }
+
+  let html = '';
+  data.history.forEach(h => {
+    const isPos = h.amount >= 0;
+    const sign = isPos ? '+' : '';
+    const cls = isPos ? 'positive' : 'negative';
+    const date = new Date(h.createdAt).toLocaleString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    html += `
+      <div class="history-item">
+        <div class="history-item-left">
+          <div class="history-item-title">${escapeHtml(h.action)}</div>
+          <div class="history-item-date">${date}</div>
+        </div>
+        <div class="history-item-amount ${cls}">${sign}₹${Math.abs(h.amount).toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  historyEl.innerHTML = html;
 }
 
 function closeHistory() {
@@ -488,35 +764,64 @@ function closeHistory() {
 }
 
 // ============================================================
+// 💬 SUPPORT
+// ============================================================
+function openSupport() {
+  document.getElementById('supportModal').classList.add('active');
+  haptic('light');
+}
+
+function closeSupport() {
+  document.getElementById('supportModal').classList.remove('active');
+}
+
+async function gotoSupport() {
+  const res = await apiCall('/miniapp/api/config');
+  let supportId = res?.config?.supportUsername;
+
+  if (!supportId) {
+    showToast('❌ Support not set');
+    return;
+  }
+
+  const link = /^\d+$/.test(supportId)
+    ? `tg://user?id=${supportId}`
+    : `https://t.me/${supportId.replace('@', '')}`;
+
+  if (tg?.openTelegramLink && link.startsWith('https')) {
+    tg.openTelegramLink(link);
+  } else {
+    window.open(link, '_blank');
+  }
+}
+
+// ============================================================
+// 📚 HOW TO EARN
+// ============================================================
+function openHowTo() {
+  document.getElementById('howToModal').classList.add('active');
+  haptic('light');
+}
+
+function closeHowTo() {
+  document.getElementById('howToModal').classList.remove('active');
+}
+
+// ============================================================
 // 👑 ADMIN CHECK
 // ============================================================
 async function checkAdmin() {
   if (!userId) return;
-  try {
-    const res = await fetch(`/miniapp/api/is-admin/${userId}`);
-    const data = await res.json();
-    if (data.success && data.isAdmin) {
-      document.getElementById('adminPanelCard').style.display = 'block';
-    }
-  } catch (e) {}
+
+  const data = await apiCall(`/miniapp/api/is-admin/${userId}`);
+  if (data.success && data.isAdmin) {
+    document.getElementById('adminPanelCard').style.display = 'block';
+  }
 }
 
 function openAdminPanel() {
+  haptic('light');
   window.location.href = '/miniapp/admin';
-}
-
-// ============================================================
-// 📊 TOTAL BALANCE
-// ============================================================
-async function loadTotalBalance() {
-  try {
-    const res = await fetch('/miniapp/api/total-balance');
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('totalBalance').textContent = '₹' + (data.totalBalance || 0).toFixed(2);
-      document.getElementById('totalUsers').textContent = 'Users: ' + (data.totalUsers || 0);
-    }
-  } catch (e) {}
 }
 
 // ============================================================
@@ -527,16 +832,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.innerHTML = `
       <div style="padding:50px;text-align:center;color:#fff;">
         <h2>⚠️ Open from Telegram</h2>
+        <p style="color: #7a9a7a; margin-top: 20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
   }
 
+  await loadConfig();
   await loadUser();
-  await loadTotalBalance();
+});
+
+// Close modals on backdrop
+document.getElementById('historyModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'historyModal') closeHistory();
+});
+document.getElementById('paymentModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'paymentModal') closePaymentModal();
+});
+document.getElementById('supportModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'supportModal') closeSupport();
+});
+document.getElementById('howToModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'howToModal') closeHowTo();
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.copyUserId = copyUserId;
+window.copyUsername = copyUsername;
+window.copyReferral = copyReferral;
+window.shareReferral = shareReferral;
+window.openPaymentMethods = openPaymentMethods;
+window.closePaymentModal = closePaymentModal;
+window.updatePaymentMethod = updatePaymentMethod;
+window.openPaymentHistory = openPaymentHistory;
+window.closeHistory = closeHistory;
+window.openSupport = openSupport;
+window.closeSupport = closeSupport;
+window.gotoSupport = gotoSupport;
+window.openHowTo = openHowTo;
+window.closeHowTo = closeHowTo;
+window.openAdminPanel = openAdminPanel;
+window.enlargePhoto = enlargePhoto;
+window.closePhotoModal = closePhotoModal;
 </script>
 
 </body>
