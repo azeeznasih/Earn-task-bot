@@ -7,20 +7,112 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* Extra styles for pay page */
+/* ═══════════════════════════════════════════════════════
+   QUICK PAY PAGE — Complete Styles
+   ═══════════════════════════════════════════════════════ */
+
 .user-info-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 12px;
   animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.user-info-avatar {
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 255, 136, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #00ff88;
+}
+
+.user-info-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-info-details { flex: 1; }
+
+.user-info-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+}
+
+.user-info-id {
+  color: #7a9a7a;
+  font-size: 12px;
+  margin-top: 2px;
+  font-family: 'SF Mono', 'Courier New', monospace;
 }
 
 .check-msg {
   min-height: 20px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
 }
 
-.pay-now-btn {
+.check-msg.success { color: #00ff88; }
+.check-msg.error { color: #ff5555; }
+
+.pay-now-btn { margin-top: 14px; }
+
+/* Balance preview after payment */
+.balance-preview {
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
   margin-top: 14px;
+  animation: fadeIn 0.3s ease;
 }
 
-.confirm-modal-content {
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.balance-row .label {
+  color: #7a9a7a;
+  font-weight: 600;
+}
+
+.balance-row .value {
+  color: #00ff88;
+  font-weight: 800;
+}
+
+.balance-row.after-payment .value {
+  color: #ffa500;
+}
+
+.balance-row .value.low {
+  color: #ff5555;
+}
+
+/* Success modal */
+.success-modal-content {
   text-align: center;
 }
 
@@ -36,15 +128,160 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-.modal.active {
-  display: flex;
-  animation: modalFade 0.2s ease;
+.success-detail {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: left;
 }
 
-@keyframes modalFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.success-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+.success-detail-row:last-child { border-bottom: none; }
+
+.success-detail-row .label {
+  color: #7a9a7a;
+  font-weight: 600;
+}
+
+.success-detail-row .value {
+  color: #fff;
+  font-weight: 700;
+  max-width: 60%;
+  text-align: right;
+  word-break: break-all;
+}
+
+.success-detail-row.highlight {
+  border-top: 1px solid rgba(0, 255, 136, 0.2);
+  margin-top: 8px;
+  padding-top: 12px;
+}
+
+.success-detail-row.highlight .value {
+  color: #00ff88;
+  font-size: 18px;
+}
+
+/* Note text */
+.telegram-note {
+  color: #7a9a7a;
+  font-size: 12px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.telegram-note b {
+  color: #00ff88;
+}
+
+/* Confirm modal */
+.confirm-modal-content { text-align: center; }
+
+.confirm-icon { font-size: 48px; margin-bottom: 8px; }
+.confirm-text { color: #7a9a7a; font-size: 13px; margin-bottom: 16px; }
+
+.confirm-details {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.confirm-label { color: #7a9a7a; }
+.confirm-value { color: #fff; font-weight: 700; }
+.confirm-row.highlight {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 8px;
+  padding-top: 12px;
+}
+.confirm-value.amount { color: #00ff88; font-size: 18px; }
+
+.confirm-buttons { display: flex; gap: 10px; }
+.confirm-cancel-btn {
+  flex: 1;
+  background: rgba(255, 85, 85, 0.15);
+  color: #ff5555;
+  border: 1px solid rgba(255, 85, 85, 0.3);
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.confirm-ok-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.confirm-cancel-btn:active, .confirm-ok-btn:active { transform: scale(0.97); }
+
+/* Recent Transactions */
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.recent-item-left { flex: 1; min-width: 0; }
+
+.recent-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-item-date {
+  font-size: 11px;
+  color: #7a9a7a;
+  margin-top: 2px;
+}
+
+.recent-item-amount {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.recent-item-amount.positive { color: #00ff88; }
+.recent-item-amount.negative { color: #ff5555; }
 </style>
 </head>
 <body>
@@ -62,8 +299,8 @@
 
     <header class="topbar">
       <div class="logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text">TASK EARN BOT</span>
+        <span class="logo-icon">💸</span>
+        <span class="logo-text" id="appLogo">QUICK PAY</span>
       </div>
     </header>
 
@@ -72,12 +309,21 @@
       <p class="page-sub">Send money to any user instantly</p>
     </div>
 
+    <!-- ═══ USER ID INPUT ═══ -->
     <div class="pay-card glass">
       <label class="pay-label">📱 RECEIVER USER ID</label>
       <div class="pay-input-row">
-        <input type="number" id="payUserId" placeholder="Enter Telegram User ID" autocomplete="off" inputmode="numeric">
+        <input 
+          type="number" 
+          id="payUserId" 
+          placeholder="Enter Telegram User ID" 
+          autocomplete="off" 
+          inputmode="numeric"
+        >
         <button class="check-btn" id="checkBtn" onclick="checkUser()">Check</button>
       </div>
+
+      <!-- User preview -->
       <div id="userInfoBox" class="user-info-box" style="display:none;">
         <div class="user-info-avatar" id="userInfoAvatar">👤</div>
         <div class="user-info-details">
@@ -85,14 +331,24 @@
           <div class="user-info-id" id="userInfoId">ID: -</div>
         </div>
       </div>
+
       <div id="userCheckMsg" class="check-msg"></div>
     </div>
 
+    <!-- ═══ AMOUNT INPUT ═══ -->
     <div class="pay-card glass" id="amountCard" style="display:none;">
       <label class="pay-label">💰 AMOUNT</label>
       <div class="amount-input-wrap">
         <span class="rupee-symbol">₹</span>
-        <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off" inputmode="decimal">
+        <input 
+          type="number" 
+          id="payAmount" 
+          placeholder="0" 
+          min="1" 
+          autocomplete="off" 
+          inputmode="decimal"
+          oninput="updateBalancePreview()"
+        >
       </div>
       <div class="quick-amounts">
         <button onclick="setAmount(10)">₹10</button>
@@ -100,45 +356,62 @@
         <button onclick="setAmount(100)">₹100</button>
         <button onclick="setAmount(500)">₹500</button>
       </div>
+
+      <!-- Balance Preview -->
+      <div id="balancePreview" class="balance-preview" style="display:none;">
+        <div class="balance-row">
+          <span class="label">💵 Your Balance:</span>
+          <span class="value" id="previewCurrentBalance">₹0.00</span>
+        </div>
+        <div class="balance-row after-payment">
+          <span class="label">📉 After Payment:</span>
+          <span class="value" id="previewAfterBalance">₹0.00</span>
+        </div>
+      </div>
     </div>
 
-    <div class="pay-balance-info glass" id="payBalanceInfo" style="display:none;">
-      <span>💵 Your Balance:</span>
-      <span id="payBalance">₹0.00</span>
-    </div>
-
+    <!-- ═══ PAY BUTTON ═══ -->
     <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
       💸 PAY NOW
     </button>
 
+    <!-- ═══ RECENT TRANSACTIONS ═══ -->
+    <div class="glass" style="border-radius: 20px; padding: 20px; margin-top: 14px;">
+      <div class="section-title">📊 RECENT TRANSACTIONS</div>
+      <div id="recentList" class="recent-list">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
+        <span class="nav-label" id="nav-home">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
+        <span class="nav-label" id="nav-task">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item active">
         <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
         <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<!-- CONFIRM MODAL -->
+<!-- ═══ CONFIRM MODAL ═══ -->
 <div class="modal" id="confirmModal">
   <div class="modal-content glass confirm-modal-content">
     <div class="confirm-icon">⚠️</div>
     <h3>Confirm Payment</h3>
     <p class="confirm-text">You are about to send:</p>
+
     <div class="confirm-details">
       <div class="confirm-row">
         <span class="confirm-label">To:</span>
@@ -153,6 +426,7 @@
         <span class="confirm-value amount" id="confirmAmount">₹0</span>
       </div>
     </div>
+
     <div class="confirm-buttons">
       <button class="confirm-cancel-btn" onclick="cancelPay()">❌ CANCEL</button>
       <button class="confirm-ok-btn" id="confirmBtn" onclick="confirmPay()">✅ CONFIRM</button>
@@ -160,19 +434,44 @@
   </div>
 </div>
 
-<!-- SUCCESS MODAL -->
+<!-- ═══ SUCCESS MODAL ═══ -->
 <div class="modal" id="successModal">
-  <div class="modal-content glass confirm-modal-content">
+  <div class="modal-content glass success-modal-content">
     <div class="success-icon">✅</div>
-    <h3>Payment Successful!</h3>
-    <p class="confirm-text" id="successMsg">Money sent successfully.</p>
-    <button class="confirm-ok-btn" onclick="closeSuccess()" style="width:100%; margin-top:16px;">OK</button>
+    <h3>Payment Sent!</h3>
+
+    <div class="success-detail">
+      <div class="success-detail-row">
+        <span class="label">👤 To:</span>
+        <span class="value" id="successName">-</span>
+      </div>
+      <div class="success-detail-row">
+        <span class="label">🆔 User ID:</span>
+        <span class="value" id="successUserId">-</span>
+      </div>
+      <div class="success-detail-row">
+        <span class="label">💰 Sent:</span>
+        <span class="value" id="successAmount">₹0</span>
+      </div>
+      <div class="success-detail-row highlight">
+        <span class="label">💵 New Balance:</span>
+        <span class="value" id="successNewBalance">₹0.00</span>
+      </div>
+    </div>
+
+    <p class="telegram-note">
+      💬 <b>Check your Telegram</b> for complete details
+    </p>
+
+    <button class="confirm-ok-btn" onclick="closeSuccess()" style="width:100%; margin-top:14px;">
+      OK
+    </button>
   </div>
 </div>
 
 <script>
 // ============================================================
-// 💸 QUICK PAY PAGE
+// 💸 QUICK PAY — User to User Transfer
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -185,13 +484,13 @@ if (tg) {
 
 const MY_ID = tg?.initDataUnsafe?.user?.id;
 
-let checkedUser = null;   // { userId, firstName, username }
+let checkedUser = null;
 let myBalance = 0;
 
 // ============================================================
-// 🔔 TOAST
+// 🎨 UTILITIES
 // ============================================================
-function showToast(msg) {
+function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -204,7 +503,20 @@ function showToast(msg) {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, duration);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
 }
 
 function showMsg(msg, type = 'error') {
@@ -217,28 +529,103 @@ function clearMsg() {
   document.getElementById('userCheckMsg').textContent = '';
 }
 
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    const c = res.config;
+
+    const logo = document.getElementById('appLogo');
+    if (logo && c.appLogo) logo.textContent = c.appLogo;
+
+    const navHome = document.getElementById('nav-home');
+    const navTask = document.getElementById('nav-task');
+    const navPay = document.getElementById('nav-pay');
+    const navProfile = document.getElementById('nav-profile');
+
+    if (navHome && c.btn_home) navHome.textContent = c.btn_home;
+    if (navTask && c.btn_task) navTask.textContent = c.btn_task;
+    if (navPay && c.btn_pay) navPay.textContent = c.btn_pay;
+    if (navProfile && c.btn_profile) navProfile.textContent = c.btn_profile;
+  }
+}
+
 // ============================================================
 // 💰 LOAD MY BALANCE
 // ============================================================
 async function loadMyBalance() {
   if (!MY_ID) return;
-  try {
-    const res = await fetch(`/miniapp/api/user/${MY_ID}`);
-    const data = await res.json();
-    if (data.success) {
-      myBalance = data.user.balance || 0;
-      document.getElementById('payBalance').textContent = '₹' + myBalance.toFixed(2);
-    }
-  } catch (e) {
-    console.error('Balance load:', e);
+
+  const res = await apiCall(`/miniapp/api/user/${MY_ID}`);
+  if (res.success) {
+    myBalance = res.user.balance || 0;
+    const el = document.getElementById('previewCurrentBalance');
+    if (el) el.textContent = '₹' + myBalance.toFixed(2);
   }
 }
 
 // ============================================================
-// 🔍 CHECK USER
+// 📊 LOAD RECENT TRANSACTIONS
+// ============================================================
+async function loadRecentTransactions() {
+  const listEl = document.getElementById('recentList');
+  if (!listEl) return;
+
+  const res = await apiCall(`/miniapp/api/user/${MY_ID}/history?limit=5`);
+
+  if (!res.success || !res.history || res.history.length === 0) {
+    listEl.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: #7a9a7a; font-size: 13px;">
+        📭 No transactions yet
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  res.history.forEach(h => {
+    const isPos = h.amount >= 0;
+    const sign = isPos ? '+' : '';
+    const cls = isPos ? 'positive' : 'negative';
+    const date = new Date(h.createdAt).toLocaleString('en-IN', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+
+    html += `
+      <div class="recent-item">
+        <div class="recent-item-left">
+          <div class="recent-item-title">${escapeHtml(h.action)}</div>
+          <div class="recent-item-date">${date}</div>
+        </div>
+        <div class="recent-item-amount ${cls}">${sign}₹${Math.abs(h.amount).toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// ============================================================
+// 🔍 CHECK USER (Receiver)
 // ============================================================
 async function checkUser() {
   clearMsg();
+  haptic('light');
 
   const input = document.getElementById('payUserId');
   const userId = input.value.trim();
@@ -246,64 +633,61 @@ async function checkUser() {
 
   if (!userId || isNaN(userId)) {
     showMsg('❌ Enter a valid User ID', 'error');
+    haptic('error');
     return;
   }
 
   if (parseInt(userId) === MY_ID) {
     showMsg('❌ Cannot send to yourself', 'error');
+    haptic('error');
     return;
   }
 
   btn.disabled = true;
   btn.textContent = '⏳';
+
+  // Hide everything
   document.getElementById('userInfoBox').style.display = 'none';
   document.getElementById('amountCard').style.display = 'none';
-  document.getElementById('payBalanceInfo').style.display = 'none';
   document.getElementById('payNowBtn').style.display = 'none';
 
-  try {
-    const res = await fetch(`/miniapp/api/check-user/${userId}`);
-    const data = await res.json();
+  const data = await apiCall(`/miniapp/api/check-user/${userId}`);
 
-    if (!data.success) {
-      showMsg(`❌ ${data.error || 'User not found'}`, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Check';
-      return;
-    }
-
-    checkedUser = data.user;
-
-    // Update UI
-    document.getElementById('userInfoName').textContent = data.user.firstName || 'User';
-    document.getElementById('userInfoId').textContent = 'ID: ' + data.user.userId;
-
-    const avatar = document.getElementById('userInfoAvatar');
-    if (data.user.photoUrl) {
-      avatar.innerHTML = `<img src="${data.user.photoUrl}" alt="profile">`;
-    } else {
-      avatar.textContent = (data.user.firstName || 'U').charAt(0).toUpperCase();
-    }
-
-    document.getElementById('userInfoBox').style.display = 'flex';
-    document.getElementById('amountCard').style.display = 'block';
-    document.getElementById('payBalanceInfo').style.display = 'flex';
-    document.getElementById('payNowBtn').style.display = 'block';
-
-    showMsg('✅ User found!', 'success');
-
-    // Focus amount input
-    setTimeout(() => document.getElementById('payAmount').focus(), 300);
-
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-  } catch (e) {
-    showMsg('❌ Network error', 'error');
-    console.error(e);
+  if (!data.success) {
+    showMsg(`❌ ${data.error || 'User not found'}`, 'error');
+    haptic('error');
+    btn.disabled = false;
+    btn.textContent = 'Check';
+    return;
   }
+
+  checkedUser = data.user;
+
+  // Update UI
+  document.getElementById('userInfoName').textContent = data.user.firstName || 'User';
+  document.getElementById('userInfoId').textContent = 'ID: ' + data.user.userId;
+
+  const avatar = document.getElementById('userInfoAvatar');
+  if (data.user.photoUrl) {
+    avatar.innerHTML = `<img src="${data.user.photoUrl}" alt="profile">`;
+  } else {
+    avatar.textContent = (data.user.firstName || 'U').charAt(0).toUpperCase();
+  }
+
+  document.getElementById('userInfoBox').style.display = 'flex';
+  document.getElementById('amountCard').style.display = 'block';
+  document.getElementById('payNowBtn').style.display = 'block';
+
+  showMsg('✅ User found!', 'success');
+  haptic('success');
+
+  setTimeout(() => document.getElementById('payAmount').focus(), 300);
 
   btn.disabled = false;
   btn.textContent = 'Check';
+
+  // Refresh balance
+  await loadMyBalance();
 }
 
 // ============================================================
@@ -311,7 +695,31 @@ async function checkUser() {
 // ============================================================
 function setAmount(amt) {
   document.getElementById('payAmount').value = amt;
-  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  haptic('light');
+  updateBalancePreview();
+}
+
+// ============================================================
+// 📊 UPDATE BALANCE PREVIEW
+// ============================================================
+function updateBalancePreview() {
+  const input = document.getElementById('payAmount');
+  const preview = document.getElementById('balancePreview');
+  const currentEl = document.getElementById('previewCurrentBalance');
+  const afterEl = document.getElementById('previewAfterBalance');
+
+  const amt = parseFloat(input.value) || 0;
+
+  if (amt > 0) {
+    preview.style.display = 'block';
+    currentEl.textContent = '₹' + myBalance.toFixed(2);
+
+    const after = myBalance - amt;
+    afterEl.textContent = '₹' + after.toFixed(2);
+    afterEl.classList.toggle('low', after < 0);
+  } else {
+    preview.style.display = 'none';
+  }
 }
 
 // ============================================================
@@ -319,22 +727,25 @@ function setAmount(amt) {
 // ============================================================
 function initiatePay() {
   clearMsg();
+  haptic('light');
 
   if (!checkedUser) {
     showToast('❌ Check user first');
+    haptic('error');
     return;
   }
 
-  const amtStr = document.getElementById('payAmount').value.trim();
-  const amt = parseFloat(amtStr);
+  const amt = parseFloat(document.getElementById('payAmount').value);
 
   if (isNaN(amt) || amt <= 0) {
     showToast('❌ Enter valid amount');
+    haptic('error');
     return;
   }
 
   if (amt > myBalance) {
     showToast('❌ Insufficient balance');
+    haptic('error');
     return;
   }
 
@@ -351,10 +762,11 @@ function initiatePay() {
 // ============================================================
 function cancelPay() {
   document.getElementById('confirmModal').classList.remove('active');
+  haptic('light');
 }
 
 // ============================================================
-// ✅ CONFIRM PAY
+// ✅ CONFIRM PAY (User → User)
 // ============================================================
 async function confirmPay() {
   const amt = parseFloat(document.getElementById('payAmount').value);
@@ -362,60 +774,53 @@ async function confirmPay() {
 
   if (!checkedUser || isNaN(amt) || amt <= 0) {
     showToast('❌ Invalid data');
+    haptic('error');
     return;
   }
 
   btn.disabled = true;
   btn.innerHTML = '⏳ Sending...';
 
-  try {
-    const res = await fetch('/miniapp/api/quick-pay', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        senderId: MY_ID,
-        receiverId: checkedUser.userId,
-        amount: amt
-      })
-    });
+  const data = await apiCall('/miniapp/api/quick-pay', {
+    method: 'POST',
+    body: JSON.stringify({
+      senderId: MY_ID,
+      receiverId: checkedUser.userId,
+      amount: amt
+    })
+  });
 
-    const data = await res.json();
+  document.getElementById('confirmModal').classList.remove('active');
 
-    document.getElementById('confirmModal').classList.remove('active');
-
-    if (!data.success) {
-      showToast(`❌ ${data.error || 'Payment failed'}`);
-      btn.disabled = false;
-      btn.textContent = '✅ CONFIRM';
-      return;
-    }
-
-    // Success
-    document.getElementById('successMsg').textContent =
-      `₹${amt.toFixed(2)} sent to ${checkedUser.firstName || 'User'}`;
-    document.getElementById('successModal').classList.add('active');
-
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-    // Reset form
-    document.getElementById('payUserId').value = '';
-    document.getElementById('payAmount').value = '';
-    document.getElementById('userInfoBox').style.display = 'none';
-    document.getElementById('amountCard').style.display = 'none';
-    document.getElementById('payBalanceInfo').style.display = 'none';
-    document.getElementById('payNowBtn').style.display = 'none';
-    clearMsg();
-
-    checkedUser = null;
-
-    // Reload balance
-    await loadMyBalance();
-
-  } catch (e) {
-    console.error(e);
-    showToast('❌ Network error');
-    document.getElementById('confirmModal').classList.remove('active');
+  if (!data.success) {
+    showToast(`❌ ${data.error || 'Payment failed'}`);
+    haptic('error');
+    btn.disabled = false;
+    btn.textContent = '✅ CONFIRM';
+    return;
   }
+
+  // ✅ Fill Success Modal
+  document.getElementById('successName').textContent = data.receiverName || checkedUser.firstName || 'User';
+  document.getElementById('successUserId').textContent = checkedUser.userId;
+  document.getElementById('successAmount').textContent = '₹' + amt.toFixed(2);
+  document.getElementById('successNewBalance').textContent = '₹' + (data.newBalance || 0).toFixed(2);
+
+  document.getElementById('successModal').classList.add('active');
+  haptic('success');
+
+  // Reset form
+  document.getElementById('payUserId').value = '';
+  document.getElementById('payAmount').value = '';
+  document.getElementById('userInfoBox').style.display = 'none';
+  document.getElementById('amountCard').style.display = 'none';
+  document.getElementById('balancePreview').style.display = 'none';
+  document.getElementById('payNowBtn').style.display = 'none';
+  clearMsg();
+  checkedUser = null;
+
+  await loadMyBalance();
+  await loadRecentTransactions();
 
   btn.disabled = false;
   btn.textContent = '✅ CONFIRM';
@@ -426,6 +831,7 @@ async function confirmPay() {
 // ============================================================
 function closeSuccess() {
   document.getElementById('successModal').classList.remove('active');
+  haptic('light');
 }
 
 // ============================================================
@@ -436,12 +842,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.innerHTML = `
       <div style="padding:50px;text-align:center;color:#fff;">
         <h2>⚠️ Open from Telegram</h2>
+        <p style="color: #7a9a7a; margin-top: 20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
   }
 
+  await loadConfig();
   await loadMyBalance();
+  await loadRecentTransactions();
 
   // Enter key support
   document.getElementById('payUserId')?.addEventListener('keypress', (e) => {
@@ -452,7 +861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-// Close modal on backdrop
+// Close on backdrop
 document.getElementById('confirmModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'confirmModal') cancelPay();
 });
@@ -461,6 +870,15 @@ document.getElementById('successModal')?.addEventListener('click', (e) => {
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.checkUser = checkUser;
+window.setAmount = setAmount;
+window.initiatePay = initiatePay;
+window.cancelPay = cancelPay;
+window.confirmPay = confirmPay;
+window.closeSuccess = closeSuccess;
+window.updateBalancePreview = updateBalancePreview;
 </script>
 
 </body>
