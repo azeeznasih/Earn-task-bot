@@ -6366,6 +6366,19 @@ app.post("/miniapp/api/admin/broadcast", async (req, res) => {
 });
 
 // ============================================================
-// 🎉 END OF FILE — Complete Bot
+// 🌐 EXPRESS SERVER START — CRITICAL FIX
+// ============================================================
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
+});
+
+// Auto-ping every 5 minutes
+setInterval(() => {
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
+}, 300000);
+
+// ============================================================
+// ✅ END OF FILE
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
