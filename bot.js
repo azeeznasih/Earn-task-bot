@@ -6382,3 +6382,475 @@ setInterval(() => {
 // ✅ END OF FILE
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
+
+// ============================================================
+// 🌐 API SERVER START — CRITICAL FOR MINI APP
+// ============================================================
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 API Server running on port ${PORT}`);
+});
+
+// Auto-ping every 5 minutes
+setInterval(() => {
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
+}, 300000);
+
+// ============================================================
+// 🔧 MINI APP APIs — FULL WORKING
+// ============================================================
+
+// ✅ Withdraw API (no network error)
+app.post("/miniapp/api/withdraw", async (req, res) => {
+  try {
+    const { userId, amount, method } = req.body;
+    const uid = parseInt(userId, 10);
+    const amt = parseFloat(amount);
+    const user = await User.findOne({ userId: uid });
+    if (!user) return res.json({ success: false, error: "User not found" });
+
+    // Check method linked
+    let details = "";
+    if (method === "Wallet") details = user.walletAccount;
+    else if (method === "UPI") details = user.upiId;
+    else if (method === "Bank") details = `${user.bankAccNo}, ${user.bankIfsc}`;
+    else return res.json({ success: false, error: "Invalid method" });
+
+    if (!details || details === "Not Set" || details.includes("Not Set")) {
+      return res.json({ success: false, error: `${method} not linked!`, needsLink: true, method });
+    }
+
+    // Min/Max check
+    const minW = await getConfig("min_withdraw", 10);
+    const maxW = await getConfig("max_withdraw", 10000);
+    if (isNaN(amt) || amt < minW || amt > maxW) {
+      return res.json({ success: false, error: `Min ₹${minW} | Max ₹${maxW}` });
+    }
+    if (user.balance < amt) return res.json({ success: false, error: "Insufficient balance" });
+
+    // Deduct
+    user.balance -= amt;
+    user.withdrawnTotal = (user.withdrawnTotal || 0) + amt;
+    await user.save();
+    await logBalanceHistory(uid, `Withdrawn via ${method} (MiniApp)`, -amt);
+
+    let prevCount = await Withdrawal.countDocuments({ userId: uid });
+    let userWithdrawalCount = prevCount + 1;
+    const withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await Withdrawal.create({
+      withdrawalId, userId: uid, userWithdrawalCount,
+      amount: amt, method, details
+    });
+
+    // Notify Payout Channel
+    const payoutChannel = await getConfig("payout_channel", null);
+    if (payoutChannel) {
+      const adminKb = new InlineKeyboard()
+        .text("✅ Approve", `wd_app_${withdrawalId}`)
+        .text("❌ Reject", `wd_rej_${withdrawalId}`);
+
+      let { tax, afterTax } = calculateTax(amt);
+
+      try {
+        await bot.api.sendMessage(payoutChannel,
+          `⚠️ New ${method.toUpperCase()} Payout Request! (#${userWithdrawalCount})\n\n` +
+          `User : ${uid}\n` +
+          `Request Amount : ₹${amt}\n` +
+          `Amount After Tax (${tax.toFixed(1)}) : ₹${afterTax}\n` +
+          `${method} : ${details}\n` +
+          `Transaction ID : -`,
+          { reply_markup: adminKb });
+      } catch (e) { console.error("Payout channel error:", e.message); }
+    }
+
+    res.json({ success: true, withdrawalId, message: `Withdrawal of ₹${amt} submitted!` });
+  } catch (e) {
+    console.error("Withdraw error:", e);
+    res.json({ success: false, error: e.message });
+  }
+});
+
+// ✅ Task Submit API
+app.post("/miniapp/api/submit-task", async (req, res) => {
+  try {
+    const { userId, taskId, photoBase64 } = req.body;
+    if (!userId || !taskId || !photoBase64) {
+      return res.json({ success: false, error: "Missing fields" });
+    }
+
+    const uid = parseInt(userId, 10);
+    const task = await Task.findOne({ taskId });
+    if (!task) return res.json({ success: false, error: "Task not found" });
+    if (task.completedUsers.includes(uid)) return res.json({ success: false, error: "Already completed!" });
+
+    const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const submissionId = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await User.findOne({ userId: uid });
+    const userName = user ? (user.firstName || "User") : "User";
+
+    const alertChannel = (task.alertChannel && task.alertChannel !== "Not Set")
+      ? task.alertChannel : await getConfig("default_task_alert_channel", null);
+
+    if (!alertChannel || alertChannel === "Not Set") {
+      return res.json({ success: false, error: "Task alert channel not set." });
+    }
+
+    const caption =
+      `📸 New Task Submission (MiniApp)!\n\n👤 ${userName}\n🆔 ${uid}\n📌 ${task.title}\n💰 ₹${task.reward}\n📅 ${new Date().toLocaleString('en-IN')}`;
+    const kb = new InlineKeyboard()
+      .text("✅ Approve", `task_app_${submissionId}`)
+      .text("❌ Reject", `task_rej_${submissionId}`);
+
+    let sentMsg;
+    try {
+      sentMsg = await bot.api.sendPhoto(alertChannel, new InputFile(buffer, "proof.jpg"), {
+        caption, reply_markup: kb
+      });
+    } catch (e) {
+      return res.json({ success: false, error: "Failed: " + e.message });
+    }
+
+    const photoFileId = sentMsg.photo[sentMsg.photo.length - 1].file_id;
+
+    await TaskSubmission.create({
+      submissionId, userId: uid, userName,
+      taskId: task.taskId, taskTitle: task.title,
+      reward: task.reward, photoFileId, status: "Pending"
+    });
+
+    res.json({ success: true, submissionId });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Refer Submit API
+app.post("/miniapp/api/submit-refer", async (req, res) => {
+  try {
+    const { userId, taskId, referValue } = req.body;
+    if (!userId || !taskId || !referValue) {
+      return res.json({ success: false, error: "Missing fields" });
+    }
+
+    const uid = parseInt(userId, 10);
+    const task = await Task.findOne({ taskId });
+    if (!task) return res.json({ success: false, error: "Task not found" });
+    if (task.completedUsers.includes(uid)) return res.json({ success: false, error: "Already completed!" });
+
+    const submissionId = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await User.findOne({ userId: uid });
+    const userName = user ? (user.firstName || "User") : "User";
+
+    const alertChannel = (task.alertChannel && task.alertChannel !== "Not Set")
+      ? task.alertChannel : await getConfig("default_task_alert_channel", null);
+
+    if (!alertChannel || alertChannel === "Not Set") {
+      return res.json({ success: false, error: "Task alert channel not set." });
+    }
+
+    await TaskSubmission.create({
+      submissionId, userId: uid, userName,
+      taskId: task.taskId, taskTitle: task.title,
+      reward: task.reward,
+      photoFileId: `REFER: ${referValue}`,
+      status: "Pending"
+    });
+
+    let caption =
+      `📸 Task Submission (Refer)\n\n` +
+      `👤 ${userName}\n🆔 ${uid}\n📌 ${task.title}\n💰 ₹${task.reward}\n🔗 ${referValue}`;
+
+    let kb = new InlineKeyboard()
+      .text("✅ Approve", `task_app_${submissionId}`)
+      .text("❌ Reject", `task_rej_${submissionId}`);
+
+    try {
+      await bot.api.sendMessage(alertChannel, caption, { reply_markup: kb });
+    } catch (e) {
+      return res.json({ success: false, error: "Failed: " + e.message });
+    }
+
+    res.json({ success: true, submissionId });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Quick Pay API
+app.post("/miniapp/api/quick-pay", async (req, res) => {
+  try {
+    const { senderId, receiverId, amount } = req.body;
+    const sId = parseInt(senderId, 10);
+    const rId = parseInt(receiverId, 10);
+    const amt = parseFloat(amount);
+
+    if (sId === rId) return res.json({ success: false, error: "Cannot send to yourself!" });
+    if (isNaN(amt) || amt <= 0) return res.json({ success: false, error: "Invalid amount" });
+
+    const sender = await User.findOne({ userId: sId });
+    const receiver = await User.findOne({ userId: rId });
+    if (!sender) return res.json({ success: false, error: "Sender not found" });
+    if (!receiver) return res.json({ success: false, error: "Receiver not found" });
+
+    const isAdminUser = await isAdmin(sId);
+    if (!isAdminUser && sender.balance < amt) {
+      return res.json({ success: false, error: "Insufficient balance" });
+    }
+
+    sender.balance -= amt;
+    receiver.balance += amt;
+    await sender.save();
+    await receiver.save();
+
+    await logBalanceHistory(sId, `Quick Pay to ${rId}`, -amt);
+    await logBalanceHistory(rId, `Quick Pay from ${sId}`, amt);
+
+    try {
+      await bot.api.sendMessage(rId,
+        `🎉 Payment Received!\n\n👤 From: ${sender.firstName || "User"}\n💰 ₹${amt.toFixed(2)}\n\n💵 Balance: ₹${receiver.balance.toFixed(2)}`);
+    } catch (e) {}
+
+    res.json({ success: true, newBalance: sender.balance });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin APIs — Pending Withdrawals
+app.get("/miniapp/api/admin/pending-withdrawals", async (req, res) => {
+  try {
+    const wds = await Withdrawal.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, withdrawals: wds });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Approve Withdrawal
+app.post("/miniapp/api/admin/approve-wd/:id", async (req, res) => {
+  try {
+    const wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
+    if (!wd || wd.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    let txnNumber = generateTxnNumber();
+    wd.status = "Approved";
+    wd.txnNumber = txnNumber;
+    wd.approvedBy = "MiniApp Admin";
+    wd.approvedAt = new Date();
+    await wd.save();
+
+    try {
+      await bot.api.sendMessage(wd.userId,
+        `🎁Your Withdrawal of Rs.${wd.amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
+        `🏦 Destination ==> ${wd.details}\n` +
+        `🚀Transaction ID ==> ${txnNumber}\n` +
+        `✅Please Check Your ${wd.method} Account!`);
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Reject Withdrawal
+app.post("/miniapp/api/admin/reject-wd/:id", async (req, res) => {
+  try {
+    const wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
+    if (!wd || wd.status !== "Pending") return res.json({ success: false, error: "Already processed" });
+
+    wd.status = "Rejected";
+    await wd.save();
+
+    let user = await getUser(wd.userId);
+    user.balance += wd.amount;
+    user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
+    await user.save();
+    await logBalanceHistory(wd.userId, "Withdrawal Refunded", wd.amount);
+
+    try {
+      await bot.api.sendMessage(wd.userId, `❌ Withdrawal of ₹${wd.amount} rejected & refunded.`);
+    } catch (e) {}
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Settings (Min/Max/Tax/etc)
+app.get("/miniapp/api/admin/settings", async (req, res) => {
+  try {
+    const settings = {
+      min_withdraw: await getConfig("min_withdraw", 10),
+      max_withdraw: await getConfig("max_withdraw", 10000),
+      tax_percent: await getConfig("tax_percent", 0),
+      payout_channel: await getConfig("payout_channel", "Not Set"),
+      support_username: await getConfig("support_username", "Not Set"),
+      bot_active: await getConfig("bot_active", true),
+      auto_upi_enabled: await getConfig("auto_upi_enabled", true),
+      verification_enabled: await getConfig("verification_enabled", false),
+      balance_footer_text: await getConfig("balance_footer_text", ""),
+      welcome_channel_link: await getConfig("welcome_channel_link", "")
+    };
+    res.json({ success: true, settings });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/settings/update", async (req, res) => {
+  try {
+    const { key, value } = req.body;
+    const allowed = [
+      "min_withdraw", "max_withdraw", "tax_percent",
+      "payout_channel", "support_username", "bot_active",
+      "auto_upi_enabled", "verification_enabled", "balance_footer_text",
+      "welcome_channel_link"
+    ];
+    if (!allowed.includes(key)) return res.json({ success: false, error: "Invalid key" });
+
+    await setConfig(key, value);
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Create Task
+app.post("/miniapp/api/admin/task/create", async (req, res) => {
+  try {
+    const { taskId, title, reward, link, taskType, alertChannel } = req.body;
+    if (!taskId || !title || !reward || !link) return res.json({ success: false, error: "Missing fields" });
+
+    let existing = await Task.findOne({ taskId });
+    if (existing) return res.json({ success: false, error: "Task ID exists" });
+
+    let defaultAlertCh = alertChannel || await getConfig("default_task_alert_channel", "Not Set");
+
+    await Task.create({
+      taskId, title,
+      reward: parseFloat(reward),
+      link,
+      taskType: taskType || "photo",
+      alertChannel: defaultAlertCh,
+      alertEnabled: true,
+      completedUsers: []
+    });
+
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — All Tasks
+app.get("/miniapp/api/admin/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find({}).sort({ createdAt: -1 });
+    res.json({ success: true, tasks });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Delete Task
+app.post("/miniapp/api/admin/task/delete", async (req, res) => {
+  try {
+    const { taskId } = req.body;
+    await Task.deleteOne({ taskId });
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — All Users
+app.get("/miniapp/api/admin/all-users", async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ balance: -1 }).limit(100);
+    res.json({ success: true, users });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ Admin — Broadcast
+app.post("/miniapp/api/admin/broadcast", async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.json({ success: false, error: "Empty message" });
+
+    const users = await User.find({});
+    let sent = 0, failed = 0;
+
+    for (let u of users) {
+      try {
+        await bot.api.sendMessage(u.userId, message);
+        sent++;
+        await new Promise(r => setTimeout(r, 50));
+      } catch (e) { failed++; }
+    }
+
+    res.json({ success: true, sent, failed, total: users.length });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ✅ User History API (combined)
+app.get("/miniapp/api/user-history/:userId", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const limit = parseInt(req.query.limit, 10) || 100;
+
+    const [withdrawals, deposits, transfers, balanceHistory] = await Promise.all([
+      Withdrawal.find({ userId }).sort({ createdAt: -1 }).limit(100),
+      UPIPayment.find({ userId, status: "Approved" }).sort({ createdAt: -1 }).limit(100),
+      BalanceHistory.find({ userId, action: { $regex: /Quick Pay|Admin Quick Pay/i } }).sort({ createdAt: -1 }).limit(100),
+      BalanceHistory.find({ userId }).sort({ createdAt: -1 }).limit(200)
+    ]);
+
+    let allHistory = [];
+
+    withdrawals.forEach(w => {
+      allHistory.push({
+        type: "withdrawal",
+        title: "Withdrawal",
+        amount: -w.amount,
+        method: w.method,
+        details: w.details,
+        status: w.status,
+        txnId: w.txnNumber,
+        date: w.createdAt
+      });
+    });
+
+    deposits.forEach(d => {
+      allHistory.push({
+        type: "deposit",
+        title: "Deposit",
+        amount: d.amount,
+        method: d.source || "UPI",
+        details: d.utr ? `UTR: ${d.utr}` : "",
+        status: d.status,
+        txnId: d.orderId,
+        date: d.createdAt
+      });
+    });
+
+    transfers.forEach(t => {
+      let isSent = t.amount < 0;
+      allHistory.push({
+        type: isSent ? "sent" : "received",
+        title: isSent ? "Payment Sent" : "Payment Received",
+        amount: t.amount,
+        method: "Quick Pay",
+        details: t.action,
+        status: "SUCCESS",
+        txnId: "",
+        date: t.createdAt
+      });
+    });
+
+    balanceHistory.forEach(b => {
+      if (b.action.match(/Withdrawn|Quick Pay|Deposit/i)) return;
+      allHistory.push({
+        type: "balance",
+        title: b.action,
+        amount: b.amount,
+        method: "",
+        details: "",
+        status: "SUCCESS",
+        txnId: "",
+        date: b.createdAt
+      });
+    });
+
+    allHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+    let paginated = allHistory.slice(0, limit);
+
+    res.json({ success: true, history: paginated, total: allHistory.length });
+  } catch (e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
+console.log("✅ All Mini App APIs loaded!");
