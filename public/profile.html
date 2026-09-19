@@ -8,10 +8,34 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   PROFILE PAGE — Additional Styles (style.css-ന് മുകളിൽ)
+   PROFILE PAGE — Complete Styles + SCROLL FIX
    ═══════════════════════════════════════════════════════ */
 
-/* ───── PROFILE CARD (Missing in style.css) ───── */
+/* ───── 🔓 SCROLL FIX (CRITICAL — at TOP) ───── */
+html {
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 200px !important;
+}
+
+/* ───── PROFILE CARD ───── */
 .profile-card {
   padding: 24px 20px 20px;
   margin-bottom: 14px;
@@ -20,7 +44,7 @@
   animation: cardSlideIn 0.4s ease backwards;
 }
 
-/* ───── AVATAR (Single element) ───── */
+/* ───── AVATAR ───── */
 .profile-avatar {
   width: 92px;
   height: 92px;
@@ -58,7 +82,6 @@
   display: block;
 }
 
-/* Online green dot */
 .profile-avatar::after {
   content: '';
   position: absolute;
@@ -96,7 +119,7 @@
   transform: scale(0.96);
 }
 
-/* ───── PROFILE STATS (2x2 grid, dedicated class) ───── */
+/* ───── PROFILE STATS ───── */
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -216,7 +239,6 @@
   transform: scale(0.93);
 }
 
-/* Share button */
 .share-btn {
   width: 100%;
   margin-top: 10px;
@@ -283,7 +305,7 @@
   opacity: 0.85;
 }
 
-/* History / glass button */
+/* ───── HISTORY / GLASS BUTTON ───── */
 .history-btn,
 .glass-btn {
   width: 100%;
@@ -297,6 +319,9 @@
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .history-btn:active,
@@ -305,7 +330,7 @@
   transform: scale(0.97);
 }
 
-/* Upload button */
+/* ───── UPLOAD BUTTON ───── */
 .upload-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -325,10 +350,59 @@
   transform: scale(0.97);
 }
 
-/* ───── ADMIN PANEL SECTION ───── */
+/* ───── MENU BUTTONS (inline history, support, how to) ───── */
+.menu-btn {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+  font-family: inherit;
+  text-align: left;
+}
+
+.menu-btn:active {
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.4);
+  transform: translateX(4px);
+}
+
+.menu-btn .menu-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.menu-btn .menu-text {
+  flex: 1;
+  color: #00ff88;
+}
+
+.menu-btn .menu-arrow {
+  color: #00ff88;
+  opacity: 0.5;
+  font-size: 22px;
+}
+
+/* ───── ADMIN PANEL ───── */
 .admin-panel-card {
   margin-top: 6px;
   margin-bottom: 14px;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .admin-panel-btn {
@@ -345,6 +419,11 @@
   transition: transform 0.15s;
   font-family: inherit;
   letter-spacing: 0.5px;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-panel-btn:active {
@@ -444,7 +523,7 @@
   text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
 }
 
-/* ───── EMPTY STATE (for modal) ───── */
+/* ───── EMPTY STATE ───── */
 .empty-state {
   text-align: center;
   padding: 30px 20px;
@@ -458,21 +537,48 @@
   opacity: 0.5;
 }
 
-/* ───── BOTTOM NAV — STICKY FIX ───── */
-/* ✅ Always at bottom, doesn't move on scroll */
-.bottom-nav {
+/* ───── BOTTOM NAV — ALWAYS FIXED AT BOTTOM ───── */
+.bottom-nav,
+.glass-nav {
   position: fixed !important;
   bottom: 18px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  z-index: 9999 !important;
-  /* style.css already has the rest */
+  z-index: 99999 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  pointer-events: auto !important;
+  max-width: 448px !important;
+  width: calc(100% - 32px) !important;
 }
 
-/* ───── APP PADDING (scroll safe for nav) ───── */
-/* ✅ Ensures content doesn't get hidden behind bottom nav */
+/* ───── APP CONTAINER — ALLOW FULL SCROLL ───── */
 .app {
-  padding-bottom: 130px !important;
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 220px !important;
+  position: relative !important;
+}
+
+/* Bottom spacer — extra space after last content */
+.app::after {
+  content: '';
+  display: block;
+  height: 120px;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* ───── IPHONE FRAME — ALLOW OVERFLOW ───── */
+.iphone-frame {
+  min-height: 100vh !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  position: relative !important;
 }
 
 /* ───── PHOTO MODAL ───── */
@@ -508,13 +614,22 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* ───── SCROLL FIX (smooth on iOS) ───── */
-html, body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
+/* ───── iOS SAFARI FIX ───── */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: auto !important;
+    min-height: -webkit-fill-available !important;
+  }
+  .app {
+    min-height: -webkit-fill-available !important;
+  }
 }
 
-/* ───── SECTION TITLE (already in style.css, no override) ───── */
+/* ───── TELEGRAM WEBAPP VIEWPORT FIX ───── */
+body.telegram-miniapp {
+  min-height: 100vh !important;
+  max-height: none !important;
+}
 </style>
 </head>
 <body>
@@ -744,6 +859,11 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
+
+  // ✅ Enable vertical swipes
+  try {
+    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
+  } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -751,6 +871,53 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let currentUser = null;
 let currentPhotoUrl = null;
 let appConfig = {};
+
+// ============================================================
+// 🔓 FORCE SCROLL ENABLE
+// ============================================================
+function forceScrollEnable() {
+  // Body
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '200px';
+
+  // HTML
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+  document.documentElement.style.maxHeight = 'none';
+
+  // App
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+    app.style.paddingBottom = '220px';
+  }
+
+  // Frame
+  const frame = document.querySelector('.iphone-frame');
+  if (frame) {
+    frame.style.overflow = 'visible';
+    frame.style.height = 'auto';
+    frame.style.maxHeight = 'none';
+  }
+}
+
+// Run immediately
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+// Watch for scroll lock attempts
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
 
 // ============================================================
 // 🎨 UTILITIES
@@ -835,20 +1002,17 @@ async function loadUser() {
 
   currentUser = data.user;
 
-  // Profile
   document.getElementById('profileName').textContent = data.user.firstName || 'User';
   document.getElementById('profileId').innerHTML = `ID: ${data.user.userId} 📋`;
   document.getElementById('profileUsername').innerHTML = data.user.username
     ? `@${data.user.username} 📋`
     : '@- (Not set)';
 
-  // Stats
   document.getElementById('pBalance').textContent = '₹' + (data.user.balance || 0).toFixed(2);
   document.getElementById('pWithdrawn').textContent = '₹' + (data.user.withdrawnTotal || 0).toFixed(2);
   document.getElementById('pTasks').textContent = data.user.totalTasks || 0;
   document.getElementById('pReferrals').textContent = data.user.totalReferrals || 0;
 
-  // Details
   document.getElementById('pLinked').textContent = data.user.linkedInfo || 'Not Linked';
   document.getElementById('pReferred').textContent = data.user.referredBy || 'Auto Started';
 
@@ -861,18 +1025,15 @@ async function loadUser() {
 
   document.getElementById('pStatus').textContent = data.user.isBanned ? '🚫 Banned' : '🟢 Active';
 
-  // Referral link
   const botUsername = appConfig.botUsername || 'TaskEarnBot';
   document.getElementById('referralCode').textContent = `t.me/${botUsername}?start=ref_${userId}`;
 
-  // Load photo
   await loadProfilePhoto();
-
-  // Load payment methods
   await loadPaymentMethods();
-
-  // Check admin
   await checkAdmin();
+
+  // Re-apply scroll fix after content loads
+  setTimeout(forceScrollEnable, 200);
 }
 
 // ============================================================
@@ -1157,6 +1318,9 @@ function openAdminPanel() {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  // Re-enforce scroll
+  forceScrollEnable();
+
   if (!userId) {
     document.body.innerHTML = `
       <div style="padding:50px;text-align:center;color:#00ff88;">
@@ -1169,6 +1333,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadConfig();
   await loadUser();
+
+  // Final scroll enforce
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
 });
 
 // Close modals on backdrop
@@ -1209,88 +1377,3 @@ window.closePhotoModal = closePhotoModal;
 
 </body>
 </html>
-
-/* ═══════════════════════════════════════════════════════
-   SCROLL & NAV FIX — Add at END of <style>
-   ═══════════════════════════════════════════════════════ */
-
-/* Force scroll on body */
-html, body {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: none !important;
-  position: static !important;
-}
-
-/* App container — allow full scroll */
-.app {
-  overflow: visible !important;
-  max-height: none !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  padding-bottom: 130px !important;
-}
-
-/* iPhone frame — allow content overflow */
-.iphone-frame {
-  min-height: 100vh !important;
-  height: auto !important;
-  overflow: visible !important;
-  padding-bottom: 20px !important;
-}
-
-/* Bottom nav — ALWAYS fixed & visible */
-.bottom-nav,
-.glass-nav {
-  position: fixed !important;
-  bottom: 18px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 99999 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: flex !important;
-  pointer-events: auto !important;
-}
-
-/* Prevent any transform hiding nav */
-.bottom-nav * {
-  pointer-events: auto;
-}
-
-/* History/menu buttons — always visible */
-.menu-btn,
-.glass-btn,
-.history-btn,
-.admin-panel-btn,
-.admin-menu-btn {
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: flex !important;
-}
-
-/* Admin panel — always visible when shown */
-.admin-panel-card {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Prevent body scroll-lock from Telegram */
-body {
-  position: relative !important;
-  touch-action: pan-y !important;
-}
-
-/* Fix for iOS Safari */
-@supports (-webkit-touch-callout: none) {
-  html, body {
-    height: -webkit-fill-available !important;
-  }
-  .app {
-    min-height: -webkit-fill-available !important;
-  }
-}
