@@ -1209,3 +1209,88 @@ window.closePhotoModal = closePhotoModal;
 
 </body>
 </html>
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL & NAV FIX — Add at END of <style>
+   ═══════════════════════════════════════════════════════ */
+
+/* Force scroll on body */
+html, body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: none !important;
+  position: static !important;
+}
+
+/* App container — allow full scroll */
+.app {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 130px !important;
+}
+
+/* iPhone frame — allow content overflow */
+.iphone-frame {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+  padding-bottom: 20px !important;
+}
+
+/* Bottom nav — ALWAYS fixed & visible */
+.bottom-nav,
+.glass-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 99999 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  pointer-events: auto !important;
+}
+
+/* Prevent any transform hiding nav */
+.bottom-nav * {
+  pointer-events: auto;
+}
+
+/* History/menu buttons — always visible */
+.menu-btn,
+.glass-btn,
+.history-btn,
+.admin-panel-btn,
+.admin-menu-btn {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+}
+
+/* Admin panel — always visible when shown */
+.admin-panel-card {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Prevent body scroll-lock from Telegram */
+body {
+  position: relative !important;
+  touch-action: pan-y !important;
+}
+
+/* Fix for iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: -webkit-fill-available !important;
+  }
+  .app {
+    min-height: -webkit-fill-available !important;
+  }
+}
