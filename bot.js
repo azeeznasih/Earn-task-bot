@@ -6366,11 +6366,53 @@ app.post("/miniapp/api/admin/broadcast", async (req, res) => {
 });
 
 // ============================================================
+// 🛡️ PORT SETUP — Safe & Render Compatible
+// ============================================================
+const PORT = process.env.PORT || 10000;
+
+// Prevent duplicate server start
+let serverStarted = false;
+
+// ============================================================
 // 🌐 EXPRESS SERVER START — CRITICAL FIX
 // ============================================================
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
-});
+if (!serverStarted) {
+  serverStarted = true;
+
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
+  });
+
+  // ✅ Handle server errors gracefully
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} already in use. Retrying in 2s...`);
+      setTimeout(() => {
+        server.close();
+        server.listen(PORT, "0.0.0.0");
+      }, 2000);
+    } else {
+      console.error('❌ Server error:', err);
+    }
+  });
+
+  // ✅ Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received. Closing server...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received. Closing server...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+}
 
 // Auto-ping every 5 minutes
 setInterval(() => {
