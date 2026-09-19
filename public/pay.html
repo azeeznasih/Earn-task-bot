@@ -4,843 +4,443 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Quick Pay</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* ═══════════════════════════════════════════════════════
-   QUICK PAY — Green Glassmorphism Premium
-   ═══════════════════════════════════════════════════════ */
-
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-/* ───── 🔓 SCROLL FIX ───── */
-html, body {
-  height: auto !important;
-  min-height: 100vh !important;
-  max-height: none !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  position: relative !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto !important;
-  touch-action: pan-y !important;
-  padding-bottom: 180px !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0a0e0a;
-  color: #ffffff;
-}
-
-/* ───── GREEN GLASS BACKGROUND ───── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 10% 10%, rgba(0, 255, 100, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 90% 90%, rgba(0, 200, 80, 0.10) 0%, transparent 50%),
-    linear-gradient(135deg, #0a0e0a 0%, #0d140d 100%);
-  z-index: -2;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background:
-    radial-gradient(circle at 30% 40%, rgba(0, 255, 100, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 70% 60%, rgba(0, 200, 80, 0.06) 0%, transparent 40%);
-  animation: bgFloat 20s ease-in-out infinite;
-  z-index: -1;
-  pointer-events: none;
-}
-
-@keyframes bgFloat {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  33% { transform: translate(20px, -20px) rotate(5deg); }
-  66% { transform: translate(-20px, 20px) rotate(-5deg); }
-}
-
-/* ───── CONTAINER ───── */
-.app {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px 14px 40px;
-  position: relative;
-  z-index: 1;
-}
-
-/* ───── PAGE HEADER ───── */
-.page-header {
-  margin-bottom: 22px;
-  padding: 4px 0;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: #00ff88;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.page-title svg {
-  width: 28px;
-  height: 28px;
-  fill: #00ff88;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
-}
-
-.page-sub {
-  font-size: 13px;
-  color: #00ff88;
-  opacity: 0.65;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-/* ───── GLASS CARD ───── */
-.glass {
-  background: rgba(0, 255, 100, 0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.18);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.pay-card {
-  padding: 20px;
-  margin-bottom: 14px;
-  border-radius: 20px;
-  animation: cardSlideIn 0.4s ease backwards;
-}
-
-@keyframes cardSlideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.pay-label {
-  font-size: 11px;
-  color: #00ff88;
-  opacity: 0.75;
-  letter-spacing: 1.5px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-}
-
-.pay-input-row {
-  display: flex;
-  gap: 10px;
-}
-
-.pay-input-row input {
-  flex: 1;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
-  color: #00ff88;
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  outline: none;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-
-.pay-input-row input:focus {
-  border-color: #00ff88;
-  box-shadow: 0 0 22px rgba(0, 255, 136, 0.25);
-}
-
-.pay-input-row input::placeholder {
-  color: #00ff88;
-  opacity: 0.35;
-}
-
-/* Hide number arrows */
-.pay-input-row input::-webkit-outer-spin-button,
-.pay-input-row input::-webkit-inner-spin-button,
-.amount-input-wrap input::-webkit-outer-spin-button,
-.amount-input-wrap input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.pay-input-row input[type=number],
-.amount-input-wrap input[type=number] {
-  -moz-appearance: textfield;
-}
-
-.check-btn {
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000000;
-  border: none;
-  padding: 0 22px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-  transition: transform 0.15s;
-  flex-shrink: 0;
-}
-
-.check-btn:active {
-  transform: scale(0.96);
-}
-
-.check-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ───── USER INFO BOX ───── */
-.user-info-box {
-  display: none;
-  align-items: center;
-  gap: 14px;
-  background: rgba(0, 255, 136, 0.06);
-  border: 1.5px solid rgba(0, 255, 136, 0.35);
-  border-radius: 14px;
-  padding: 14px;
-  margin-top: 14px;
-  animation: fadeIn 0.3s ease;
-  box-shadow: 0 0 24px rgba(0, 255, 136, 0.15);
-}
-
-.user-info-box.active {
-  display: flex;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.user-info-avatar {
-  width: 52px;
-  height: 52px;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 800;
-  color: #000;
-  overflow: hidden;
-  flex-shrink: 0;
-  border: 2px solid #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-}
-
-.user-info-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.user-info-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-info-name {
-  font-weight: 800;
-  font-size: 16px;
-  color: #e0ffe0;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-info-id {
-  color: #00ff88;
-  opacity: 0.7;
-  font-size: 12px;
-  font-family: 'SF Mono', 'Courier New', monospace;
-  font-weight: 700;
-}
-
-.check-msg {
-  margin-top: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  min-height: 18px;
-}
-
-.check-msg.success {
-  color: #00ff88;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-}
-
-.check-msg.error {
-  color: #ff6464;
-  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
-}
-
-/* ───── AMOUNT INPUT ───── */
-.amount-input-wrap {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
-  border-radius: 14px;
-  padding: 0 18px;
-  margin-bottom: 12px;
-  transition: all 0.2s;
-}
-
-.amount-input-wrap:focus-within {
-  border-color: #00ff88;
-  box-shadow: 0 0 22px rgba(0, 255, 136, 0.3);
-}
-
-.rupee-symbol {
-  font-size: 26px;
-  font-weight: 800;
-  color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-}
-
-.amount-input-wrap input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #00ff88;
-  padding: 16px 10px;
-  font-size: 24px;
-  font-weight: 800;
-  outline: none;
-  font-family: inherit;
-  min-width: 0;
-}
-
-.amount-input-wrap input::placeholder {
-  color: #00ff88;
-  opacity: 0.3;
-}
-
-.quick-amounts {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.quick-amounts button {
-  background: rgba(0, 255, 136, 0.06);
-  color: #00ff88;
-  border: 1.5px solid rgba(0, 255, 136, 0.22);
-  padding: 12px 6px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-
-.quick-amounts button:active {
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000000;
-  transform: scale(0.95);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-  border-color: #00ff88;
-}
-
-/* ───── BALANCE INFO ───── */
-.pay-balance-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 14px;
-  padding: 14px 18px;
-  margin-bottom: 14px;
-  font-size: 14px;
-  background: rgba(0, 255, 100, 0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.18);
-  gap: 10px;
-}
-
-.pay-balance-info span:first-child {
-  color: #00ff88;
-  opacity: 0.7;
-  font-weight: 700;
-}
-
-.pay-balance-info span:last-child {
-  color: #00ff88;
-  font-weight: 800;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-  font-family: 'SF Mono', 'Courier New', monospace;
-}
-
-/* ───── PAY NOW BUTTON ───── */
-.pay-now-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-  color: #000000;
-  border: none;
-  padding: 18px;
-  border-radius: 16px;
-  font-weight: 800;
-  font-size: 16px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
-  transition: transform 0.2s;
-  font-family: inherit;
-  text-transform: uppercase;
-  position: relative;
-  overflow: hidden;
-}
-
-.pay-now-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  animation: btnShine 3s ease-in-out infinite;
-}
-
-@keyframes btnShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
-
-.pay-now-btn:active {
-  transform: scale(0.97);
-}
-
-/* ───── BOTTOM NAV ───── */
-.bottom-nav {
-  position: fixed;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  display: flex;
-  gap: 4px;
-  padding: 8px 12px;
-  background: rgba(10, 14, 10, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.20);
-  border-radius: 22px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  width: calc(100% - 32px);
-  max-width: 448px;
-  justify-content: space-around;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  text-decoration: none;
-  color: #00ff88;
-  opacity: 0.55;
-  transition: all 0.2s;
-  flex: 1;
-}
-
-.nav-item.active,
-.nav-item:active {
-  opacity: 1;
-  background: rgba(0, 255, 136, 0.12);
-}
-
-.nav-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.nav-label {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-
-/* ───── MODAL ───── */
-.modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 100000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: modalFadeIn 0.25s ease;
-}
-
-.modal.active {
-  display: flex;
-}
-
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-content {
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  background: linear-gradient(160deg, rgba(10, 25, 15, 0.98) 0%, rgba(5, 15, 8, 0.99) 100%);
-  border-radius: 24px;
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
-  padding: 24px 20px;
-  box-shadow: 0 20px 60px rgba(0, 255, 136, 0.15), 0 20px 80px rgba(0, 0, 0, 0.8);
-  animation: modalScaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modalScaleIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.modal-content h3 {
-  font-size: 20px;
-  font-weight: 800;
-  color: #00ff88;
-  margin-bottom: 16px;
-  text-align: center;
-  letter-spacing: 0.3px;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-}
-
-.confirm-modal-content {
-  text-align: center;
-}
-
-.confirm-icon {
-  font-size: 52px;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 20px rgba(255, 165, 0, 0.5));
-}
-
-.confirm-details {
-  background: rgba(0, 255, 136, 0.05);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 16px;
-  text-align: left;
-}
-
-.confirm-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 13px;
-  gap: 10px;
-}
-
-.confirm-row:not(:last-child) {
-  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
-}
-
-.confirm-label {
-  color: #00ff88;
-  opacity: 0.7;
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.8px;
-}
-
-.confirm-value {
-  color: #00ff88;
-  font-weight: 800;
-  max-width: 60%;
-  text-align: right;
-  word-break: break-all;
-}
-
-.confirm-value.mono {
-  font-family: 'SF Mono', 'Courier New', monospace;
-  font-size: 12px;
-}
-
-.confirm-balance-update {
-  background: rgba(0, 255, 136, 0.04);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  border-radius: 12px;
-  padding: 14px;
-  margin: 12px 0;
-  text-align: left;
-}
-
-.confirm-balance-title {
-  font-size: 11px;
-  color: #00ff88;
-  opacity: 0.75;
-  letter-spacing: 1.5px;
-  font-weight: 800;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-}
-
-.balance-update-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 13px;
-  gap: 10px;
-}
-
-.balance-update-row span:first-child {
-  color: #00ff88;
-  opacity: 0.7;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.balance-update-row span:last-child {
-  color: #00ff88;
-  font-weight: 800;
-  font-family: 'SF Mono', 'Courier New', monospace;
-  font-size: 12px;
-  text-align: right;
-}
-
-.confirm-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.confirm-cancel-btn {
-  flex: 1;
-  background: rgba(255, 100, 100, 0.10);
-  color: #ff6464;
-  border: 1.5px solid rgba(255, 100, 100, 0.35);
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: transform 0.15s;
-}
-
-.confirm-cancel-btn:active {
-  transform: scale(0.97);
-  background: rgba(255, 100, 100, 0.20);
-}
-
-.confirm-ok-btn {
-  flex: 1;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000000;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-  transition: transform 0.15s;
-}
-
-.confirm-ok-btn:active {
-  transform: scale(0.97);
-}
-
-.confirm-ok-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ───── SUCCESS ───── */
-.success-icon {
-  font-size: 68px;
-  margin-bottom: 12px;
-  animation: bounceIn 0.5s ease;
-  filter: drop-shadow(0 0 30px rgba(0, 255, 136, 0.6));
-}
-
-@keyframes bounceIn {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.confirm-subtitle {
-  font-size: 13px;
-  color: #00ff88;
-  opacity: 0.75;
-  margin-bottom: 10px;
-  font-weight: 600;
-}
-
-/* ───── TOAST ───── */
-.toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000000;
-  padding: 14px 24px;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 13px;
-  z-index: 100000;
-  max-width: 90%;
-  text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
-  animation: toastUp 0.3s ease;
-  pointer-events: none;
-}
-
-@keyframes toastUp {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* ───── RESPONSIVE ───── */
-@media (max-width: 380px) {
-  .page-title { font-size: 22px; }
-  .amount-input-wrap input { font-size: 20px; }
-  .rupee-symbol { font-size: 22px; }
-  .quick-amounts button { font-size: 12px; padding: 10px 4px; }
-  .app { padding: 16px 10px 40px; }
-}
+  .pay-card {
+    padding: 20px;
+    margin-bottom: 14px;
+    border-radius: 20px;
+  }
+
+  .pay-label {
+    font-size: 11px;
+    color: #00ff88;
+    opacity: 0.7;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .pay-input-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .pay-input-row input {
+    flex: 1;
+    background: rgba(0, 20, 10, 0.6);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    color: #00ff88;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .pay-input-row input:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  }
+
+  .pay-input-row input::placeholder {
+    color: #00ff88;
+    opacity: 0.4;
+  }
+
+  .check-btn {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000000;
+    border: none;
+    padding: 0 22px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+  }
+
+  .check-btn:active {
+    transform: scale(0.96);
+  }
+
+  .user-info-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.35);
+    border-radius: 14px;
+    padding: 14px;
+    margin-top: 14px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .user-info-avatar {
+    width: 52px;
+    height: 52px;
+    background: rgba(0, 255, 136, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+
+  .user-info-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .user-info-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .user-info-name {
+    font-weight: 800;
+    font-size: 16px;
+    color: #00ff88;
+  }
+
+  .user-info-id {
+    color: #00ff88;
+    opacity: 0.65;
+    font-size: 12px;
+    margin-top: 3px;
+    font-family: 'SF Mono', 'Courier New', monospace;
+  }
+
+  .check-msg {
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .check-msg.success { color: #00ff88; text-shadow: 0 0 12px rgba(0, 255, 136, 0.5); }
+  .check-msg.error { color: #ff6464; }
+
+  .amount-input-wrap {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 20, 10, 0.6);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 14px;
+    padding: 0 18px;
+    margin-bottom: 12px;
+  }
+
+  .amount-input-wrap:focus-within {
+    border-color: #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  }
+
+  .rupee-symbol {
+    font-size: 26px;
+    font-weight: 800;
+    color: #00ff88;
+  }
+
+  .amount-input-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #00ff88;
+    padding: 16px 10px;
+    font-size: 24px;
+    font-weight: 800;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .amount-input-wrap input::placeholder {
+    color: #00ff88;
+    opacity: 0.4;
+  }
+
+  .quick-amounts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .quick-amounts button {
+    background: rgba(0, 255, 136, 0.08);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    padding: 12px 6px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .quick-amounts button:active {
+    background: #00ff88;
+    color: #000000;
+    transform: scale(0.95);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  }
+
+  .pay-balance-info {
+    display: flex;
+    justify-content: space-between;
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+    font-size: 14px;
+    background: rgba(0, 20, 10, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+  }
+
+  .pay-balance-info span:first-child {
+    color: #00ff88;
+    opacity: 0.65;
+    font-weight: 700;
+  }
+
+  .pay-balance-info span:last-child {
+    color: #00ff88;
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+  }
+
+  .pay-now-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+    color: #000000;
+    border: none;
+    padding: 18px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .pay-now-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* ✅ Confirm Modal */
+  .confirm-modal-content {
+    text-align: center;
+  }
+
+  .confirm-icon {
+    font-size: 52px;
+    margin-bottom: 12px;
+  }
+
+  .confirm-details {
+    background: rgba(0, 255, 136, 0.05);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: left;
+  }
+
+  .confirm-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+  }
+
+  .confirm-label { color: #00ff88; opacity: 0.65; font-weight: 700; }
+  .confirm-value { color: #00ff88; font-weight: 800; max-width: 60%; text-align: right; word-break: break-all; }
+  .confirm-value.mono { font-family: 'SF Mono', 'Courier New', monospace; }
+
+  .confirm-balance-update {
+    background: rgba(0, 255, 136, 0.04);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 12px 0;
+    text-align: left;
+  }
+
+  .confirm-balance-title {
+    font-size: 11px;
+    color: #00ff88;
+    opacity: 0.7;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .balance-update-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .balance-update-row span:first-child {
+    color: #00ff88;
+    opacity: 0.7;
+    font-weight: 700;
+  }
+
+  .balance-update-row span:last-child {
+    color: #00ff88;
+    font-weight: 800;
+    font-family: 'SF Mono', 'Courier New', monospace;
+  }
+
+  .confirm-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .confirm-cancel-btn {
+    flex: 1;
+    background: rgba(255, 100, 100, 0.1);
+    color: #ff6464;
+    border: 1px solid rgba(255, 100, 100, 0.3);
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .confirm-ok-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000000;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+  }
+
+  /* ✅ Success modal */
+  .success-icon {
+    font-size: 68px;
+    margin-bottom: 12px;
+    animation: bounceIn 0.5s ease;
+  }
+
+  @keyframes bounceIn {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
 </style>
 </head>
 <body>
 
-<div class="app">
+<div class="iphone-frame">
+  <div class="app">
 
-  <!-- ═══════════════════════════════════════════════════════
-       PAGE HEADER
-       ═══════════════════════════════════════════════════════ -->
-  <div class="page-header">
-    <div class="page-title">
-      <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
-      Quick Pay
-    </div>
-    <p class="page-sub">Send money to any user instantly</p>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       RECEIVER INPUT
-       ═══════════════════════════════════════════════════════ -->
-  <div class="pay-card glass">
-    <label class="pay-label">
-      <svg viewBox="0 0 24 24" fill="#00ff88" style="width:14px;height:14px;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-      Receiver User ID
-    </label>
-    <div class="pay-input-row">
-      <input type="number" id="payUserId" placeholder="Enter User ID" autocomplete="off" inputmode="numeric">
-      <button class="check-btn" id="checkBtn" onclick="checkUser()">CHECK</button>
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-title">💸 Quick Pay</div>
+      <p class="page-sub">Send money to any user instantly</p>
     </div>
 
-    <div id="userInfoBox" class="user-info-box">
-      <div class="user-info-avatar" id="userInfoAvatar">👤</div>
-      <div class="user-info-details">
-        <div class="user-info-name" id="userInfoName">-</div>
-        <div class="user-info-id" id="userInfoId">ID: -</div>
+    <!-- Receiver Input -->
+    <div class="pay-card glass">
+      <label class="pay-label">📱 Receiver User ID</label>
+      <div class="pay-input-row">
+        <input type="number" id="payUserId" placeholder="Enter User ID" autocomplete="off" inputmode="numeric">
+        <button class="check-btn" id="checkBtn" onclick="checkUser()">CHECK</button>
+      </div>
+
+      <div id="userInfoBox" class="user-info-box" style="display:none;">
+        <div class="user-info-avatar" id="userInfoAvatar">👤</div>
+        <div class="user-info-details">
+          <div class="user-info-name" id="userInfoName">-</div>
+          <div class="user-info-id" id="userInfoId">ID: -</div>
+        </div>
+      </div>
+
+      <div id="userCheckMsg" class="check-msg"></div>
+    </div>
+
+    <!-- Amount Input -->
+    <div class="pay-card glass" id="amountCard" style="display:none;">
+      <label class="pay-label">💰 Amount</label>
+      <div class="amount-input-wrap">
+        <span class="rupee-symbol">₹</span>
+        <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off" inputmode="decimal">
+      </div>
+      <div class="quick-amounts">
+        <button onclick="setAmount(10)">₹10</button>
+        <button onclick="setAmount(50)">₹50</button>
+        <button onclick="setAmount(100)">₹100</button>
+        <button onclick="setAmount(500)">₹500</button>
       </div>
     </div>
 
-    <div id="userCheckMsg" class="check-msg"></div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       AMOUNT INPUT
-       ═══════════════════════════════════════════════════════ -->
-  <div class="pay-card glass" id="amountCard" style="display:none;">
-    <label class="pay-label">
-      <svg viewBox="0 0 24 24" fill="#00ff88" style="width:14px;height:14px;"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-      Amount
-    </label>
-    <div class="amount-input-wrap">
-      <span class="rupee-symbol">₹</span>
-      <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off" inputmode="decimal">
+    <!-- Balance Info -->
+    <div class="pay-balance-info" id="payBalanceInfo" style="display:none;">
+      <span>💵 Your Balance:</span>
+      <span id="payBalance">₹0.00</span>
     </div>
-    <div class="quick-amounts">
-      <button onclick="setAmount(10, this)">₹10</button>
-      <button onclick="setAmount(50, this)">₹50</button>
-      <button onclick="setAmount(100, this)">₹100</button>
-      <button onclick="setAmount(500, this)">₹500</button>
-    </div>
+
+    <!-- Pay Button -->
+    <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
+      💸 PAY NOW
+    </button>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item active">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
+
   </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       BALANCE INFO
-       ═══════════════════════════════════════════════════════ -->
-  <div class="pay-balance-info" id="payBalanceInfo" style="display:none;">
-    <span>💵 Your Balance:</span>
-    <span id="payBalance">₹0.00</span>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       PAY NOW BUTTON
-       ═══════════════════════════════════════════════════════ -->
-  <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
-    💸 PAY NOW
-  </button>
-
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     BOTTOM NAV
-     ═══════════════════════════════════════════════════════ -->
-<nav class="bottom-nav">
-  <a href="/miniapp" class="nav-item">
-    <span class="nav-icon">🏠</span>
-    <span class="nav-label" id="nav-home">HOME</span>
-  </a>
-  <a href="/miniapp/task" class="nav-item">
-    <span class="nav-icon">📋</span>
-    <span class="nav-label" id="nav-task">TASK</span>
-  </a>
-  <a href="/miniapp/pay" class="nav-item active">
-    <span class="nav-icon">💸</span>
-    <span class="nav-label" id="nav-pay">PAY</span>
-  </a>
-  <a href="/miniapp/profile" class="nav-item">
-    <span class="nav-icon">👤</span>
-    <span class="nav-label" id="nav-profile">PROFILE</span>
-  </a>
-</nav>
-
-<!-- ═══════════════════════════════════════════════════════
-     CONFIRM MODAL
-     ═══════════════════════════════════════════════════════ -->
+<!-- CONFIRM MODAL -->
 <div class="modal" id="confirmModal">
-  <div class="modal-content confirm-modal-content">
+  <div class="modal-content glass confirm-modal-content">
     <div class="confirm-icon">⚠️</div>
     <h3>Confirm Payment</h3>
 
@@ -878,11 +478,9 @@ body::after {
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     SUCCESS MODAL
-     ═══════════════════════════════════════════════════════ -->
+<!-- SUCCESS MODAL -->
 <div class="modal" id="successModal">
-  <div class="modal-content confirm-modal-content">
+  <div class="modal-content glass confirm-modal-content">
     <div class="success-icon">✅</div>
     <h3>Payment Successful!</h3>
     <p class="confirm-subtitle" id="successMsg">Money sent successfully.</p>
@@ -890,20 +488,16 @@ body::after {
   </div>
 </div>
 
-  <script>
+<script>
 // ============================================================
-// 💸 QUICK PAY — Complete Logic
+// 💸 QUICK PAY
 // ============================================================
 const tg = window.Telegram?.WebApp;
-
 if (tg) {
   tg.ready();
   tg.expand();
-  tg.setHeaderColor('#0a0e0a');
-  tg.setBackgroundColor('#0a0e0a');
-  try {
-    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
-  } catch (e) {}
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
 }
 
 const MY_ID = tg?.initDataUnsafe?.user?.id;
@@ -911,116 +505,31 @@ const MY_ID = tg?.initDataUnsafe?.user?.id;
 let checkedUser = null;
 let myBalance = 0;
 let isAdminUser = false;
-let appConfig = {};
 
 // ============================================================
-// 🔓 FORCE SCROLL
+// 🔔 TOAST
 // ============================================================
-function forceScrollEnable() {
-  document.body.style.overflow = 'auto';
-  document.body.style.height = 'auto';
-  document.body.style.maxHeight = 'none';
-  document.body.style.position = 'relative';
-  document.body.style.paddingBottom = '180px';
-
-  document.documentElement.style.overflow = 'auto';
-  document.documentElement.style.height = 'auto';
-
-  const app = document.querySelector('.app');
-  if (app) {
-    app.style.overflow = 'visible';
-    app.style.height = 'auto';
-    app.style.maxHeight = 'none';
-  }
-}
-
-forceScrollEnable();
-setTimeout(forceScrollEnable, 100);
-setTimeout(forceScrollEnable, 500);
-setTimeout(forceScrollEnable, 1500);
-
-setInterval(() => {
-  if (document.body.style.overflow === 'hidden') {
-    document.body.style.overflow = 'auto';
-  }
-}, 800);
-
-// ============================================================
-// 🎨 UTILITIES
-// ============================================================
-function showToast(msg, duration = 2200) {
+function showToast(msg) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
-
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
-
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, duration);
+  }, 2000);
 }
 
 function showMsg(msg, type = 'error') {
   const el = document.getElementById('userCheckMsg');
-  if (!el) return;
   el.className = 'check-msg ' + type;
   el.textContent = msg;
 }
 
 function clearMsg() {
-  const el = document.getElementById('userCheckMsg');
-  if (el) el.textContent = '';
-}
-
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function haptic(type = 'light') {
-  if (tg?.HapticFeedback) {
-    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
-    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
-    else if (type === 'select') tg.HapticFeedback.selectionChanged();
-    else tg.HapticFeedback.impactOccurred(type);
-  }
-}
-
-async function apiCall(endpoint, options = {}) {
-  try {
-    const res = await fetch(endpoint, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
-    });
-    return await res.json();
-  } catch (e) {
-    console.error('API Error:', e);
-    return { success: false, error: 'Network error' };
-  }
-}
-
-// ============================================================
-// 🎨 LOAD CONFIG (Nav labels)
-// ============================================================
-async function loadConfig() {
-  const res = await apiCall('/miniapp/api/config');
-  if (res.success && res.config) {
-    appConfig = res.config;
-
-    const el1 = document.getElementById('nav-home');
-    const el2 = document.getElementById('nav-task');
-    const el3 = document.getElementById('nav-pay');
-    const el4 = document.getElementById('nav-profile');
-
-    if (el1 && appConfig.btn_home) el1.textContent = appConfig.btn_home;
-    if (el2 && appConfig.btn_task) el2.textContent = appConfig.btn_task;
-    if (el3 && appConfig.btn_pay) el3.textContent = appConfig.btn_pay;
-    if (el4 && appConfig.btn_profile) el4.textContent = appConfig.btn_profile;
-  }
+  document.getElementById('userCheckMsg').textContent = '';
 }
 
 // ============================================================
@@ -1028,20 +537,20 @@ async function loadConfig() {
 // ============================================================
 async function loadMyBalance() {
   if (!MY_ID) return;
-
   try {
     const [userRes, adminRes] = await Promise.all([
-      apiCall(`/miniapp/api/user/${MY_ID}`),
-      apiCall(`/miniapp/api/is-admin/${MY_ID}`)
+      fetch(`/miniapp/api/user/${MY_ID}`),
+      fetch(`/miniapp/api/is-admin/${MY_ID}`)
     ]);
 
-    if (userRes.success && userRes.user) {
-      myBalance = parseFloat(userRes.user.balance) || 0;
-      const payBalanceEl = document.getElementById('payBalance');
-      if (payBalanceEl) payBalanceEl.textContent = '₹' + myBalance.toFixed(2);
-    }
+    const userData = await userRes.json();
+    const adminData = await adminRes.json();
 
-    isAdminUser = adminRes.isAdmin === true;
+    if (userData.success) {
+      myBalance = userData.user.balance || 0;
+      document.getElementById('payBalance').textContent = '₹' + myBalance.toFixed(2);
+    }
+    isAdminUser = adminData.isAdmin === true;
   } catch (e) {
     console.error('Balance load:', e);
   }
@@ -1052,38 +561,33 @@ async function loadMyBalance() {
 // ============================================================
 async function checkUser() {
   clearMsg();
-  haptic('light');
-
   const input = document.getElementById('payUserId');
   const userId = input.value.trim();
   const btn = document.getElementById('checkBtn');
 
   if (!userId || isNaN(userId)) {
     showMsg('❌ Enter a valid User ID', 'error');
-    haptic('error');
     return;
   }
 
-  if (parseInt(userId, 10) === MY_ID) {
+  if (parseInt(userId) === MY_ID) {
     showMsg('❌ Cannot send to yourself', 'error');
-    haptic('error');
     return;
   }
 
   btn.disabled = true;
   btn.textContent = '⏳';
-
-  document.getElementById('userInfoBox').classList.remove('active');
+  document.getElementById('userInfoBox').style.display = 'none';
   document.getElementById('amountCard').style.display = 'none';
   document.getElementById('payBalanceInfo').style.display = 'none';
   document.getElementById('payNowBtn').style.display = 'none';
 
   try {
-    const data = await apiCall(`/miniapp/api/check-user/${userId}`);
+    const res = await fetch(`/miniapp/api/check-user/${userId}`);
+    const data = await res.json();
 
     if (!data.success) {
       showMsg(`❌ ${data.error || 'User not found'}`, 'error');
-      haptic('error');
       btn.disabled = false;
       btn.textContent = 'CHECK';
       return;
@@ -1101,18 +605,16 @@ async function checkUser() {
       avatar.textContent = (data.user.firstName || 'U').charAt(0).toUpperCase();
     }
 
-    document.getElementById('userInfoBox').classList.add('active');
+    document.getElementById('userInfoBox').style.display = 'flex';
     document.getElementById('amountCard').style.display = 'block';
     document.getElementById('payBalanceInfo').style.display = 'flex';
     document.getElementById('payNowBtn').style.display = 'block';
 
     showMsg('✅ User found!', 'success');
-    haptic('success');
-
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     setTimeout(() => document.getElementById('payAmount').focus(), 300);
   } catch (e) {
     showMsg('❌ Network error', 'error');
-    haptic('error');
     console.error(e);
   }
 
@@ -1123,37 +625,26 @@ async function checkUser() {
 // ============================================================
 // 💰 QUICK AMOUNT
 // ============================================================
-function setAmount(amt, btn) {
-  const input = document.getElementById('payAmount');
-  if (input) input.value = amt;
-  haptic('select');
+function setAmount(amt) {
+  document.getElementById('payAmount').value = amt;
+  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 // ============================================================
-// 💸 INITIATE PAY (Open Confirm Modal)
+// 💸 INITIATE PAY
 // ============================================================
 function initiatePay() {
   clearMsg();
-  haptic('light');
-
-  if (!checkedUser) {
-    showToast('❌ Check user first');
-    return;
-  }
+  if (!checkedUser) { showToast('❌ Check user first'); return; }
 
   const amtStr = document.getElementById('payAmount').value.trim();
   const amt = parseFloat(amtStr);
 
-  if (isNaN(amt) || amt <= 0) {
-    showToast('❌ Enter valid amount');
-    haptic('error');
-    return;
-  }
+  if (isNaN(amt) || amt <= 0) { showToast('❌ Enter valid amount'); return; }
 
   // ✅ Regular user — balance check
   if (!isAdminUser && amt > myBalance) {
-    showToast(`❌ Insufficient! Available: ₹${myBalance.toFixed(2)}`);
-    haptic('error');
+    showToast('❌ Insufficient balance');
     return;
   }
 
@@ -1170,163 +661,99 @@ function initiatePay() {
     document.getElementById('yourBalanceChange').textContent =
       `₹${myBalance.toFixed(2)} → ₹${(myBalance - amt).toFixed(2)}`;
   }
-
   document.getElementById('receiverBalanceChange').textContent =
     `₹${(checkedUser.balance || 0).toFixed(2)} → ₹${((checkedUser.balance || 0) + amt).toFixed(2)}`;
 
   document.getElementById('confirmModal').classList.add('active');
-  document.body.style.overflow = 'hidden';
 }
 
 // ============================================================
 // ❌ CANCEL
 // ============================================================
 function cancelPay() {
-  haptic('light');
   document.getElementById('confirmModal').classList.remove('active');
-  forceScrollEnable();
 }
 
 // ============================================================
 // ✅ CONFIRM PAY
 // ============================================================
 async function confirmPay() {
-  haptic('light');
-
   const amt = parseFloat(document.getElementById('payAmount').value);
   const btn = document.getElementById('confirmBtn');
-
-  if (!checkedUser || isNaN(amt) || amt <= 0) {
-    showToast('❌ Invalid data');
-    document.getElementById('confirmModal').classList.remove('active');
-    forceScrollEnable();
-    return;
-  }
+  if (!checkedUser || isNaN(amt) || amt <= 0) { showToast('❌ Invalid data'); return; }
 
   btn.disabled = true;
   btn.innerHTML = '⏳ Sending...';
 
   try {
-    const data = await apiCall('/miniapp/api/quick-pay', {
+    const res = await fetch('/miniapp/api/quick-pay', {
       method: 'POST',
-      body: JSON.stringify({
-        senderId: MY_ID,
-        receiverId: checkedUser.userId,
-        amount: amt
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderId: MY_ID, receiverId: checkedUser.userId, amount: amt })
     });
+    const data = await res.json();
 
     document.getElementById('confirmModal').classList.remove('active');
-    forceScrollEnable();
 
     if (!data.success) {
       showToast(`❌ ${data.error || 'Payment failed'}`);
-      haptic('error');
       btn.disabled = false;
       btn.textContent = '✅ CONFIRM';
       return;
     }
 
-    // ✅ Success
     document.getElementById('successMsg').textContent =
       `₹${amt.toFixed(2)} sent to ${checkedUser.firstName || 'User'}`;
     document.getElementById('successModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
 
-    haptic('success');
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-    // Reset form
     document.getElementById('payUserId').value = '';
     document.getElementById('payAmount').value = '';
-    document.getElementById('userInfoBox').classList.remove('active');
+    document.getElementById('userInfoBox').style.display = 'none';
     document.getElementById('amountCard').style.display = 'none';
     document.getElementById('payBalanceInfo').style.display = 'none';
     document.getElementById('payNowBtn').style.display = 'none';
     clearMsg();
     checkedUser = null;
-
     await loadMyBalance();
   } catch (e) {
-    console.error(e);
     showToast('❌ Network error');
-    haptic('error');
     document.getElementById('confirmModal').classList.remove('active');
-    forceScrollEnable();
   }
-
   btn.disabled = false;
   btn.textContent = '✅ CONFIRM';
 }
 
 function closeSuccess() {
-  haptic('light');
   document.getElementById('successModal').classList.remove('active');
-  forceScrollEnable();
 }
 
 // ============================================================
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  forceScrollEnable();
-
   if (!MY_ID) {
-    document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#00ff88;">
-        <h2>⚠️ Open from Telegram</h2>
-        <p style="opacity:0.7;margin-top:20px;">This Mini App works only inside Telegram.</p>
-      </div>
-    `;
+    document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#00ff88;"><h2>⚠️ Open from Telegram</h2></div>`;
     return;
   }
-
-  await loadConfig();
   await loadMyBalance();
 
-  // Enter key on user ID
   document.getElementById('payUserId')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      checkUser();
-    }
+    if (e.key === 'Enter') checkUser();
   });
-
-  // Enter key on amount
   document.getElementById('payAmount')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      initiatePay();
-    }
+    if (e.key === 'Enter') initiatePay();
   });
-
-  setTimeout(forceScrollEnable, 300);
-  setTimeout(forceScrollEnable, 800);
-
-  console.log('✅ Quick Pay ready');
 });
 
-// ============================================================
-// 🚪 MODAL CLOSE ON OUTSIDE CLICK
-// ============================================================
 document.getElementById('confirmModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'confirmModal') cancelPay();
 });
-
 document.getElementById('successModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'successModal') closeSuccess();
 });
-
 document.addEventListener('gesturestart', e => e.preventDefault());
-
-// ============================================================
-// 🌐 EXPOSE GLOBALS
-// ============================================================
-window.checkUser = checkUser;
-window.setAmount = setAmount;
-window.initiatePay = initiatePay;
-window.cancelPay = cancelPay;
-window.confirmPay = confirmPay;
-window.closeSuccess = closeSuccess;
 </script>
 
 </body>
