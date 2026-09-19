@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TASK EARN BOT</title>
-<link rel="stylesheet" href="style.css">
+<title>Task Earn Bot</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   HOME PAGE + WITHDRAW MODAL — Complete
+   HOME PAGE — Green Glassmorphism Premium
    ═══════════════════════════════════════════════════════ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 /* ───── 🔓 SCROLL FIX ───── */
 html, body {
@@ -23,79 +24,518 @@ html, body {
   overscroll-behavior-y: auto !important;
   touch-action: pan-y !important;
   padding-bottom: 200px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0e0a;
+  color: #ffffff;
 }
 
-.app {
-  overflow: visible !important;
-  max-height: none !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  padding-bottom: 220px !important;
-  position: relative !important;
-}
-
-.app::after {
+/* ───── GREEN GLASS BACKGROUND ───── */
+body::before {
   content: '';
-  display: block;
-  height: 120px;
-  width: 100%;
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(0, 255, 100, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 90% 90%, rgba(0, 200, 80, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 150, 0.05) 0%, transparent 70%),
+    linear-gradient(135deg, #0a0e0a 0%, #0d140d 100%);
+  z-index: -2;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0, 255, 100, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0, 200, 80, 0.06) 0%, transparent 40%);
+  animation: bgFloat 20s ease-in-out infinite;
+  z-index: -1;
   pointer-events: none;
 }
 
-.iphone-frame {
-  min-height: 100vh !important;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(20px, -20px) rotate(5deg); }
+  66% { transform: translate(-20px, 20px) rotate(-5deg); }
 }
 
-/* ───── SECTION HEADER ───── */
+/* ───── CONTAINER ───── */
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 14px 40px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ───── TOPBAR ───── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 16px;
+  margin-bottom: 4px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 200, 100, 0.10));
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.20);
+}
+
+.logo-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: #00ff88;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn:active {
+  transform: scale(0.92);
+  background: rgba(0, 255, 136, 0.15);
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: #00ff88;
+}
+
+/* ───── GLASS CARD ───── */
+.glass {
+  background: rgba(0, 255, 100, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ───── HERO USER CARD ───── */
+.hero-card {
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.20) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hero-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #000;
+  overflow: hidden;
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 24px rgba(0, 255, 136, 0.4);
+  flex-shrink: 0;
+}
+
+.hero-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #e0ffe0;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-id {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.75;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.hero-id svg {
+  width: 12px;
+  height: 12px;
+  fill: #00ff88;
+  opacity: 0.7;
+}
+
+.hero-id:active {
+  opacity: 1;
+}
+
+/* ───── BALANCE BOX ───── */
+.balance-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-label {
+  font-size: 10px;
+  color: #00ff88;
+  opacity: 0.65;
+  letter-spacing: 1.2px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.balance-label svg {
+  width: 12px;
+  height: 12px;
+  fill: #00ff88;
+}
+
+.balance-amount {
+  font-size: 34px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 24px rgba(0, 255, 136, 0.6);
+  letter-spacing: -1px;
+  cursor: pointer;
+  user-select: all;
+  line-height: 1;
+}
+
+.balance-withdrawn {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.55;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+/* ───── ACTION GRID (4 buttons) ───── */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.action-btn {
+  background: rgba(0, 255, 100, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  border-radius: 16px;
+  padding: 14px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #00ff88;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.35);
+}
+
+.action-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 12px;
+}
+
+.action-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.action-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #e0ffe0;
+  text-transform: uppercase;
+}
+
+/* ───── LINKED ACCOUNT ───── */
+.linked-card {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.linked-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.linked-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  border-radius: 12px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.linked-label {
+  font-size: 10px;
+  color: #00ff88;
+  opacity: 0.65;
+  letter-spacing: 1.2px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.linked-status {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0ffe0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.change-btn {
+  padding: 9px 16px;
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.change-btn:active {
+  transform: scale(0.95);
+  background: rgba(0, 255, 136, 0.20);
+}
+
+/* ───── SECTION ───── */
+.section {
+  margin-bottom: 20px;
+}
+
 .section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin: 24px 0 14px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
 .section-title-big {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 800;
-  color: #00ff88;
+  color: #e0ffe0;
   letter-spacing: 0.5px;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title-big svg {
+  width: 18px;
+  height: 18px;
+  fill: #00ff88;
 }
 
 .view-all {
   color: #00ff88;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
   opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .view-all:active {
   opacity: 0.5;
 }
 
-/* ───── ACTIVITY ITEMS ───── */
+/* ───── PAYMENT ITEM ───── */
+.payment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  gap: 10px;
+}
+
+.payment-item:last-child {
+  border-bottom: none;
+}
+
+.payment-item span:first-child {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e0ffe0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.payment-item span:last-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: #00ff88;
+  opacity: 0.85;
+  text-align: right;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  max-width: 60%;
+}
+
+.payment-card {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.payment-card .section-title {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.75;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+/* ───── ACTIVITY ITEM ───── */
 .activity-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 13px 14px;
   margin-bottom: 10px;
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 255, 100, 0.06);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 16px;
   animation: cardSlideIn 0.4s ease backwards;
 }
 
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .activity-icon {
   width: 44px;
   height: 44px;
-  background: rgba(0, 255, 136, 0.1);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.20);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -110,24 +550,24 @@ html, body {
 }
 
 .activity-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
-  color: #00ff88;
-  margin-bottom: 2px;
+  color: #e0ffe0;
+  margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .activity-meta {
-  font-size: 11px;
+  font-size: 10.5px;
   color: #00ff88;
   opacity: 0.6;
   font-weight: 600;
 }
 
 .activity-amount {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -148,8 +588,22 @@ html, body {
   color: #00ff88;
   opacity: 0.7;
   padding: 30px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(0, 255, 136, 0.15);
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-state {
@@ -165,10 +619,91 @@ html, body {
   opacity: 0.5;
 }
 
-/* ═══════════════════════════════════════════════════════
-   💸 WITHDRAW MODAL — Premium
-   ═══════════════════════════════════════════════════════ */
+.empty-state .text {
+  font-size: 12px;
+  font-weight: 700;
+}
 
+/* ───── TOAST ───── */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  z-index: 100000;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
+  animation: toastUp 0.3s ease;
+  pointer-events: none;
+}
+
+@keyframes toastUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ───── BOTTOM NAV ───── */
+.bottom-nav {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  justify-content: space-around;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #00ff88;
+  opacity: 0.55;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.nav-item.active,
+.nav-item:active {
+  opacity: 1;
+  background: rgba(0, 255, 136, 0.12);
+}
+
+.nav-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nav-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   💸 WITHDRAW MODAL
+   ═══════════════════════════════════════════════════════ */
 .withdraw-modal {
   display: none;
   position: fixed;
@@ -179,7 +714,6 @@ html, body {
   z-index: 100000;
   align-items: flex-end;
   justify-content: center;
-  padding: 0;
   animation: modalFadeIn 0.25s ease;
 }
 
@@ -198,19 +732,14 @@ html, body {
   max-height: 92vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(160deg,
-    rgba(10, 25, 15, 0.98) 0%,
-    rgba(5, 15, 8, 0.99) 100%);
+  background: linear-gradient(160deg, rgba(10, 25, 15, 0.98) 0%, rgba(5, 15, 8, 0.99) 100%);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
   border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-bottom: none;
   padding: 20px 18px 30px;
-  box-shadow:
-    0 -10px 60px rgba(0, 255, 136, 0.15),
-    0 -20px 80px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 -10px 60px rgba(0, 255, 136, 0.15), 0 -20px 80px rgba(0, 0, 0, 0.8);
   animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
 }
 
 @keyframes slideUp {
@@ -218,7 +747,6 @@ html, body {
   to { transform: translateY(0); }
 }
 
-/* Handle bar at top */
 .withdraw-modal-content::before {
   content: '';
   display: block;
@@ -229,7 +757,6 @@ html, body {
   margin: 0 auto 18px;
 }
 
-/* Modal Header */
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -245,7 +772,6 @@ html, body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 0.5px;
-  filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.4));
 }
 
 .modal-close-btn {
@@ -262,15 +788,12 @@ html, body {
   align-items: center;
   justify-content: center;
   font-family: inherit;
-  transition: transform 0.2s;
 }
 
 .modal-close-btn:active {
   transform: scale(0.9);
-  background: rgba(255, 100, 100, 0.25);
 }
 
-/* Balance mini display in modal */
 .modal-balance-mini {
   background: rgba(0, 255, 136, 0.06);
   border: 1px solid rgba(0, 255, 136, 0.2);
@@ -298,7 +821,6 @@ html, body {
   text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
 }
 
-/* Section headers in modal */
 .modal-section-title {
   font-size: 11px;
   color: #00ff88;
@@ -319,7 +841,6 @@ html, body {
   background: linear-gradient(90deg, rgba(0, 255, 136, 0.3), transparent);
 }
 
-/* ───── METHOD GRID ───── */
 .modal-method-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -352,13 +873,9 @@ html, body {
 }
 
 .modal-method-btn.selected {
-  background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.2),
-    rgba(0, 255, 136, 0.08));
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.08));
   border-color: #00ff88;
-  box-shadow:
-    0 0 22px rgba(0, 255, 136, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 22px rgba(0, 255, 136, 0.35);
 }
 
 .modal-method-btn .mi {
@@ -390,7 +907,6 @@ html, body {
   font-size: 11px;
 }
 
-/* ───── LINK SECTION (in modal) ───── */
 .modal-link-section {
   display: none;
   background: rgba(255, 165, 0, 0.06);
@@ -465,7 +981,6 @@ html, body {
   transform: scale(0.97);
 }
 
-/* ───── AMOUNT INPUT (in modal) ───── */
 .modal-amount-wrap {
   display: flex;
   align-items: center;
@@ -511,11 +1026,6 @@ html, body {
 .modal-amount-wrap input::-webkit-outer-spin-button,
 .modal-amount-wrap input::-webkit-inner-spin-button {
   -webkit-appearance: none;
-  margin: 0;
-}
-
-.modal-amount-wrap input[type=number] {
-  -moz-appearance: textfield;
 }
 
 .modal-max-btn {
@@ -551,7 +1061,6 @@ html, body {
   font-weight: 800;
 }
 
-/* ───── QUICK AMOUNTS ───── */
 .modal-quick-amounts {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -581,7 +1090,6 @@ html, body {
   border-color: #00ff88;
 }
 
-/* ───── SUBMIT BUTTON ───── */
 .modal-submit-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -593,33 +1101,10 @@ html, body {
   font-size: 14px;
   letter-spacing: 1px;
   cursor: pointer;
-  box-shadow:
-    0 8px 28px rgba(0, 255, 136, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 28px rgba(0, 255, 136, 0.4);
   transition: transform 0.15s;
   font-family: inherit;
   text-transform: uppercase;
-  position: relative;
-  overflow: hidden;
-}
-
-.modal-submit-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent);
-  animation: btnShine 3s ease-in-out infinite;
-}
-
-@keyframes btnShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
 }
 
 .modal-submit-btn:active {
@@ -631,7 +1116,6 @@ html, body {
   cursor: not-allowed;
 }
 
-/* ───── LOADING SPINNER ───── */
 .loading-spinner {
   display: inline-block;
   width: 15px;
@@ -644,11 +1128,6 @@ html, body {
   vertical-align: middle;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ───── SUCCESS SCREEN (in modal) ───── */
 .modal-success {
   display: none;
   text-align: center;
@@ -677,13 +1156,6 @@ html, body {
   font-size: 44px;
   margin: 0 auto 18px;
   box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
-  animation: bounceIn 0.6s ease;
-}
-
-@keyframes bounceIn {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
 }
 
 .modal-success-title {
@@ -692,7 +1164,6 @@ html, body {
   color: #00ff88;
   margin-bottom: 8px;
   letter-spacing: 0.8px;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
 }
 
 .modal-success-sub {
@@ -704,9 +1175,7 @@ html, body {
 }
 
 .modal-success-amount-box {
-  background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.08),
-    rgba(0, 255, 136, 0.04));
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(0, 255, 136, 0.04));
   border: 1.5px solid rgba(0, 255, 136, 0.35);
   border-radius: 16px;
   padding: 18px;
@@ -726,10 +1195,7 @@ html, body {
 .modal-success-amount-value {
   font-size: 32px;
   font-weight: 900;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #00ff88;
   letter-spacing: -1px;
 }
 
@@ -755,8 +1221,6 @@ html, body {
 .modal-success-row span:last-child {
   color: #00ff88;
   font-weight: 800;
-  font-family: 'SF Mono', 'Courier New', monospace;
-  font-size: 11.5px;
   text-align: right;
   word-break: break-all;
   max-width: 60%;
@@ -774,34 +1238,11 @@ html, body {
   cursor: pointer;
   margin-top: 16px;
   font-family: inherit;
-  letter-spacing: 0.5px;
 }
 
 .modal-success-close:active {
   background: rgba(0, 255, 136, 0.2);
   transform: scale(0.97);
-}
-
-/* ───── BOTTOM NAV FIX ───── */
-.bottom-nav,
-.glass-nav {
-  position: fixed !important;
-  bottom: 18px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 99999 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: flex !important;
-  pointer-events: auto !important;
-  max-width: 448px !important;
-  width: calc(100% - 32px) !important;
-}
-
-/* ───── ANIMATIONS ───── */
-@keyframes cardSlideIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ───── RESPONSIVE ───── */
@@ -810,111 +1251,173 @@ html, body {
   .modal-quick-amounts button { font-size: 11px; padding: 9px 2px; }
   .modal-amount-wrap input { font-size: 20px; }
   .modal-amount-wrap .rupee { font-size: 22px; }
-}
-
-/* iOS Safari */
-@supports (-webkit-touch-callout: none) {
-  html, body {
-    height: auto !important;
-    min-height: -webkit-fill-available !important;
-  }
-  .app {
-    min-height: -webkit-fill-available !important;
-  }
+  .balance-amount { font-size: 28px; }
+  .hero-avatar { width: 48px; height: 48px; }
+  .action-grid { gap: 6px; }
+  .action-btn { padding: 12px 4px; }
+  .action-icon { width: 34px; height: 34px; }
+  .app { padding: 12px 10px 40px; }
 }
 </style>
 </head>
+
 <body>
 
-<div class="iphone-frame">
-  <div class="app">
+<div class="app">
 
-    <!-- 👤 USER CARD -->
-    <div class="user-card glass">
-      <div class="user-info">
-        <div class="avatar">
-          <span id="avatarFallback">👤</span>
-          <img id="avatarImg" src="" alt="" style="display:none;">
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div class="username" id="username">Loading...</div>
-          <div class="userid" id="userid">ID: -</div>
-        </div>
+  <!-- ═══════════════════════════════════════════════════════
+       TOPBAR
+       ═══════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       </div>
+      <span class="logo-text" id="appLogo">TASK EARN</span>
     </div>
+    <div class="icon-btn" onclick="refreshBalance()" id="refreshBtn">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    </div>
+  </header>
 
-    <!-- 💰 BALANCE CARD -->
-    <div class="balance-card glass">
-      <div class="balance-header">
-        <div class="label">AVAILABLE BALANCE</div>
-        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
-          <span class="refresh-icon">🔄</span>
-        </button>
+  <!-- ═══════════════════════════════════════════════════════
+       HERO USER CARD
+       ═══════════════════════════════════════════════════════ -->
+  <div class="hero-card glass">
+    <div class="hero-user">
+      <div class="hero-avatar">
+        <span id="avatarFallback">👤</span>
+        <img id="avatarImg" src="" alt="" style="display:none;">
       </div>
-      <div class="balance" id="balance">₹0.00</div>
-      <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
-      <button class="withdraw-btn" onclick="openWithdrawModal()">🚀 WITHDRAW NOW</button>
-    </div>
-
-    <!-- 🔗 LINKED ACCOUNT -->
-    <div class="linked-card glass">
-      <div class="linked-left">
-        <div class="linked-icon">🔗</div>
-        <div>
-          <div class="linked-label">LINKED ACCOUNT</div>
-          <div class="linked-status" id="linkedStatus">Not Linked</div>
+      <div class="hero-user-info">
+        <div class="hero-name" id="username">Loading...</div>
+        <div class="hero-id" onclick="copyUserId()">
+          <span id="userid">ID: -</span>
+          <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
         </div>
       </div>
-      <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
     </div>
 
-    <!-- 💳 PAYMENT METHODS -->
-    <div class="payment-card glass">
-      <div class="section-title">💳 PAYMENT METHODS</div>
-      <div id="paymentList" class="payment-list">
-        <div class="loading">⏳ Loading...</div>
+    <div class="balance-box">
+      <div class="balance-label">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+        AVAILABLE BALANCE
+      </div>
+      <div class="balance-amount" id="balance" onclick="copyBalance()">₹0.00</div>
+      <div class="balance-withdrawn" id="withdrawnTotal">Total Withdrawn: ₹0.00</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ACTION GRID (4 quick buttons)
+       ═══════════════════════════════════════════════════════ -->
+  <div class="action-grid">
+    <div class="action-btn" onclick="openAddFund()">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="#00ff88"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      </div>
+      <span class="action-label">Add Fund</span>
+    </div>
+
+    <div class="action-btn" onclick="openWithdrawModal()">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="#00ff88"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+      </div>
+      <span class="action-label">Withdraw</span>
+    </div>
+
+    <div class="action-btn" onclick="openTaskPage()">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="#00ff88"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+      </div>
+      <span class="action-label">Tasks</span>
+    </div>
+
+    <div class="action-btn" onclick="openQuickPay()">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="#00ff88"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+      </div>
+      <span class="action-label">Quick Pay</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LINKED ACCOUNT
+       ═══════════════════════════════════════════════════════ -->
+  <div class="linked-card glass">
+    <div class="linked-left">
+      <div class="linked-icon">🔗</div>
+      <div>
+        <div class="linked-label">LINKED ACCOUNT</div>
+        <div class="linked-status" id="linkedStatus">Not Linked</div>
       </div>
     </div>
+    <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+  </div>
 
-    <!-- 📜 RECENT ACTIVITY -->
+  <!-- ═══════════════════════════════════════════════════════
+       PAYMENT METHODS
+       ═══════════════════════════════════════════════════════ -->
+  <div class="payment-card glass">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="#00ff88" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+      💳 PAYMENT METHODS
+    </div>
+    <div id="paymentList" class="payment-list">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       RECENT ACTIVITY
+       ═══════════════════════════════════════════════════════ -->
+  <div class="section">
     <div class="section-header">
-      <div class="section-title-big">Recent Activity</div>
-      <div class="view-all" onclick="viewAllHistory()">View All →</div>
+      <div class="section-title-big">
+        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        Recent Activity
+      </div>
+      <div class="view-all" onclick="viewAllHistory()">
+        View All
+        <svg viewBox="0 0 24 24" fill="#00ff88" style="width:12px;height:12px;"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </div>
     </div>
     <div id="recentActivity">
-      <div class="loading">⏳ Loading...</div>
+      <div class="loading">Loading...</div>
     </div>
-
-    <!-- 🎯 BOTTOM NAV -->
-    <nav class="bottom-nav glass-nav">
-      <a href="/miniapp" class="nav-item active">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label" id="nav-home">HOME</span>
-      </a>
-      <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label" id="nav-task">TASK</span>
-      </a>
-      <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label" id="nav-pay">PAY</span>
-      </a>
-      <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label" id="nav-profile">PROFILE</span>
-      </a>
-    </nav>
-
   </div>
-</div>
 
-<!-- ═══════════════════════════════════════════════════
-     💸 WITHDRAW MODAL — Opens on button click
-     ═══════════════════════════════════════════════════ -->
+</div>
+<!-- /app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     BOTTOM NAV
+     ═══════════════════════════════════════════════════════ -->
+<nav class="bottom-nav">
+  <a href="/miniapp" class="nav-item active">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label" id="nav-home">HOME</span>
+  </a>
+  <a href="/miniapp/task" class="nav-item">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label" id="nav-task">TASK</span>
+  </a>
+  <a href="/miniapp/pay" class="nav-item">
+    <span class="nav-icon">💸</span>
+    <span class="nav-label" id="nav-pay">PAY</span>
+  </a>
+  <a href="/miniapp/profile" class="nav-item">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label" id="nav-profile">PROFILE</span>
+  </a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     💸 WITHDRAW MODAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="withdraw-modal" id="withdrawModal">
   <div class="withdraw-modal-content">
 
-    <!-- Header -->
     <div class="modal-header">
       <div class="modal-title">💸 Withdraw</div>
       <button class="modal-close-btn" onclick="closeWithdrawModal()">✕</button>
@@ -923,36 +1426,22 @@ html, body {
     <!-- FORM VIEW -->
     <div id="withdrawFormView">
 
-      <!-- Balance Mini -->
       <div class="modal-balance-mini">
         <div class="modal-balance-label">Available</div>
         <div class="modal-balance-value" id="modalBalance">₹0.00</div>
       </div>
 
-      <!-- STEP 1: Method -->
       <div class="modal-section-title">💳 Select Method</div>
-      <div class="modal-method-grid" id="modalMethodGrid">
-        <!-- Dynamic -->
-      </div>
+      <div class="modal-method-grid" id="modalMethodGrid"></div>
 
-      <!-- Link Section -->
       <div class="modal-link-section" id="modalLinkSection">
         <div class="modal-link-title">
           ⚠️ <b id="modalLinkMethodName">Method</b> Not Linked
         </div>
-        <input
-          type="text"
-          id="modalLinkInput"
-          class="modal-link-input"
-          placeholder="Enter details"
-          autocomplete="off"
-        >
-        <button class="modal-link-save" onclick="modalLinkMethodNow()">
-          🔗 Link Now
-        </button>
+        <input type="text" id="modalLinkInput" class="modal-link-input" placeholder="Enter details" autocomplete="off">
+        <button class="modal-link-save" onclick="modalLinkMethodNow()">🔗 Link Now</button>
       </div>
 
-      <!-- STEP 2: Amount -->
       <div class="modal-section-title">💰 Enter Amount</div>
       <div class="modal-amount-wrap">
         <span class="rupee">₹</span>
@@ -963,7 +1452,6 @@ html, body {
         Min: <b>₹<span id="modalMinLabel">10</span></b> • Max: <b>₹<span id="modalMaxLabel">10000</span></b>
       </div>
 
-      <!-- Quick Amounts -->
       <div class="modal-quick-amounts">
         <button onclick="modalSetAmount(5, this)">₹5</button>
         <button onclick="modalSetAmount(10, this)">₹10</button>
@@ -975,7 +1463,6 @@ html, body {
         <button onclick="modalSetAmount(1000, this)">₹1000</button>
       </div>
 
-      <!-- Submit -->
       <button class="modal-submit-btn" id="modalSubmitBtn" onclick="modalSubmitWithdraw()">
         💸 Confirm Withdrawal
       </button>
@@ -1011,15 +1498,13 @@ html, body {
         </div>
       </div>
 
-      <button class="modal-success-close" onclick="closeWithdrawModal()">
-        ✓ Close
-      </button>
+      <button class="modal-success-close" onclick="closeWithdrawModal()">✓ Close</button>
     </div>
 
   </div>
 </div>
 
-<script>
+   <script>
 // ============================================================
 // 🏠 HOME PAGE + 💸 WITHDRAW MODAL — Complete Logic
 // ============================================================
@@ -1028,9 +1513,8 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
   tg.expand();
-  tg.setHeaderColor('#000000');
-  tg.setBackgroundColor('#000000');
-
+  tg.setHeaderColor('#0a0e0a');
+  tg.setBackgroundColor('#0a0e0a');
   try {
     if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
   } catch (e) {}
@@ -1039,6 +1523,7 @@ if (tg) {
 const userId = tg?.initDataUnsafe?.user?.id;
 
 let userBalance = 0;
+let userWithdrawnTotal = 0;
 let minWithdraw = 10;
 let maxWithdraw = 10000;
 let selectedMethod = null;
@@ -1047,7 +1532,7 @@ let userSavedDetails = {};
 let appConfig = {};
 
 // ============================================================
-// 🔓 FORCE SCROLL
+// 🔓 FORCE SCROLL ENABLE
 // ============================================================
 function forceScrollEnable() {
   document.body.style.overflow = 'auto';
@@ -1125,7 +1610,29 @@ async function apiCall(endpoint, options = {}) {
 }
 
 // ============================================================
-// 🎨 CONFIG
+// 📋 COPY HELPERS
+// ============================================================
+function copyUserId() {
+  if (!userId) return;
+  navigator.clipboard.writeText(String(userId)).then(() => {
+    showToast('📋 User ID Copied!');
+    haptic('success');
+  }).catch(() => {
+    showToast('❌ Copy failed');
+  });
+}
+
+function copyBalance() {
+  navigator.clipboard.writeText(userBalance.toFixed(2)).then(() => {
+    showToast('📋 Balance Copied!');
+    haptic('success');
+  }).catch(() => {
+    showToast('❌ Copy failed');
+  });
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG
 // ============================================================
 async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
@@ -1134,6 +1641,11 @@ async function loadConfig() {
 
     if (appConfig.minWithdraw) minWithdraw = parseFloat(appConfig.minWithdraw);
     if (appConfig.maxWithdraw) maxWithdraw = parseFloat(appConfig.maxWithdraw);
+
+    if (appConfig.appLogo) {
+      const logo = document.getElementById('appLogo');
+      if (logo) logo.textContent = appConfig.appLogo.toUpperCase();
+    }
 
     if (appConfig.btn_home) document.getElementById('nav-home').textContent = appConfig.btn_home;
     if (appConfig.btn_task) document.getElementById('nav-task').textContent = appConfig.btn_task;
@@ -1147,8 +1659,10 @@ async function loadConfig() {
     if (sres.settings.max_withdraw) maxWithdraw = parseFloat(sres.settings.max_withdraw);
   }
 
-  document.getElementById('modalMinLabel').textContent = minWithdraw;
-  document.getElementById('modalMaxLabel').textContent = maxWithdraw;
+  const el1 = document.getElementById('modalMinLabel');
+  const el2 = document.getElementById('modalMaxLabel');
+  if (el1) el1.textContent = minWithdraw;
+  if (el2) el2.textContent = maxWithdraw;
 }
 
 // ============================================================
@@ -1160,17 +1674,22 @@ async function loadUser() {
   const data = await apiCall(`/miniapp/api/user/${userId}`);
 
   if (!data.success) {
-    document.getElementById('username').textContent = 'Not Found';
+    const un = document.getElementById('username');
+    if (un) un.textContent = 'Not Found';
     return;
   }
 
   const user = data.user;
   userBalance = parseFloat(user.balance) || 0;
+  userWithdrawnTotal = parseFloat(user.withdrawnTotal) || 0;
 
   document.getElementById('username').textContent = user.firstName || 'User';
   document.getElementById('userid').textContent = 'ID: ' + user.userId;
   document.getElementById('balance').textContent = '₹' + userBalance.toFixed(2);
   document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
+
+  const wtEl = document.getElementById('withdrawnTotal');
+  if (wtEl) wtEl.textContent = 'Total Withdrawn: ₹' + userWithdrawnTotal.toFixed(2);
 
   // Linked status
   const linkedStatus = document.getElementById('linkedStatus');
@@ -1197,7 +1716,7 @@ async function loadUser() {
 }
 
 // ============================================================
-// 📸 AVATAR
+// 📸 LOAD AVATAR
 // ============================================================
 async function loadAvatar() {
   if (!userId) return;
@@ -1206,22 +1725,25 @@ async function loadAvatar() {
 
   if (data.success && data.photoUrl) {
     const img = document.getElementById('avatarImg');
-    img.src = data.photoUrl;
-    img.style.display = 'block';
-    document.getElementById('avatarFallback').style.display = 'none';
+    if (img) {
+      img.src = data.photoUrl;
+      img.style.display = 'block';
+      document.getElementById('avatarFallback').style.display = 'none';
+    }
   }
 }
 
 // ============================================================
-// 💳 PAYMENT METHODS (Home)
+// 💳 LOAD PAYMENT METHODS
 // ============================================================
 async function loadPaymentMethods() {
   if (!userId) return;
   const listEl = document.getElementById('paymentList');
+  if (!listEl) return;
 
   const data = await apiCall(`/miniapp/api/payment-methods/${userId}`);
 
-  if (!data.success) {
+  if (!data.success || !data.methods) {
     listEl.innerHTML = '<div class="loading">Failed to load</div>';
     return;
   }
@@ -1230,7 +1752,7 @@ async function loadPaymentMethods() {
   data.methods.forEach(m => {
     let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
     html += `<div class="payment-item">
-      <span>${m.icon} ${m.name}</span>
+      <span>${m.icon} ${escapeHtml(m.name)}</span>
       <span>${escapeHtml(display)}</span>
     </div>`;
   });
@@ -1239,11 +1761,12 @@ async function loadPaymentMethods() {
 }
 
 // ============================================================
-// 📜 RECENT ACTIVITY
+// 📜 LOAD RECENT ACTIVITY
 // ============================================================
 async function loadRecentActivity() {
   if (!userId) return;
   const actEl = document.getElementById('recentActivity');
+  if (!actEl) return;
 
   const data = await apiCall(`/miniapp/api/user/${userId}/history?limit=5`);
 
@@ -1251,7 +1774,7 @@ async function loadRecentActivity() {
     actEl.innerHTML = `
       <div class="empty-state">
         <div class="icon">📭</div>
-        <div>No recent activity</div>
+        <div class="text">No recent activity</div>
       </div>
     `;
     return;
@@ -1287,17 +1810,14 @@ async function loadRecentActivity() {
 // 🔄 REFRESH
 // ============================================================
 async function refreshBalance() {
-  const btn = document.getElementById('refreshBtn');
-  btn?.classList.add('spinning');
   haptic('light');
+  showToast('🔄 Refreshing...');
 
   await loadUser();
   await loadPaymentMethods();
   await loadRecentActivity();
 
   showToast('✅ Refreshed!');
-
-  setTimeout(() => btn?.classList.remove('spinning'), 800);
 }
 
 // ============================================================
@@ -1306,35 +1826,24 @@ async function refreshBalance() {
 function openWithdrawModal() {
   haptic('light');
 
-  // Reset views
   document.getElementById('withdrawFormView').style.display = 'block';
   document.getElementById('withdrawSuccessView').classList.remove('active');
 
-  // Reset form
   document.getElementById('modalAmountInput').value = '';
   document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
 
-  // Update balance display
   document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
 
-  // Render methods
   renderModalMethods();
 
-  // Show modal
   document.getElementById('withdrawModal').classList.add('active');
-
-  // Prevent body scroll while modal open
   document.body.style.overflow = 'hidden';
 }
 
 function closeWithdrawModal() {
   haptic('light');
   document.getElementById('withdrawModal').classList.remove('active');
-
-  // Restore scroll
   forceScrollEnable();
-
-  // Refresh user data
   setTimeout(() => loadUser(), 300);
 }
 
@@ -1343,6 +1852,7 @@ function closeWithdrawModal() {
 // ============================================================
 function renderModalMethods() {
   const grid = document.getElementById('modalMethodGrid');
+  if (!grid) return;
 
   const methods = [
     { key: 'upi', name: 'UPI', icon: '⚡', details: userSavedDetails.upi },
@@ -1367,7 +1877,6 @@ function renderModalMethods() {
 
   grid.innerHTML = html;
 
-  // Auto-select first linked
   const firstLinked = methods.find(m => m.details);
   if (firstLinked) {
     modalSelectMethod(firstLinked.key);
@@ -1449,11 +1958,7 @@ async function modalLinkMethodNow() {
   try {
     const data = await apiCall('/miniapp/api/update-payment', {
       method: 'POST',
-      body: JSON.stringify({
-        userId: userId,
-        field: field,
-        value: value
-      })
+      body: JSON.stringify({ userId: userId, field: field, value: value })
     });
 
     if (data.success) {
@@ -1465,8 +1970,8 @@ async function modalLinkMethodNow() {
       renderModalMethods();
       modalSelectMethod(selectedMethod);
 
-      // Refresh home payment methods too
       await loadPaymentMethods();
+      await loadUser();
     } else {
       showToast('❌ ' + (data.error || 'Failed'));
       haptic('error');
@@ -1609,6 +2114,16 @@ function viewAllHistory() {
   window.location.href = '/miniapp/history';
 }
 
+function openTaskPage() {
+  haptic('light');
+  window.location.href = '/miniapp/task';
+}
+
+function openQuickPay() {
+  haptic('light');
+  window.location.href = '/miniapp/pay';
+}
+
 // ============================================================
 // 🚀 INIT
 // ============================================================
@@ -1638,8 +2153,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 
-// Expose globals
+// ============================================================
+// 🌐 EXPOSE GLOBALS
+// ============================================================
 window.refreshBalance = refreshBalance;
+window.copyUserId = copyUserId;
+window.copyBalance = copyBalance;
 window.openWithdrawModal = openWithdrawModal;
 window.closeWithdrawModal = closeWithdrawModal;
 window.modalSelectMethod = modalSelectMethod;
@@ -1650,6 +2169,8 @@ window.modalSubmitWithdraw = modalSubmitWithdraw;
 window.openAddFund = openAddFund;
 window.openPaymentMethods = openPaymentMethods;
 window.viewAllHistory = viewAllHistory;
+window.openTaskPage = openTaskPage;
+window.openQuickPay = openQuickPay;
 </script>
 
 </body>
