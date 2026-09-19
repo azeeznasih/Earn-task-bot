@@ -1,7 +1,6 @@
 // ============================================================
 // 🤖 TELEGRAM BOT + MINI APP + GATEWAY SYSTEM
-// Complete Working Bot - All Features
-// Part A of 2 — Foundation, Schemas, Helpers, APIs
+// Part A of 4 — Foundation, Schemas, Cache
 // ============================================================
 require("dotenv").config();
 const { Bot, Keyboard, InlineKeyboard, InputFile } = require("grammy");
@@ -40,7 +39,7 @@ app.use((req, res, next) => {
 app.use("/miniapp", express.static(path.join(__dirname, "public")));
 
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
-  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ============================================================
 // ⚙️ CONFIG
@@ -199,7 +198,7 @@ async function logBalanceHistory(userId, action, amount) {
   }
 }
 
-// ---------- ADMIN LOG (NEW) ----------
+// ---------- ADMIN LOG ----------
 const adminLogSchema = new mongoose.Schema({
   adminId: { type: Number, required: true },
   adminName: { type: String, default: "" },
@@ -218,6 +217,34 @@ async function logAdminAction(adminId, adminName, action, details = "", amount =
     console.error("logAdminAction:", e.message);
   }
 }
+
+// ---------- LIVE FUND EXCLUDE ----------
+const liveFundExcludeSchema = new mongoose.Schema({
+  userId: { type: Number, required: true, unique: true },
+  excludedAt: { type: Date, default: Date.now },
+  excludedBy: { type: Number, default: null }
+});
+const LiveFundExclude = mongoose.models.LiveFundExclude || mongoose.model("LiveFundExclude", liveFundExcludeSchema);
+
+// ---------- BROADCAST LOG ----------
+const broadcastLogSchema = new mongoose.Schema({
+  broadcastId: { type: String, required: true, unique: true },
+  adminId: { type: Number, required: true },
+  adminName: { type: String, default: "" },
+  messageType: { type: String, default: "text" },
+  messageFileId: { type: String, default: "" },
+  caption: { type: String, default: "" },
+  text: { type: String, default: "" },
+  sentMessageIds: { type: Array, default: [] },
+  sent: { type: Number, default: 0 },
+  failed: { type: Number, default: 0 },
+  totalUsers: { type: Number, default: 0 },
+  successRate: { type: Number, default: 0 },
+  duration: { type: Number, default: 0 },
+  status: { type: String, default: "sent" },
+  createdAt: { type: Date, default: Date.now }
+});
+const BroadcastLog = mongoose.models.BroadcastLog || mongoose.model("BroadcastLog", broadcastLogSchema);
 
 // ---------- MANUAL ADD FUND ----------
 const addFundSchema = new mongoose.Schema({
@@ -314,6 +341,16 @@ const redeemRequestSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const RedeemRequest = mongoose.models.RedeemRequest || mongoose.model("RedeemRequest", redeemRequestSchema);
+
+console.log("✅ Part A loaded — Schemas ready");
+
+// ============================================================
+// 🔚 END OF PART A
+// ============================================================
+
+// ============================================================
+// 📦 PART B — Helpers, Mask, Config, Receipt Page
+// ============================================================
 
 // ============================================================
 // 🔧 HELPERS
@@ -511,40 +548,45 @@ function convertOwnerLink(input) {
 // ============================================================
 function toSmallCaps(text) {
   const map = {
-    'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ꜰ','g':'ɢ','h':'ʜ','i':'ɪ',
-    'j':'ᴊ','k':'ᴋ','l':'ʟ','m':'ᴍ','n':'ɴ','o':'ᴏ','p':'ᴘ','q':'ǫ','r':'ʀ',
-    's':'ꜱ','t':'ᴛ','u':'ᴜ','v':'ᴠ','w':'ᴡ','x':'x','y':'ʏ','z':'ᴢ'
+    'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ꜰ', 'g': 'ɢ', 'h': 'ʜ', 'i': 'ɪ',
+    'j': 'ᴊ', 'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ', 'n': 'ɴ', 'o': 'ᴏ', 'p': 'ᴘ', 'q': 'ǫ', 'r': 'ʀ',
+    's': 'ꜱ', 't': 'ᴛ', 'u': 'ᴜ', 'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x', 'y': 'ʏ', 'z': 'ᴢ'
   };
   return String(text).split('').map(c => map[c.toLowerCase()] || c).join('');
 }
 
 // ============================================================
-// 📝 DEFAULT CONFIG
+// 📝 DEFAULT CONFIG VALUES
 // ============================================================
 const DEFAULT_KEYBOARD_LAYOUT = [
-  { name: "📋 BOT TASK",        key: "btn_tasks",    row: 0 },
-  { name: "💸 MY BALANCE",      key: "btn_balance",  row: 1 },
-  { name: "⚡ QUICK PAY",        key: "btn_quickpay", row: 1 },
-  { name: "🎁 GIFT CODE",       key: "btn_gift",     row: 2 },
-  { name: "💳 PAYMENT METHOD",  key: "btn_payout",   row: 2 },
-  { name: "🚀 WITHDRAW",        key: "btn_withdraw", row: 3 }
+  { name: "📋 BOT TASK", key: "btn_tasks", row: 0 },
+  { name: "💸 MY BALANCE", key: "btn_balance", row: 1 },
+  { name: "⚡ QUICK PAY", key: "btn_quickpay", row: 1 },
+  { name: "🎁 GIFT CODE", key: "btn_gift", row: 2 },
+  { name: "💳 PAYMENT METHOD", key: "btn_payout", row: 2 },
+  { name: "🚀 WITHDRAW", key: "btn_withdraw", row: 3 }
 ];
 
 const DEFAULT_BALANCE_TEXT = {
-  welcome: "⭐ Welcome To Bot!",
+  welcome: "━━━━━━ 💳 Wallet Overview ━━━━━━",
   walletId: "🔵 Wallet ID ➝",
   balance: "🧾 Balance ➝",
   footer: "❝ Built with security you can Trust.\nSupport that responds promptly ❞"
 };
 
 const INLINE_STYLE_COLORS = {
-  primary: { label: "Blue",  emoji: "🔵" },
+  primary: { label: "Blue", emoji: "🔵" },
   success: { label: "Green", emoji: "🟢" },
-  danger:  { label: "Red",   emoji: "🔴" },
-  white:   { label: "White", emoji: "⚪" }
+  danger: { label: "Red", emoji: "🔴" },
+  white: { label: "White", emoji: "⚪" }
 };
 
 const STYLE_COLORS = INLINE_STYLE_COLORS;
+
+// ============================================================
+// 🔓 FORCE SCROLL HELPER — for Mini App pages
+// ============================================================
+// (used in frontend only, no backend code needed)
 
 // ============================================================
 // 🧾 RECEIPT PAGE
@@ -559,7 +601,7 @@ app.get("/receipt/:id", async (req, res) => {
     let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
     let ownerName = await getConfig("owner_display_name", null);
     let ownerLink = await getConfig("owner_display_link", null);
-    
+
     if (!ownerName) {
       let ownerUser = await User.findOne({ userId: ownerId });
       ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
@@ -567,7 +609,7 @@ app.get("/receipt/:id", async (req, res) => {
     if (!ownerLink) {
       ownerLink = ownerId.toString();
     }
-    
+
     let finalOwnerLink = convertOwnerLink(ownerLink);
 
     let isSuccess = wd.status === "Approved";
@@ -643,13 +685,21 @@ app.get("/receipt/:id", async (req, res) => {
 
 app.get("/", (req, res) => res.send("Bot Server Live!"));
 
-setInterval(() => {
-  let renderUrl = process.env.RENDER_EXTERNAL_URL;
-  if (renderUrl) fetch(renderUrl).catch(() => {});
-}, 300000);
+// ============================================================
+// 📱 MINI APP PAGE ROUTES
+// ============================================================
+app.get("/miniapp", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/miniapp/addfund", (req, res) => res.sendFile(path.join(__dirname, "public", "addfund.html")));
+app.get("/miniapp/withdraw", (req, res) => res.sendFile(path.join(__dirname, "public", "withdraw.html")));
+app.get("/miniapp/task", (req, res) => res.sendFile(path.join(__dirname, "public", "task.html")));
+app.get("/miniapp/pay", (req, res) => res.sendFile(path.join(__dirname, "public", "pay.html")));
+app.get("/miniapp/profile", (req, res) => res.sendFile(path.join(__dirname, "public", "profile.html")));
+app.get("/miniapp/verify", (req, res) => res.sendFile(path.join(__dirname, "public", "verify.html")));
+app.get("/miniapp/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+app.get("/miniapp/history", (req, res) => res.sendFile(path.join(__dirname, "public", "history.html")));
 
 // ============================================================
-// ✅ CUSTOM API — MacroDroid UTR Injection
+// ✅ MACRODROID UTR INJECTION API
 // ============================================================
 app.post("/api/add-payment", async (req, res) => {
   try {
@@ -700,13 +750,93 @@ app.post("/api/test-utr", async (req, res) => {
   }
 });
 
+console.log("✅ Part B loaded — Helpers + Receipt ready");
+
 // ============================================================
-// 🌐 GATEWAY PAYMENT PROCESSOR
+// 🔚 END OF PART B
+// ============================================================
+
+// ============================================================
+// 📦 PART C — Ultra Pay, Gateway, Mini App APIs (Part 1)
+// ============================================================
+
+// ============================================================
+// 💳 ULTRA PAY — Auto Payout API
+// ============================================================
+async function ultraPayPayout({ paytoNumber, amount, comment = "Task Earn Payout" }) {
+  try {
+    const enabled = await getConfig("ultrapay_enabled", false);
+    const token = await getConfig("ultrapay_token", "");
+    const key = await getConfig("ultrapay_key", "");
+
+    if (!enabled) {
+      return { success: false, error: "Ultra Pay is disabled" };
+    }
+    if (!token || !key) {
+      return { success: false, error: "Ultra Pay credentials not set" };
+    }
+
+    const apiUrl = "https://ultra-pay.in/APIs/api";
+    const params = new URLSearchParams({
+      token: token,
+      key: key,
+      paytoNumber: paytoNumber,
+      amount: amount.toString(),
+      comment: comment
+    });
+
+    console.log(`💳 Ultra Pay: Sending ₹${amount} to ${paytoNumber}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${apiUrl}?${params}`, {
+      method: "GET",
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const data = await response.json();
+    console.log("💳 Ultra Pay Response:", data);
+
+    if (data.status === "success" || data.status === "SUCCESS" || data.success === true) {
+      return {
+        success: true,
+        status: "SUCCESS",
+        txnId: data.txn_id || data.transaction_id || data.txnId || null,
+        referenceId: data.reference_id || data.order_id || null,
+        rawData: data
+      };
+    } else {
+      return {
+        success: false,
+        error: data.message || data.error || "Payment failed",
+        rawData: data
+      };
+    }
+  } catch (e) {
+    console.error("💳 Ultra Pay error:", e);
+    if (e.name === "AbortError") {
+      return { success: false, error: "API timeout (30s)" };
+    }
+    return { success: false, error: e.message };
+  }
+}
+
+// ============================================================
+// 🌐 GATEWAY PROCESSOR
 // ============================================================
 async function processGatewayPayment(data) {
   const {
-    gatewayKey, upi = '', wallet = '', number = '',
-    amount = 0, comment = 'Telegram Transaction',
+    gatewayKey,
+    upi = '', wallet = '', number = '',
+    amount = 0,
+    comment = 'Telegram Transaction',
     userId = '', orderId = '', txnId = '', timestamp = Date.now()
   } = data;
 
@@ -733,23 +863,31 @@ async function processGatewayPayment(data) {
     const timeout = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(finalUrl, { method: 'GET', signal: controller.signal });
     clearTimeout(timeout);
+
     if (!response.ok) {
       return { status: 'error', message: `HTTP ${response.status}` };
     }
+
     const text = await response.text();
     let json = null;
     try { json = JSON.parse(text); } catch (e) {
       return { status: 'error', message: 'Invalid response', rawResponse: text.substring(0, 300) };
     }
+
     const isSuccess =
-      json.status === 'success' || json.status === 'Success' ||
-      json.status === 'SUCCESS' || json.success === true;
+      json.status === 'success' ||
+      json.status === 'Success' ||
+      json.status === 'SUCCESS' ||
+      json.success === true;
+
     if (isSuccess) {
       return {
-        status: 'success', data: json,
+        status: 'success',
+        data: json,
         txnNumber: json.txn_id || json.txnNumber || json.transaction_id || null
       };
     }
+
     return { status: 'failed', message: json.message || json.error || 'Gateway failed', data: json };
   } catch (error) {
     console.error('❌ Gateway Error:', error.message);
@@ -761,20 +899,7 @@ async function processGatewayPayment(data) {
 }
 
 // ============================================================
-// 📱 MINI APP PAGE ROUTES
-// ============================================================
-app.get("/miniapp", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-app.get("/miniapp/addfund", (req, res) => res.sendFile(path.join(__dirname, "public", "addfund.html")));
-app.get("/miniapp/withdraw", (req, res) => res.sendFile(path.join(__dirname, "public", "withdraw.html")));
-app.get("/miniapp/task", (req, res) => res.sendFile(path.join(__dirname, "public", "task.html")));
-app.get("/miniapp/pay", (req, res) => res.sendFile(path.join(__dirname, "public", "pay.html")));
-app.get("/miniapp/profile", (req, res) => res.sendFile(path.join(__dirname, "public", "profile.html")));
-app.get("/miniapp/verify", (req, res) => res.sendFile(path.join(__dirname, "public", "verify.html")));
-app.get("/miniapp/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
-app.get("/miniapp/history", (req, res) => res.sendFile(path.join(__dirname, "public", "history.html")));
-
-// ============================================================
-// 📱 MINI APP APIs
+// 📱 MINI APP APIs — USER
 // ============================================================
 app.get("/miniapp/api/user/:userId", async (req, res) => {
   try {
@@ -913,6 +1038,42 @@ app.get("/miniapp/api/check-user/:userId", async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ============================================================
+// 📊 LIVE FUND CALCULATION
+// ============================================================
+async function calculateLiveFund() {
+  try {
+    const excludes = await LiveFundExclude.find({});
+    const excludedIds = excludes.map(e => e.userId);
+
+    const result = await User.aggregate([
+      { $match: { userId: { $nin: excludedIds } } },
+      { $group: { _id: null, total: { $sum: "$balance" } } }
+    ]);
+
+    const allResult = await User.aggregate([
+      { $group: { _id: null, total: { $sum: "$balance" } } }
+    ]);
+
+    const totalUsers = await User.countDocuments({});
+    const includedUsers = await User.countDocuments({ userId: { $nin: excludedIds } });
+
+    return {
+      includedTotal: result[0]?.total || 0,
+      allTotal: allResult[0]?.total || 0,
+      totalUsers: totalUsers,
+      includedCount: includedUsers,
+      excludedCount: totalUsers - includedUsers
+    };
+  } catch (e) {
+    console.error("calculateLiveFund error:", e);
+    return { includedTotal: 0, allTotal: 0, totalUsers: 0, includedCount: 0, excludedCount: 0 };
+  }
+}
+
+// ============================================================
+// ⚡ QUICK PAY API
+// ============================================================
 app.post("/miniapp/api/quick-pay", async (req, res) => {
   try {
     const { senderId, receiverId, amount } = req.body;
@@ -928,12 +1089,15 @@ app.post("/miniapp/api/quick-pay", async (req, res) => {
     if (!sender) return res.json({ success: false, error: "Sender not found" });
     if (!receiver) return res.json({ success: false, error: "Receiver not found" });
 
-    const isAdminUser = await isAdmin(sId);
-    if (!isAdminUser && sender.balance < amt) {
+    const senderIsAdmin = await isAdmin(sId);
+    const senderIsOwner = await isOwner(sId);
+    const isPrivilegedUser = senderIsAdmin || senderIsOwner;
+
+    if (!isPrivilegedUser && sender.balance < amt) {
       return res.json({ success: false, error: "Insufficient balance" });
     }
 
-    // ✅ Quick Pay Tax
+    // Quick Pay Tax
     const taxEnabled = await getConfig("quick_pay_tax_enabled", false);
     const taxPercent = await getConfig("quick_pay_tax_percent", 0);
     let taxAmount = 0;
@@ -943,9 +1107,17 @@ app.post("/miniapp/api/quick-pay", async (req, res) => {
       receiverAmount = amt - taxAmount;
     }
 
-    let wasNegative = sender.balance < amt;
+    // Calculate new balance
+    let newSenderBalance = sender.balance - amt;
+    let wasCapped = false;
 
-    sender.balance -= amt;
+    if (isPrivilegedUser && newSenderBalance < 0) {
+      sender.balance = 0;
+      wasCapped = true;
+    } else {
+      sender.balance = newSenderBalance;
+    }
+
     receiver.balance += receiverAmount;
     await sender.save();
     await receiver.save();
@@ -957,29 +1129,34 @@ app.post("/miniapp/api/quick-pay", async (req, res) => {
       await logBalanceHistory(ownerId, `Quick Pay Tax from ${sId}`, taxAmount);
     }
 
-    if (isAdminUser && wasNegative) {
+    // Log
+    if (isPrivilegedUser && wasCapped) {
       await logBalanceHistory(sId, `Admin Add Fund - Quick Pay to ${rId}`, -amt);
-    } else if (isAdminUser) {
+    } else if (isPrivilegedUser) {
       await logBalanceHistory(sId, `Admin Quick Pay to ${rId}`, -amt);
     } else {
-      await logBalanceHistory(sId, `Quick Pay to ${rId}${taxAmount > 0 ? ` (Tax: ₹${taxAmount.toFixed(2)})` : ''}`, -amt);
+      await logBalanceHistory(sId, `Quick Pay to ${rId}`, -amt);
     }
-    await logBalanceHistory(rId, `Quick Pay from ${isAdminUser ? "Admin" : sId}`, receiverAmount);
+    await logBalanceHistory(rId, `Quick Pay from ${isPrivilegedUser ? "Admin" : sId}`, receiverAmount);
 
+    // Notify receiver
     try {
       await bot.api.sendMessage(rId,
-        `🎉 Payment Received!\n\n` +
-        `👤 From: ${isAdminUser ? "Admin" : (sender.firstName || "User")}\n` +
+        `🎉 *Payment Received!*\n\n` +
+        `👤 From: ${isPrivilegedUser ? "Admin" : (sender.firstName || "User")}\n` +
         `🆔 <code>${sId}</code>\n` +
-        `💰 ₹${receiverAmount.toFixed(2)}${taxAmount > 0 ? ` (Tax: ₹${taxAmount.toFixed(2)})` : ''}\n\n` +
-        `💵 Balance: ₹${receiver.balance.toFixed(2)}`,
+        `💰 <code>₹${receiverAmount.toFixed(2)}</code>\n\n` +
+        `💵 New Balance: <code>₹${receiver.balance.toFixed(2)}</code>`,
         { parse_mode: "HTML" });
     } catch (e) { }
 
-    res.json({ success: true, newBalance: sender.balance, wasNegative, isAdmin: isAdminUser, tax: taxAmount });
+    res.json({ success: true, newBalance: sender.balance, wasNegative: wasCapped, isAdmin: isPrivilegedUser, tax: taxAmount });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ============================================================
+// ✏️ UPDATE PAYMENT METHOD API
+// ============================================================
 app.post("/miniapp/api/update-payment", async (req, res) => {
   try {
     const { userId, field, value } = req.body;
@@ -1073,8 +1250,18 @@ app.post("/miniapp/api/gateway/pay", async (req, res) => {
   }
 });
 
+console.log("✅ Part C loaded — Ultra Pay + Gateway + Mini App APIs");
+
 // ============================================================
-// 🚀 WITHDRAW API
+// 🔚 END OF PART C
+// ============================================================
+
+// ============================================================
+// 📦 PART D — Withdraw, Task Submit, Verification, Admin APIs
+// ============================================================
+
+// ============================================================
+// 🚀 WITHDRAW API — with Ultra Pay Auto Payout
 // ============================================================
 app.post("/miniapp/api/withdraw", async (req, res) => {
   try {
@@ -1123,49 +1310,58 @@ app.post("/miniapp/api/withdraw", async (req, res) => {
     await user.save();
     await logBalanceHistory(uid, `Withdrawn via ${method} (MiniApp)`, -amt);
 
-    // ✅ Live Count — Only Approved
+    // Live Count — only Approved
     let approvedCount = await Withdrawal.countDocuments({ userId: uid, status: "Approved" });
     let userWithdrawalCount = approvedCount + 1;
 
     const withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
 
-    if (gatewayForMethod) {
-      let result = await processGatewayPayment({
-        gatewayKey: gatewayForMethod.name,
-        upi: details, wallet: details, number: details,
-        amount: amt,
-        comment: `Withdrawal #${userWithdrawalCount}`,
-        userId: uid, orderId: withdrawalId
-      });
+    // ✅ Ultra Pay Auto Payout
+    let upEnabled = await getConfig("ultrapay_enabled", false);
+    let upAuto = await getConfig("ultrapay_auto_payout", false);
 
-      if (result.status === 'success') {
-        let txnNumber = result.txnNumber || generateTxnNumber();
-        await Withdrawal.create({
-          withdrawalId, userId: uid, userWithdrawalCount,
-          amount: amt, method, details, status: "Approved",
-          gateway: gatewayForMethod.name, txnNumber,
-          approvedBy: "Auto Gateway", approvedAt: new Date()
+    if (upEnabled && upAuto && (method === "UPI" || method === "Wallet")) {
+      let upiId = details.split(",")[0].trim();
+      if (upiId.includes("@")) {
+        console.log(`💳 Auto-payout via Ultra Pay: ₹${amt} → ${upiId}`);
+        let result = await ultraPayPayout({
+          paytoNumber: upiId,
+          amount: amt,
+          comment: `Task Earn WD #${withdrawalId}`
         });
 
-        try {
-          await bot.api.sendMessage(uid,
-            `🎁Your Withdrawal of Rs.${amt.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
-            `🏦 Destination ==> ${details}\n` +
-            `🚀Transaction ID ==> ${txnNumber}\n` +
-            `🗓 Date ==> ${formatDateTime(new Date())}\n\n` +
-            `✅Please Check Your ${gatewayForMethod.name} Account!`);
-        } catch (e) { }
+        if (result.success) {
+          let txnNumber = result.txnId || generateTxnNumber();
+          await Withdrawal.create({
+            withdrawalId, userId: uid, userWithdrawalCount,
+            amount: amt, method, details, status: "Approved",
+            gateway: "Ultra Pay", txnNumber,
+            approvedBy: "Ultra Pay Auto", approvedAt: new Date()
+          });
 
-        return res.json({ success: true, autoProcessed: true, withdrawalId, txnNumber });
-      } else {
-        user.balance += amt;
-        user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amt);
-        await user.save();
-        await logBalanceHistory(uid, `Withdrawal Failed (Refunded)`, amt);
-        return res.json({ success: false, error: `Gateway: ${result.message}` });
+          try {
+            await bot.api.sendMessage(uid,
+              `🎁Your Withdrawal of Rs.${amt.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
+              `🏦 Destination ==> ${details}\n` +
+              `🚀Transaction ID ==> ${txnNumber}\n` +
+              `🗓 Date ==> ${formatDateTime(new Date())}\n\n` +
+              `✅Please Check Your ${method} Account!`);
+          } catch (e) { }
+
+          return res.json({ success: true, autoProcessed: true, withdrawalId, txnNumber });
+        } else {
+          // Refund
+          user.balance += amt;
+          user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amt);
+          await user.save();
+          await logBalanceHistory(uid, `Withdrawal Failed (Refunded)`, amt);
+          console.error(`❌ Ultra Pay failed: ${result.error}`);
+          // Continue to manual pending
+        }
       }
     }
 
+    // Manual pending
     await Withdrawal.create({
       withdrawalId, userId: uid, userWithdrawalCount,
       amount: amt, method, details
@@ -1702,7 +1898,7 @@ app.post("/miniapp/api/admin/reject-upi/:id", async (req, res) => {
 
 app.get("/miniapp/api/admin/all-users", async (req, res) => {
   try {
-    const users = await User.find({}).sort({ balance: -1 }).limit(100);
+    const users = await User.find({}).sort({ balance: -1 }).limit(200);
     res.json({ success: true, users });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
@@ -1808,6 +2004,19 @@ app.post("/miniapp/api/admin/send-message", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
+console.log("✅ Part D loaded — Withdraw + Tasks + Admin APIs");
+
+// ============================================================
+// 🔚 END OF PART D
+// ============================================================
+
+// ============================================================
+// 📦 PART E — Remaining Admin APIs, Settings, Website, Broadcast
+// ============================================================
+
+// ============================================================
+// 🌐 GATEWAY MANAGEMENT APIs
+// ============================================================
 app.get("/miniapp/api/admin/gateways", async (req, res) => {
   try {
     const gateways = await Gateway.find({}).sort({ createdAt: -1 });
@@ -1847,6 +2056,9 @@ app.post("/miniapp/api/admin/gateway/delete/:name", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
+// ============================================================
+// ⚙️ SETTINGS API
+// ============================================================
 app.get("/miniapp/api/admin/settings", async (req, res) => {
   try {
     const settings = {
@@ -1868,7 +2080,15 @@ app.get("/miniapp/api/admin/settings", async (req, res) => {
       quick_pay_tax_enabled: await getConfig("quick_pay_tax_enabled", false),
       quick_pay_tax_percent: await getConfig("quick_pay_tax_percent", 0),
       owner_display_name: await getConfig("owner_display_name", null),
-      owner_display_link: await getConfig("owner_display_link", null)
+      owner_display_link: await getConfig("owner_display_link", null),
+      balance_welcome_text: await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome),
+      balance_wallet_label: await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId),
+      balance_amount_label: await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance),
+      live_fund_display_enabled: await getConfig("live_fund_display_enabled", false),
+      live_fund_remaining_enabled: await getConfig("live_fund_remaining_enabled", false),
+      start_welcome_text: await getConfig("start_welcome_text", "💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href=\"{link}\">CLICK HERE</a>"),
+      start_channel_link: await getConfig("start_channel_link", "https://t.me/yourchannel"),
+      start_button_text: await getConfig("start_button_text", "CLICK HERE")
     };
     res.json({ success: true, settings });
   } catch (e) { res.json({ success: false, error: e.message }); }
@@ -1884,7 +2104,10 @@ app.post("/miniapp/api/admin/settings/update", async (req, res) => {
       "welcome_channel_link", "auto_upi_id", "auto_upi_min", "auto_upi_max",
       "auto_verify_enabled", "manual_verify_enabled",
       "quick_pay_tax_enabled", "quick_pay_tax_percent",
-      "owner_display_name", "owner_display_link"
+      "owner_display_name", "owner_display_link",
+      "balance_welcome_text", "balance_wallet_label", "balance_amount_label",
+      "live_fund_display_enabled", "live_fund_remaining_enabled",
+      "start_welcome_text", "start_channel_link", "start_button_text"
     ];
     if (!allowed.includes(key)) return res.json({ success: false, error: "Invalid key" });
     await setConfig(key, value);
@@ -1892,20 +2115,313 @@ app.post("/miniapp/api/admin/settings/update", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-app.post("/miniapp/api/admin/broadcast", async (req, res) => {
+// ============================================================
+// 💳 ULTRAPAY CONFIG APIs
+// ============================================================
+app.get("/miniapp/api/admin/ultrapay", async (req, res) => {
   try {
-    const { message } = req.body;
-    if (!message || message.trim() === "") return res.json({ success: false, error: "Empty message" });
-    const users = await User.find({});
+    const token = await getConfig("ultrapay_token", "");
+    const key = await getConfig("ultrapay_key", "");
+    const enabled = await getConfig("ultrapay_enabled", false);
+    const autoPayout = await getConfig("ultrapay_auto_payout", false);
+
+    res.json({
+      success: true,
+      enabled,
+      autoPayout,
+      tokenDisplay: token ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}` : "Not Set",
+      keyDisplay: key ? `${key.substring(0, 4)}...${key.substring(key.length - 2)}` : "Not Set",
+      hasToken: !!token,
+      hasKey: !!key
+    });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/ultrapay/update", async (req, res) => {
+  try {
+    const { key, value } = req.body;
+    const allowed = ["ultrapay_token", "ultrapay_key", "ultrapay_enabled", "ultrapay_auto_payout"];
+    if (!allowed.includes(key)) return res.json({ success: false, error: "Invalid key" });
+    await setConfig(key, value);
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/ultrapay/test", async (req, res) => {
+  try {
+    const token = await getConfig("ultrapay_token", "");
+    const key = await getConfig("ultrapay_key", "");
+
+    if (!token || !key) {
+      return res.json({ success: false, error: "Token or Key not set" });
+    }
+
+    res.json({
+      success: true,
+      message: "Credentials set",
+      tokenLength: token.length,
+      keyLength: key.length
+    });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📊 LIVE FUND APIs
+// ============================================================
+app.get("/miniapp/api/live-fund", async (req, res) => {
+  try {
+    const lf = await calculateLiveFund();
+    res.json({ success: true, liveFund: lf });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.get("/miniapp/api/admin/live-fund/users", async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ balance: -1 });
+    const excludes = await LiveFundExclude.find({});
+    const excludedIds = excludes.map(e => e.userId);
+    const excludedSet = new Set(excludedIds.map(Number));
+
+    let result = users.map(u => ({
+      userId: u.userId,
+      firstName: u.firstName,
+      username: u.username,
+      balance: u.balance,
+      included: !excludedSet.has(u.userId)
+    }));
+
+    res.json({ success: true, users: result });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/live-fund/toggle/:userId", async (req, res) => {
+  try {
+    const uid = parseInt(req.params.userId, 10);
+    const existing = await LiveFundExclude.findOne({ userId: uid });
+
+    if (existing) {
+      await LiveFundExclude.deleteOne({ userId: uid });
+      res.json({ success: true, included: true });
+    } else {
+      await LiveFundExclude.create({ userId: uid });
+      res.json({ success: true, included: false });
+    }
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 🌐 WEBSITE STATEMENT APIs
+// ============================================================
+app.get("/miniapp/api/admin/statements", async (req, res) => {
+  try {
+    const filter = req.query.filter || "all";
+    let query = {};
+    if (filter === "approved") query.status = "Approved";
+    else if (filter === "rejected") query.status = "Rejected";
+
+    const withdrawals = await Withdrawal.find(query).sort({ createdAt: -1 }).limit(200);
+    let results = [];
+    for (let w of withdrawals) {
+      const user = await User.findOne({ userId: w.userId });
+      results.push({
+        withdrawalId: w.withdrawalId,
+        userId: w.userId,
+        userName: user?.firstName || "User",
+        username: user?.username || "",
+        amount: w.amount,
+        method: w.method,
+        status: w.status,
+        txnNumber: w.txnNumber,
+        createdAt: w.createdAt,
+        approvedAt: w.approvedAt,
+        receiptUrl: `/receipt/${w.withdrawalId}`
+      });
+    }
+    res.json({ success: true, statements: results, total: results.length });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/owner-info/save", async (req, res) => {
+  try {
+    const { userId: requesterId, name, link } = req.body;
+    const reqId = parseInt(requesterId, 10);
+    if (!(await isAdmin(reqId))) return res.json({ success: false, error: "Admin only" });
+    if (name !== undefined) await setConfig("owner_display_name", name);
+    if (link !== undefined) await setConfig("owner_display_link", link);
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.get("/miniapp/api/admin/owner-info", async (req, res) => {
+  try {
+    const ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+    const ownerUser = await User.findOne({ userId: ownerId });
+    let name = await getConfig("owner_display_name", null);
+    let link = await getConfig("owner_display_link", null);
+    if (!name) name = ownerUser?.firstName || "Owner";
+    if (!link) link = ownerId.toString();
+    res.json({ success: true, name, link, ownerId });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 🎨 CUSTOMIZE TEXTS APIs
+// ============================================================
+app.get("/miniapp/api/admin/customize-texts", async (req, res) => {
+  try {
+    const texts = {
+      balance_welcome_text: await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome),
+      balance_footer_text: await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer),
+      balance_wallet_label: await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId),
+      balance_amount_label: await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance),
+      start_welcome_text: await getConfig("start_welcome_text", ""),
+      start_channel_link: await getConfig("start_channel_link", ""),
+      start_button_text: await getConfig("start_button_text", "CLICK HERE")
+    };
+    res.json({ success: true, texts });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📞 SUPPORT APIs
+// ============================================================
+app.get("/miniapp/api/admin/support", async (req, res) => {
+  try {
+    const supportId = await getConfig("support_username", "Not Set");
+    res.json({ success: true, supportId });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/support/update", async (req, res) => {
+  try {
+    const { supportId } = req.body;
+    if (!supportId || supportId.trim() === "") {
+      return res.json({ success: false, error: "Empty support ID" });
+    }
+    await setConfig("support_username", supportId.trim());
+    res.json({ success: true });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📢 BROADCAST APIs
+// ============================================================
+app.get("/miniapp/api/admin/broadcast/history", async (req, res) => {
+  try {
+    const logs = await BroadcastLog.find({}).sort({ createdAt: -1 }).limit(20);
+    res.json({ success: true, logs });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/broadcast/send", async (req, res) => {
+  try {
+    const { message, type = "text", fileId, caption } = req.body;
+    const allUsers = await User.find({});
     let sent = 0, failed = 0;
-    for (let u of users) {
+    let sentMessageIds = [];
+    let startTime = Date.now();
+
+    for (let u of allUsers) {
       try {
-        await bot.api.sendMessage(u.userId, message);
+        let sentMsg;
+        if (type === "text") {
+          sentMsg = await bot.api.sendMessage(u.userId, message);
+        } else if (type === "photo" && fileId) {
+          sentMsg = await bot.api.sendPhoto(u.userId, fileId, { caption: caption || "" });
+        } else if (type === "video" && fileId) {
+          sentMsg = await bot.api.sendVideo(u.userId, fileId, { caption: caption || "" });
+        }
+
+        if (sentMsg && sentMsg.message_id) {
+          sentMessageIds.push({ userId: u.userId, messageId: sentMsg.message_id });
+        }
         sent++;
         await new Promise(r => setTimeout(r, 50));
       } catch (e) { failed++; }
     }
-    res.json({ success: true, sent, failed, total: users.length });
+
+    let duration = (Date.now() - startTime) / 1000;
+    let broadcastId = "BC_" + Date.now();
+
+    await BroadcastLog.create({
+      broadcastId,
+      adminId: req.body.adminId || 0,
+      adminName: "MiniApp Admin",
+      messageType: type,
+      text: message || "",
+      sentMessageIds,
+      sent, failed,
+      totalUsers: allUsers.length,
+      successRate: allUsers.length > 0 ? (sent / allUsers.length) * 100 : 0,
+      duration,
+      status: "sent"
+    });
+
+    res.json({ success: true, sent, failed, total: allUsers.length, broadcastId });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post("/miniapp/api/admin/broadcast/delete", async (req, res) => {
+  try {
+    const { broadcastId } = req.body;
+    const bc = await BroadcastLog.findOne({ broadcastId });
+    if (!bc) return res.json({ success: false, error: "Not found" });
+    if (bc.status === "deleted") return res.json({ success: false, error: "Already deleted" });
+
+    let deleted = 0, failedDel = 0;
+    for (let item of bc.sentMessageIds) {
+      try {
+        await bot.api.deleteMessage(item.userId, item.messageId);
+        deleted++;
+      } catch (e) { failedDel++; }
+      await new Promise(r => setTimeout(r, 30));
+    }
+
+    bc.status = "deleted";
+    await bc.save();
+
+    res.json({ success: true, deleted, failedDel, total: bc.sentMessageIds.length });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📊 ADMIN STATS
+// ============================================================
+app.get("/miniapp/api/admin/stats", async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments({});
+    const totalBalanceAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]);
+    const totalBalance = totalBalanceAgg[0]?.total || 0;
+    const totalWithdrawnAgg = await Withdrawal.aggregate([
+      { $match: { status: "Approved" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalWithdrawn = totalWithdrawnAgg[0]?.total || 0;
+    const pendingWd = await Withdrawal.countDocuments({ status: "Pending" });
+    const pendingAf = await AddFund.countDocuments({ status: "Pending" });
+    const pendingSub = await TaskSubmission.countDocuments({ status: "Pending" });
+    const totalTasks = await Task.countDocuments({});
+    const totalAdmins = await BotAdmin.countDocuments({ isActive: true });
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers, totalBalance, totalWithdrawn,
+        pendingWd, pendingAf, pendingSub,
+        totalTasks, totalAdmins
+      }
+    });
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📋 ADMIN LOGS
+// ============================================================
+app.get("/miniapp/api/admin/logs", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const logs = await AdminLog.find({}).sort({ createdAt: -1 }).limit(limit);
+    res.json({ success: true, logs });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
@@ -1994,7 +2510,6 @@ app.post("/miniapp/api/admin/transfer-owner", async (req, res) => {
     if (!(await isOwner(reqId))) return res.json({ success: false, error: "Owner only" });
     const targetUser = await User.findOne({ userId: nId });
     if (!targetUser) return res.json({ success: false, error: "User not found" });
-    // Add old owner as admin
     await BotAdmin.findOneAndUpdate(
       { userId: reqId },
       { addedAt: new Date(), addedBy: reqId, isActive: true },
@@ -2010,72 +2525,57 @@ app.post("/miniapp/api/admin/transfer-owner", async (req, res) => {
 });
 
 // ============================================================
-// 📊 ADMIN LOGS API
+// 🎨 SAVE CONFIG API (for admin panel customization)
 // ============================================================
-app.get("/miniapp/api/admin/logs", async (req, res) => {
+app.post("/miniapp/api/admin/save-config", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 50;
-    const logs = await AdminLog.find({}).sort({ createdAt: -1 }).limit(limit);
-    res.json({ success: true, logs });
-  } catch (e) { res.json({ success: false, error: e.message }); }
-});
+    const { userId, key, value } = req.body;
+    const uid = parseInt(userId, 10);
 
-// ============================================================
-// 🌐 WEBSITE STATEMENT API
-// ============================================================
-app.get("/miniapp/api/admin/statements", async (req, res) => {
-  try {
-    const filter = req.query.filter || "all";
-    let query = {};
-    if (filter === "approved") query.status = "Approved";
-    else if (filter === "rejected") query.status = "Rejected";
-    const withdrawals = await Withdrawal.find(query).sort({ createdAt: -1 }).limit(100);
-    let results = [];
-    for (let w of withdrawals) {
-      const user = await User.findOne({ userId: w.userId });
-      results.push({
-        withdrawalId: w.withdrawalId,
-        userId: w.userId,
-        userName: user?.firstName || "User",
-        username: user?.username || "",
-        amount: w.amount,
-        method: w.method,
-        status: w.status,
-        txnNumber: w.txnNumber,
-        createdAt: w.createdAt,
-        approvedAt: w.approvedAt,
-        receiptUrl: `/receipt/${w.withdrawalId}`
-      });
+    if (!(await isAdmin(uid))) {
+      return res.json({ success: false, error: "Unauthorized" });
     }
-    res.json({ success: true, statements: results, total: results.length });
-  } catch (e) { res.json({ success: false, error: e.message }); }
-});
 
-app.post("/miniapp/api/admin/owner-info/save", async (req, res) => {
-  try {
-    const { userId: requesterId, name, link } = req.body;
-    const reqId = parseInt(requesterId, 10);
-    if (!(await isAdmin(reqId))) return res.json({ success: false, error: "Admin only" });
-    if (name !== undefined) await setConfig("owner_display_name", name);
-    if (link !== undefined) await setConfig("owner_display_link", link);
+    const allowed = [
+      "app_logo", "btn_home", "btn_task", "btn_pay", "btn_profile",
+      "keyboard_layout", "balance_footer_text", "balance_welcome_text",
+      "balance_wallet_label", "balance_amount_label",
+      "start_welcome_text", "start_channel_link", "start_button_text"
+    ];
+    if (!allowed.includes(key)) {
+      return res.json({ success: false, error: "Invalid key" });
+    }
+
+    await setConfig(key, value);
     res.json({ success: true });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-app.get("/miniapp/api/admin/owner-info", async (req, res) => {
+// ============================================================
+// 💬 TALK WITH USER API
+// ============================================================
+app.post("/miniapp/api/admin/send-user-message", async (req, res) => {
   try {
-    const ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
-    const ownerUser = await User.findOne({ userId: ownerId });
-    let name = await getConfig("owner_display_name", null);
-    let link = await getConfig("owner_display_link", null);
-    if (!name) name = ownerUser?.firstName || "Owner";
-    if (!link) link = ownerId.toString();
-    res.json({ success: true, name, link, ownerId });
+    const { userId, message } = req.body;
+    const uid = parseInt(userId, 10);
+    if (!message || message.trim() === "") return res.json({ success: false, error: "Empty message" });
+    try {
+      await bot.api.sendMessage(uid, `📨 *Message from Admin:*\n\n${message}`, { parse_mode: "Markdown" });
+      res.json({ success: true });
+    } catch (e) {
+      res.json({ success: false, error: "Failed: " + e.message });
+    }
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
+console.log("✅ Part E loaded — Admin APIs complete");
+
 // ============================================================
-// 🔚 PART A END — Continue to Part B below
+// 🔚 END OF PART E
+// ============================================================
+
+// ============================================================
+// 📦 PART F — Bot Commands, Keyboard Builders, Balance Handler
 // ============================================================
 
 // ============================================================
@@ -2094,6 +2594,7 @@ bot.command("start", async (ctx) => {
     user.username = ctx.from.username || "";
     await user.save();
 
+    // ✅ Notify owner
     if (isNewUser) {
       let nameStr = `${ctx.from.first_name || ""} ${ctx.from.last_name || ""}`.trim() || "No Name";
       let usernameStr = ctx.from.username ? `@${ctx.from.username}` : "No Username";
@@ -2112,6 +2613,7 @@ bot.command("start", async (ctx) => {
       return ctx.reply(botOffText);
     }
 
+    // Force Join
     let isJoined = await checkForceJoin(ctx);
     if (!isJoined) {
       let channels = await Channel.find({ isActive: true });
@@ -2123,11 +2625,10 @@ bot.command("start", async (ctx) => {
       return ctx.reply("⚠️ *You must join our channels to use this bot!*", { reply_markup: keyboard, parse_mode: "Markdown" });
     }
 
-    let welcomeChannelLink = await getConfig("welcome_channel_link", "https://t.me/yourchannel");
-
-    let welcomeText =
-      `💫 <b>Welcome To Task Payment Bot!</b>\n\n` +
-      `To Know How To Earn → <a href="${welcomeChannelLink}">CLICK HERE</a>`;
+    // Custom Welcome Message
+    let startWelcome = await getConfig("start_welcome_text", "💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href=\"{link}\">CLICK HERE</a>");
+    let channelLink = await getConfig("start_channel_link", "https://t.me/yourchannel");
+    let welcomeText = startWelcome.replace(/{link}/g, channelLink);
 
     try {
       await ctx.reply(welcomeText, { reply_markup: await buildKeyboardFromLayout(userId), parse_mode: "HTML" });
@@ -2178,6 +2679,9 @@ async function buildKeyboardFromLayout(userId) {
   };
 }
 
+// ============================================================
+// ✅ BUILD STYLED INLINE KEYBOARD
+// ============================================================
 async function buildStyledKb(buttons, userId = null) {
   let styleMap = await getConfig("inline_button_styles", {});
   let names = await getConfig("inline_button_names", {});
@@ -2267,7 +2771,7 @@ async function saveCodes(text, type, ctx) {
 }
 
 // ============================================================
-// 💬 MESSAGE TEXT HANDLER
+// 💬 MESSAGE TEXT HANDLER — STATE MACHINE
 // ============================================================
 bot.on("message:text", async (ctx, next) => {
   let text = ctx.message.text.trim();
@@ -2281,7 +2785,7 @@ bot.on("message:text", async (ctx, next) => {
       return;
     }
 
-    // Gateway setup
+    // ----- GATEWAY SETUP -----
     if (state === "GATEWAY_WAIT_NAME") {
       delete userState[userId];
       let name = text.trim();
@@ -2308,7 +2812,7 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // UPI Deposit — Amount
+    // ----- UPI DEPOSIT -----
     if (state === "UPI_WAIT_AMOUNT") {
       delete userState[userId];
       let amt = parseFloat(text);
@@ -2331,7 +2835,6 @@ bot.on("message:text", async (ctx, next) => {
       );
     }
 
-    // UPI Deposit — UTR
     if (state && state.startsWith("UPI_WAIT_UTR_")) {
       let parts = state.replace("UPI_WAIT_UTR_", "").split("_");
       let orderId = parts[0];
@@ -2413,7 +2916,7 @@ bot.on("message:text", async (ctx, next) => {
       }
     }
 
-    // Withdraw — Add methods
+    // ----- WITHDRAW — Add Methods -----
     if (state === "WD_ADD_UPI") {
       delete userState[userId];
       let upi = text.trim();
@@ -2462,7 +2965,7 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(`🚀 Withdraw via ${gwName}`, `wd_gw_${gwName}`).row().text("🔙 Main Menu", "back_to_balance") });
     }
 
-    // Withdraw amount
+    // ----- WITHDRAW AMOUNT -----
     if (state.startsWith("WD_AMT_")) {
       let method = state.replace("WD_AMT_", "");
       delete userState[userId];
@@ -2510,7 +3013,7 @@ bot.on("message:text", async (ctx, next) => {
       );
     }
 
-    // Quick Pay
+    // ----- QUICK PAY -----
     if (state === "QP_WAIT_USERID") {
       let targetId = parseInt(text.trim(), 10);
       if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
@@ -2530,8 +3033,8 @@ bot.on("message:text", async (ctx, next) => {
       let amt = parseFloat(text.trim());
       if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid amount!");
       let sender = await getUser(userId);
-      let isAdminUser = await isAdmin(userId);
-      if (!isAdminUser && sender.balance < amt) {
+      let isPrivileged = (await isAdmin(userId)) || (await isOwner(userId));
+      if (!isPrivileged && sender.balance < amt) {
         return ctx.reply(`❌ *Insufficient Balance!*\n\n💵 Your: ₹${sender.balance.toFixed(2)}\n💰 Required: ₹${amt}\n\nPlease add funds first.`, { parse_mode: "Markdown" });
       }
       let cacheObj = global.quickPayCache?.[userId];
@@ -2540,7 +3043,6 @@ bot.on("message:text", async (ctx, next) => {
       if (!receiver) return ctx.reply("❌ Receiver not found!");
       userState[userId] = `QP_CONFIRM_${cacheObj.receiverId}_${amt}`;
 
-      // Quick Pay Tax
       let taxEnabled = await getConfig("quick_pay_tax_enabled", false);
       let taxPercent = await getConfig("quick_pay_tax_percent", 0);
       let taxAmt = 0;
@@ -2548,7 +3050,7 @@ bot.on("message:text", async (ctx, next) => {
       let receiverAmt = amt - taxAmt;
 
       let msg;
-      if (isAdminUser) {
+      if (isPrivileged) {
         msg = `⚠️ Confirm Payment\n\n👤 ${receiver.firstName || "User"}\n🆔 <code>${receiver.userId}</code>\n💰 Amount: ₹${amt}` +
           (taxAmt > 0 ? `\n💸 Tax (${taxPercent}%): ₹${taxAmt.toFixed(2)}` : '') +
           `\n\n📊 Balance Update:\n💰 Receiver: ₹${receiver.balance.toFixed(2)} → ₹${(receiver.balance + receiverAmt).toFixed(2)}`;
@@ -2563,7 +3065,7 @@ bot.on("message:text", async (ctx, next) => {
       });
     }
 
-    // Gift Code Redeem
+    // ----- GIFT CODE REDEEM -----
     if (state === "WAITING_FOR_GIFT_REDEEM") {
       delete userState[userId];
       let gift = await GiftCode.findOneAndUpdate(
@@ -2579,7 +3081,7 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`🎉 Gift redeemed! Added ₹${gift.amount}.`);
     }
 
-    // Payment methods
+    // ----- PAYMENT METHODS SETTING -----
     if (state === "SET_WALLET_ACC") {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { walletAccount: text.trim() });
@@ -2601,18 +3103,8 @@ bot.on("message:text", async (ctx, next) => {
       await User.findOneAndUpdate({ userId }, { bankAccNo: accNo, bankIfsc: text.trim() });
       return ctx.reply(`✅ Bank updated!`, { reply_markup: await buildKeyboardFromLayout(userId) });
     }
-    if (state === "SET_AMAZON_ACC") {
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { amazonEmail: text.trim() });
-      return ctx.reply(`✅ Email: \`${text.trim()}\``, { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout(userId) });
-    }
-    if (state === "SET_REDEEM_ACC") {
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { redeemCodeAddr: text.trim() });
-      return ctx.reply(`✅ Redeem: \`${text.trim()}\``, { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout(userId) });
-    }
 
-    // User settings
+    // ----- USER SETTINGS -----
     if (state === "USET_WAIT_WALLET") {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { walletAccount: text.trim() });
@@ -2624,7 +3116,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ UPI saved: <code>${text.trim()}</code>`, { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(userId) });
     }
     if (state === "USET_WAIT_BANK_ACCNO") {
-      if (!text.trim()) return ctx.reply("❌ Invalid!");
       userState[userId] = `USET_WAIT_BANK_IFSC_${text.trim()}`;
       return ctx.reply(`🏦 Send IFSC Code:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", "uset_edit_payment") });
     }
@@ -2643,479 +3134,6 @@ bot.on("message:text", async (ctx, next) => {
       await saveUserKeyboard(userId, layout);
       return ctx.reply(`✅ Renamed to: ${text.trim()}`, { reply_markup: await buildKeyboardFromLayout(userId) });
     }
-
-    // Admin states
-    if (state === "WAITING_FOR_TRACKER_ID" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let targetId = parseInt(text, 10);
-      if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply(`❌ User not found!`);
-      return ctx.reply(`🙇‍♂️ USER DETAILS\n\n🚻 ${targetUser.firstName || "Unknown"}\n🆔 ${targetUser.userId}\n💰 ₹${targetUser.balance.toFixed(2)}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "admin")
-      });
-    }
-
-    if (state === "WAITING_FOR_ADD_BAL" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split(/\s+/);
-      let targetId = parseInt(parts[0], 10);
-      let amount = parseFloat(parts[1]);
-      if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) {
-        targetUser = await User.create({ userId: targetId, firstName: "Unknown", balance: amount });
-        await logBalanceHistory(targetId, "Admin Added Balance (New)", amount);
-        await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance (New User)", `+₹${amount} to ${targetId}`, amount, targetId);
-        return ctx.reply(`✅ Added ₹${amount} to new user ${targetId}.`);
-      }
-      targetUser.balance += amount;
-      await targetUser.save();
-      await logBalanceHistory(targetId, "Admin Added Balance", amount);
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
-      return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
-    }
-
-    if (state === "WAITING_FOR_REM_BAL" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split(/\s+/);
-      let targetId = parseInt(parts[0], 10);
-      let amount = parseFloat(parts[1]);
-      if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply(`❌ User not found!`);
-      targetUser.balance = Math.max(0, targetUser.balance - amount);
-      await targetUser.save();
-      await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
-      return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
-    }
-
-    if (state === "WAITING_FOR_RESET_BAL" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let targetId = parseInt(text, 10);
-      if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply("❌ User not found!");
-      targetUser.balance = 0;
-      await targetUser.save();
-      await logBalanceHistory(targetId, "Admin Reset Balance", 0);
-      return ctx.reply(`✅ Reset ${targetId}'s balance to ₹0`);
-    }
-
-    if (state.startsWith("UREM_WAIT_")) {
-      let targetId = parseInt(state.replace("UREM_WAIT_", ""), 10);
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply("❌ User not found!");
-      targetUser.balance = Math.max(0, targetUser.balance - amount);
-      await targetUser.save();
-      await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
-      try {
-        await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n📉 Removed: ₹${amount}\n💵 New Balance: ₹${targetUser.balance.toFixed(2)}`);
-      } catch (e) {}
-      return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back to User", `user_detail_${targetId}`)
-      });
-    }
-
-    if (state.startsWith("UADD_WAIT_")) {
-      let targetId = parseInt(state.replace("UADD_WAIT_", ""), 10);
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply("❌ User not found!");
-      targetUser.balance += amount;
-      await targetUser.save();
-      await logBalanceHistory(targetId, "Admin Added Balance", amount);
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
-      try {
-        await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n🟢 Added: ₹${amount}\n💵 New Balance: ₹${targetUser.balance.toFixed(2)}`);
-      } catch (e) {}
-      return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back to User", `user_detail_${targetId}`)
-      });
-    }
-
-    if (state.startsWith("UMSG_WAIT_")) {
-      let targetId = parseInt(state.replace("UMSG_WAIT_", ""), 10);
-      delete userState[userId];
-      try {
-        await ctx.api.sendMessage(targetId, `📨 Message from Admin:\n\n${text}`);
-        return ctx.reply(`✅ Sent to ${targetId}`, {
-          reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${targetId}`)
-        });
-      } catch (e) {
-        return ctx.reply(`❌ Failed: ${e.message}`);
-      }
-    }
-
-    if (state === "WAITING_FOR_MIN_W" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
-      await setConfig("min_withdraw", amt);
-      return ctx.reply(`✅ Min: ₹${amt}`);
-    }
-    if (state === "WAITING_FOR_MAX_W" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
-      await setConfig("max_withdraw", amt);
-      return ctx.reply(`✅ Max: ₹${amt}`);
-    }
-    if (state === "WAITING_FOR_P_CHAN" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("payout_channel", text);
-      return ctx.reply(`✅ Payout Channel: ${text}`);
-    }
-    if (state === "WAITING_FOR_SUPPORT_ID" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("support_username", text.trim());
-      return ctx.reply(`✅ Support: ${text.trim()}`);
-    }
-    if (state === "WAITING_BALANCE_FOOTER" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("balance_footer_text", text);
-      return ctx.reply(`✅ Footer updated!\n\n📌 Preview:\n${text}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings")
-      });
-    }
-    if (state === "WAITING_BALANCE_WELCOME" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("balance_welcome_text", text);
-      return ctx.reply(`✅ Welcome text updated!`);
-    }
-    if (state === "UPI_SET_ID" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("auto_upi_id", text.trim());
-      return ctx.reply(`✅ UPI ID: \`${text.trim()}\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
-    }
-    if (state === "UPI_SET_MIN" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt < 1) return ctx.reply("❌ Invalid");
-      await setConfig("auto_upi_min", amt);
-      return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
-    }
-    if (state === "UPI_SET_MAX" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt < 1) return ctx.reply("❌ Invalid");
-      await setConfig("auto_upi_max", amt);
-      return ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
-    }
-    if (state === "WAITING_ADMIN_ADD" && (await isOwner(userId))) {
-      delete userState[userId];
-      let newAdminId = parseInt(text.trim(), 10);
-      if (isNaN(newAdminId)) return ctx.reply("❌ Invalid!");
-      if (newAdminId === userId) return ctx.reply("❌ You are owner!");
-      let targetUser = await User.findOne({ userId: newAdminId });
-      if (!targetUser) return ctx.reply(`❌ User not found!`);
-      await BotAdmin.findOneAndUpdate(
-        { userId: newAdminId },
-        { addedAt: new Date(), addedBy: userId, isActive: true },
-        { upsert: true }
-      );
-      await logAdminAction(userId, ctx.from.first_name || "Owner", "Admin Added", `Added ${newAdminId}`, 0, newAdminId);
-      return ctx.reply(`✅ Admin Added!\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newAdminId}\``, {
-        parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_admins")
-      });
-    }
-    if (state.startsWith("WAITING_MSG_ADMIN_") && (await isOwner(userId))) {
-      let adminId = parseInt(state.replace("WAITING_MSG_ADMIN_", ""), 10);
-      delete userState[userId];
-      try {
-        await ctx.api.sendMessage(adminId, `💬 *Message from Owner:*\n\n${text}`, { parse_mode: "Markdown" });
-        return ctx.reply(`✅ Sent!`, { parse_mode: "Markdown" });
-      } catch (e) {
-        return ctx.reply("❌ Failed!");
-      }
-    }
-    if (state === "WAITING_NEW_OWNER" && (await isOwner(userId))) {
-      delete userState[userId];
-      let newOwnerId = parseInt(text.trim(), 10);
-      if (isNaN(newOwnerId)) return ctx.reply("❌ Invalid!");
-      let targetUser = await User.findOne({ userId: newOwnerId });
-      if (!targetUser) return ctx.reply(`❌ User not found!`);
-      let kb = new InlineKeyboard()
-        .text("✅ Yes, Transfer", `admin_transfer_confirm_${newOwnerId}`).row()
-        .text("❌ Cancel", "adm_admins");
-      return ctx.reply(`⚠️ *Confirm Transfer*\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newOwnerId}\`\n\nSure?`, {
-        parse_mode: "Markdown", reply_markup: kb
-      });
-    }
-    if (state === "SETUP_CH_WAIT" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split("|").map(p => p.trim());
-      if (parts.length !== 2) return ctx.reply("❌ Format: `ChannelID | InviteLink`", { parse_mode: "Markdown" });
-      let channelId = parts[0];
-      let inviteLink = parts[1];
-      if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply("❌ Invalid Channel ID!");
-      if (!inviteLink.startsWith("https://t.me/")) return ctx.reply("❌ Invalid Invite Link!");
-      let channelTitle = "";
-      try {
-        let chatInfo = await ctx.api.getChat(channelId);
-        channelTitle = chatInfo.title || channelId;
-        let botInfo = await ctx.api.getMe();
-        let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-        if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply("❌ Bot must be admin in channel!");
-      } catch (e) {
-        return ctx.reply(`❌ Cannot access channel: ${e.message}`);
-      }
-      await setConfig("welcome_channel_id", channelId);
-      await setConfig("welcome_channel_link", inviteLink);
-      await setConfig("welcome_channel_name", channelTitle);
-      return ctx.reply(`✅ Channel Added!\n\n📢 ID: <code>${channelId}</code>\n📛 Name: ${channelTitle}\n🔗 Link: ${inviteLink}`,
-        { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_setup_channel") });
-    }
-
-    // Channel for force join (new)
-    if (state === "ADD_CHANNEL_WAIT" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split("|").map(p => p.trim());
-      if (parts.length !== 2) return ctx.reply("❌ Format: `ChannelID | InviteLink`", { parse_mode: "Markdown" });
-      let channelId = parts[0];
-      let inviteLink = parts[1];
-      if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply("❌ Invalid Channel ID!");
-      if (!inviteLink.startsWith("https://t.me/")) return ctx.reply("❌ Invalid Invite Link!");
-      let channelTitle = "";
-      try {
-        let chatInfo = await ctx.api.getChat(channelId);
-        channelTitle = chatInfo.title || channelId;
-        let botInfo = await ctx.api.getMe();
-        let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-        if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply("❌ Bot must be admin in channel!");
-      } catch (e) {
-        return ctx.reply(`❌ Cannot access: ${e.message}`);
-      }
-      await Channel.create({ channelId, inviteLink, displayName: channelTitle, isActive: true });
-      return ctx.reply(`✅ Channel Added for Force Join!\n\n📢 ${channelTitle}\n🔗 ${inviteLink}`,
-        { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_channels") });
-    }
-
-    if (state === "WAITING_FOR_BROADCAST" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let allUsers = await User.find({});
-      global.broadcastCache = global.broadcastCache || {};
-      global.broadcastCache[userId] = { text };
-      return ctx.reply(`📢 *Broadcast Preview*\n\n${text}\n\n👥 Recipients: ${allUsers.length}\n\nConfirm?`, {
-        parse_mode: "Markdown",
-        reply_markup: new InlineKeyboard().text("✅ Confirm", "broadcast_confirm").text("❌ Cancel", "broadcast_cancel")
-      });
-    }
-
-    if (state === "WAITING_FOR_TASK_CREATE" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split("|").map(p => p.trim());
-      if (parts.length < 4) return ctx.reply("❌ Use: TaskID | Title | Reward | Link");
-      await Task.create({
-        taskId: parts[0], title: parts[1],
-        reward: parseFloat(parts[2]), link: parts[3],
-        alertChannel: await getConfig("default_task_alert_channel", "Not Set")
-      });
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "Task Created", `${parts[1]}`, parseFloat(parts[2]));
-      return ctx.reply(`✅ Task '${parts[1]}' created!`);
-    }
-
-    // Task edit handlers
-    if (state.startsWith("TASK_EDIT_TITLE_") && (await isAdmin(userId))) {
-      let taskId = state.replace("TASK_EDIT_TITLE_", "");
-      delete userState[userId];
-      await Task.updateOne({ taskId }, { title: text.trim() });
-      return ctx.reply(`✅ Title updated to: ${text.trim()}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
-    }
-    if (state.startsWith("TASK_EDIT_REWARD_") && (await isAdmin(userId))) {
-      let taskId = state.replace("TASK_EDIT_REWARD_", "");
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
-      await Task.updateOne({ taskId }, { reward: amt });
-      return ctx.reply(`✅ Reward updated to: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
-    }
-    if (state.startsWith("TASK_EDIT_LINK_") && (await isAdmin(userId))) {
-      let taskId = state.replace("TASK_EDIT_LINK_", "");
-      delete userState[userId];
-      await Task.updateOne({ taskId }, { link: text.trim() });
-      return ctx.reply(`✅ Link updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
-    }
-    if (state.startsWith("TASK_EDIT_CHANNEL_") && (await isAdmin(userId))) {
-      let taskId = state.replace("TASK_EDIT_CHANNEL_", "");
-      delete userState[userId];
-      await Task.updateOne({ taskId }, { alertChannel: text.trim() });
-      return ctx.reply(`✅ Alert Channel updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
-    }
-
-    if (state === "WAITING_REDEEM_CODES" && (await isAdmin(userId))) {
-      delete userState[userId];
-      return await saveCodes(text, "redeem", ctx);
-    }
-    if (state === "WAITING_AMAZON_CODES" && (await isAdmin(userId))) {
-      delete userState[userId];
-      return await saveCodes(text, "amazon", ctx);
-    }
-
-    if (state.startsWith("WAITING_GC_AMT_") && (await isAdmin(userId))) {
-      let code = state.replace("WAITING_GC_AMT_", "");
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
-      await GiftCode.updateOne({ code, type: "redeem" }, { amount: amt });
-      return ctx.reply(`✅ Amount: ₹${amt}`);
-    }
-    if (state.startsWith("WAITING_GC_MAX_") && (await isAdmin(userId))) {
-      let code = state.replace("WAITING_GC_MAX_", "");
-      delete userState[userId];
-      let maxUses = parseInt(text);
-      if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
-      await GiftCode.updateOne({ code, type: "redeem" }, { maxUses });
-      return ctx.reply(`✅ Max: ${maxUses}`);
-    }
-    if (state.startsWith("WAITING_AMZ_AMT_") && (await isAdmin(userId))) {
-      let code = state.replace("WAITING_AMZ_AMT_", "");
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
-      await GiftCode.updateOne({ code, type: "amazon" }, { amount: amt });
-      return ctx.reply(`✅ Amount: ₹${amt}`);
-    }
-    if (state.startsWith("WAITING_AMZ_MAX_") && (await isAdmin(userId))) {
-      let code = state.replace("WAITING_AMZ_MAX_", "");
-      delete userState[userId];
-      let maxUses = parseInt(text);
-      if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
-      await GiftCode.updateOne({ code, type: "amazon" }, { maxUses });
-      return ctx.reply(`✅ Max: ${maxUses}`);
-    }
-
-    if (state === "WAITING_FOR_USER_MESSAGE" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let parts = text.split("|").map(p => p.trim());
-      if (parts.length < 2) return ctx.reply(`❌ Format: \`UserID | Message\``, { parse_mode: "Markdown" });
-      let targetId = parseInt(parts[0], 10);
-      let message = parts.slice(1).join("|").trim();
-      if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
-      try {
-        await ctx.api.sendMessage(targetId, `📨 *Admin Message*\n\n${message}`, { parse_mode: "Markdown" });
-        return ctx.reply(`✅ Sent to \`${targetId}\`!`, { parse_mode: "Markdown" });
-      } catch (e) {
-        return ctx.reply(`❌ Failed: ${e.message}`);
-      }
-    }
-
-    if (state === "WAITING_QUICK_PAY_TAX" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let amt = parseFloat(text);
-      if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply("❌ Tax must be 0-50%!");
-      await setConfig("quick_pay_tax_percent", amt);
-      return ctx.reply(`✅ Quick Pay Tax set to: ${amt}%`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_quick_pay")
-      });
-    }
-
-    if (state === "WAITING_BOT_OFF_TEXT" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("bot_off_text", text);
-      return ctx.reply(`✅ Bot OFF message updated!\n\n📌 Preview:\n${text}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_bot_status")
-      });
-    }
-
-    if (state === "WAITING_OWNER_NAME" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("owner_display_name", text);
-      return ctx.reply(`✅ Owner Name updated!\n\n📌 New: ${text}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_edit_owner")
-      });
-    }
-
-    if (state === "WAITING_OWNER_LINK" && (await isAdmin(userId))) {
-      delete userState[userId];
-      await setConfig("owner_display_link", text);
-      let converted = convertOwnerLink(text);
-      return ctx.reply(`✅ Owner Link updated!\n\n📌 Raw: ${text}\n🔗 Converted: ${converted}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_edit_owner")
-      });
-    }
-
-    // Ban user
-    if (state === "BAN_USER_WAIT" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let targetId = parseInt(text, 10);
-      if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply("❌ User not found!");
-      targetUser.isBanned = true;
-      await targetUser.save();
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "User Banned", `${targetId}`, 0, targetId);
-      try {
-        await ctx.api.sendMessage(targetId, `🚫 You have been banned from using this bot.`);
-      } catch (e) {}
-      return ctx.reply(`✅ User ${targetId} BANNED`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban")
-      });
-    }
-    if (state === "UNBAN_USER_WAIT" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let targetId = parseInt(text, 10);
-      if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
-      let targetUser = await User.findOne({ userId: targetId });
-      if (!targetUser) return ctx.reply("❌ User not found!");
-      targetUser.isBanned = false;
-      await targetUser.save();
-      await logAdminAction(userId, ctx.from.first_name || "Admin", "User Unbanned", `${targetId}`, 0, targetId);
-      try {
-        await ctx.api.sendMessage(targetId, `✅ You have been unbanned. Welcome back!`);
-      } catch (e) {}
-      return ctx.reply(`✅ User ${targetId} UNBANNED`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban")
-      });
-    }
-
-    if (state === "GATEWAY_WAIT_NAME_ADM" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let gwName = text.trim().toUpperCase();
-      userState[userId] = `WAITING_GW_URL_${gwName}`;
-      return ctx.reply(`🌐 Gateway: ${gwName}\n\n📝 Send Gateway URL:\n\n⚠️ Placeholders: {upi} {wallet} {amount} {userId} {orderId}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_gateway_menu")
-      });
-    }
-    if (state.startsWith("WAITING_GW_URL_") && (await isAdmin(userId))) {
-      let gwName = state.replace("WAITING_GW_URL_", "");
-      delete userState[userId];
-      let url = text.trim();
-      if (!url.startsWith("http")) return ctx.reply("❌ Invalid URL!");
-      await Gateway.create({ name: gwName, url, type: "deposit", isActive: false });
-      return ctx.reply(`✅ Gateway Saved!\n\n📛 ${gwName}\n🔗 ${url.substring(0, 60)}...`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_gateway_menu")
-      });
-    }
-
-    if (state === "THEME_WAIT_ADD" && (await isAdmin(userId))) {
-      delete userState[userId];
-      let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-      let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
-      layout.push({ name: text.trim(), key: `btn_custom_${Date.now()}`, row: maxRow });
-      await setConfig("keyboard_layout", layout);
-      return ctx.reply(`✅ Button added: ${text.trim()}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme")
-      });
-    }
-    if (state.startsWith("THEME_WAIT_RENAME_") && (await isAdmin(userId))) {
-      let idx = parseInt(state.replace("THEME_WAIT_RENAME_", ""), 10);
-      delete userState[userId];
-      let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-      if (idx < 0 || idx >= layout.length) return ctx.reply("❌ Invalid");
-      layout[idx].name = text.trim();
-      await setConfig("keyboard_layout", layout);
-      return ctx.reply(`✅ Renamed to: ${text.trim()}`, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme")
-      });
-    }
   }
 
   // ============================================================
@@ -3129,17 +3147,18 @@ bot.on("message:text", async (ctx, next) => {
   };
   let matchedKey = findKeyByName(text);
 
+  // 💸 BALANCE
   if (matchedKey === "btn_balance" || /balance/i.test(text)) {
     try {
       let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
       let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+      let walletLabel = await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+      let amountLabel = await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
 
       let msg =
         `${welcomeText}\n\n` +
-        `<blockquote>` +
-        `${DEFAULT_BALANCE_TEXT.walletId} <code>${userId}</code>\n` +
-        `${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}` +
-        `</blockquote>\n\n` +
+        `${walletLabel} <code>${userId}</code>\n` +
+        `${amountLabel} ₹${user.balance.toFixed(2)}\n\n` +
         `<blockquote>${footerText}</blockquote>`;
 
       let buttons = [];
@@ -3149,7 +3168,7 @@ bot.on("message:text", async (ctx, next) => {
       }
       buttons.push([
         { text: "📊 Balance Statement", callback_data: "balance_statement" },
-        { text: "💬 Customer Support", callback_data: "customer_support" }
+        { text: "📞 Support", callback_data: "customer_support" }
       ]);
       buttons.push([
         { text: "🔄 Refresh", callback_data: "refresh_balance_only" },
@@ -3165,8 +3184,8 @@ bot.on("message:text", async (ctx, next) => {
       } catch (htmlErr) {
         let plainMsg =
           `${welcomeText}\n\n` +
-          `${DEFAULT_BALANCE_TEXT.walletId} ${userId}\n` +
-          `${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}\n\n` +
+          `${walletLabel} ${userId}\n` +
+          `${amountLabel} ₹${user.balance.toFixed(2)}\n\n` +
           footerText;
         return await ctx.reply(plainMsg, {
           reply_markup: await buildStyledKb(buttons, userId)
@@ -3176,8 +3195,8 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`❌ Error: ${err.message}`);
     }
   }
+  // 📋 TASKS
   else if (matchedKey === "btn_tasks" || /task/i.test(text)) {
-    // ✅ FIXED Task button
     try {
       let tasks = await Task.find({});
       if (!tasks || tasks.length === 0) return ctx.reply("📋 No tasks available.");
@@ -3193,10 +3212,12 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply("❌ Error loading tasks. Please try again.");
     }
   }
+  // 🎁 GIFT
   else if (matchedKey === "btn_gift" || /gift/i.test(text)) {
     userState[userId] = "WAITING_FOR_GIFT_REDEEM";
     return ctx.reply("🎁 Gift Code\n\n💸 Send Gift Code To Claim Reward!");
   }
+  // ⚡ QUICK PAY
   else if (matchedKey === "btn_quickpay" || /quick.*pay/i.test(text)) {
     userState[userId] = "QP_WAIT_USERID";
     return ctx.reply(`💸 *Quick Pay*\n\n📱 Send Receiver User ID:`, {
@@ -3204,6 +3225,7 @@ bot.on("message:text", async (ctx, next) => {
       reply_markup: new InlineKeyboard().text("❌ Cancel", "qp_cancel")
     });
   }
+  // 💳 PAYMENT METHOD
   else if (matchedKey === "btn_payout" || /payment.*method/i.test(text)) {
     let fmt = (val) => (val && val !== "Not Set" && String(val).trim() !== "") ? `\`${val}\`` : `\`Not Set\``;
     let msg =
@@ -3216,6 +3238,7 @@ bot.on("message:text", async (ctx, next) => {
       parse_mode: "Markdown"
     });
   }
+  // 🚀 WITHDRAW
   else if (matchedKey === "btn_withdraw" || /withdraw/i.test(text)) {
     let withdrawGateways = await Gateway.find({ isActive: true, type: { $in: ["withdraw", "both"] } });
     let buttons = [];
@@ -3296,8 +3319,18 @@ bot.on("message:photo", async (ctx) => {
   }
 });
 
+console.log("✅ Part F loaded — Bot commands + Text handlers");
+
 // ============================================================
-// 🎯 BALANCE CALLBACKS
+// 🔚 END OF PART F
+// ============================================================
+
+// ============================================================
+// 📦 PART G — All Callbacks (Balance, Tasks, Admin, Withdraw)
+// ============================================================
+
+// ============================================================
+// 💸 BALANCE CALLBACKS
 // ============================================================
 bot.callbackQuery("refresh_balance_only", async (ctx) => {
   let userId = ctx.from.id;
@@ -3306,22 +3339,33 @@ bot.callbackQuery("refresh_balance_only", async (ctx) => {
   try {
     let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
     let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+    let walletLabel = await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+    let amountLabel = await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
+
     let msg =
-      `${welcomeText}\n\n<blockquote>${DEFAULT_BALANCE_TEXT.walletId} <code>${userId}</code>\n${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}</blockquote>\n\n<blockquote>${footerText}</blockquote>`;
+      `${welcomeText}\n\n` +
+      `${walletLabel} <code>${userId}</code>\n` +
+      `${amountLabel} ₹${user.balance.toFixed(2)}\n\n` +
+      `<blockquote>${footerText}</blockquote>`;
+
     let buttons = [];
     let autoUPIEnabled = await getConfig("auto_upi_enabled", true);
     if (autoUPIEnabled) buttons.push([{ text: "➕ Add Fund", callback_data: "add_fund_btn" }]);
     buttons.push([
       { text: "📊 Balance Statement", callback_data: "balance_statement" },
-      { text: "💬 Customer Support", callback_data: "customer_support" }
+      { text: "📞 Support", callback_data: "customer_support" }
     ]);
     buttons.push([
       { text: "🔄 Refresh", callback_data: "refresh_balance_only" },
       { text: "💰 Live Fund", callback_data: "live_fund" }
     ]);
     buttons.push([{ text: "⚙️ Settings", callback_data: "user_settings" }]);
-    await ctx.editMessageText(msg, { reply_markup: await buildStyledKb(buttons, userId), parse_mode: "HTML" }).catch(() => {});
-  } catch (e) {}
+
+    await ctx.editMessageText(msg, {
+      reply_markup: await buildStyledKb(buttons, userId),
+      parse_mode: "HTML"
+    }).catch(() => {});
+  } catch (e) { console.error(e); }
 });
 
 bot.callbackQuery("back_to_balance", async (ctx) => {
@@ -3331,21 +3375,32 @@ bot.callbackQuery("back_to_balance", async (ctx) => {
   try {
     let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
     let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+    let walletLabel = await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+    let amountLabel = await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
+
     let msg =
-      `${welcomeText}\n\n<blockquote>${DEFAULT_BALANCE_TEXT.walletId} <code>${userId}</code>\n${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}</blockquote>\n\n<blockquote>${footerText}</blockquote>`;
+      `${welcomeText}\n\n` +
+      `${walletLabel} <code>${userId}</code>\n` +
+      `${amountLabel} ₹${user.balance.toFixed(2)}\n\n` +
+      `<blockquote>${footerText}</blockquote>`;
+
     let buttons = [];
     let autoUPIEnabled = await getConfig("auto_upi_enabled", true);
     if (autoUPIEnabled) buttons.push([{ text: "➕ Add Fund", callback_data: "add_fund_btn" }]);
     buttons.push([
       { text: "📊 Balance Statement", callback_data: "balance_statement" },
-      { text: "💬 Customer Support", callback_data: "customer_support" }
+      { text: "📞 Support", callback_data: "customer_support" }
     ]);
     buttons.push([
       { text: "🔄 Refresh", callback_data: "refresh_balance_only" },
       { text: "💰 Live Fund", callback_data: "live_fund" }
     ]);
     buttons.push([{ text: "⚙️ Settings", callback_data: "user_settings" }]);
-    await ctx.editMessageText(msg, { reply_markup: await buildStyledKb(buttons, userId), parse_mode: "HTML" }).catch(() => {});
+
+    await ctx.editMessageText(msg, {
+      reply_markup: await buildStyledKb(buttons, userId),
+      parse_mode: "HTML"
+    }).catch(() => {});
   } catch (e) {}
 });
 
@@ -3374,27 +3429,68 @@ bot.callbackQuery("balance_statement", async (ctx) => {
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
+// ============================================================
+// 📞 SUPPORT CALLBACK — Direct Redirect
+// ============================================================
 bot.callbackQuery("customer_support", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   let supportId = await getConfig("support_username", null);
   if (!supportId || supportId === "Not Set") {
-    return ctx.reply(`💬 *Support*\n\n⚠️ Not set.`, { parse_mode: "Markdown" });
+    return ctx.answerCallbackQuery({ text: "⚠️ Support ID not set!", show_alert: true });
   }
-  let link = /^\d+$/.test(supportId) ? `tg://user?id=${supportId}` : `https://t.me/${supportId.replace('@', '')}`;
-  await ctx.reply(`💬 *Support*\n\nClick below:`, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().url("💬 Contact Support", link) });
+  let link;
+  if (/^\d+$/.test(supportId)) {
+    link = `tg://user?id=${supportId}`;
+  } else {
+    link = `https://t.me/${supportId.replace('@', '')}`;
+  }
+  await ctx.reply(
+    `📞 *Support*\n\nTap below to chat with us 👇`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().url("📞 Contact Support", link)
+    }
+  );
 });
 
+// ============================================================
+// 💰 LIVE FUND CALLBACK
+// ============================================================
 bot.callbackQuery("live_fund", async (ctx) => {
   await ctx.answerCallbackQuery("💰 Loading...");
-  let users = await User.find({});
-  let totalBalance = 0;
-  users.forEach(u => { totalBalance += u.balance; });
-  let msg = `💰 *Live Fund Report*\n\n👥 Users: \`${users.length}\`\n💵 Total: \`₹${totalBalance.toFixed(2)}\``;
-  let kb = await buildStyledKb([
-    [{ text: "🔄 Refresh", callback_data: "live_fund" }],
-    [{ text: "🔙 Back", callback_data: "back_to_balance" }]
-  ], ctx.from.id);
-  await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  try {
+    const excludes = await LiveFundExclude.find({});
+    const excludedIds = excludes.map(e => e.userId);
+    const totalUsers = await User.countDocuments({});
+    const includedUsers = await User.find({ userId: { $nin: excludedIds } });
+    const includedTotal = includedUsers.reduce((s, u) => s + (u.balance || 0), 0);
+    const excludedUsers = await User.find({ userId: { $in: excludedIds } });
+    const excludedTotal = excludedUsers.reduce((s, u) => s + (u.balance || 0), 0);
+    const totalFund = includedTotal + excludedTotal;
+
+    let msg =
+      `💰 *LIVE FUND REPORT*\n\n` +
+      `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+      `       💰 *TOTAL LIVE FUND*\n\n` +
+      `       💵 *₹ ${totalFund.toFixed(2)}*\n\n` +
+      `       👥 *${totalUsers} Users*\n\n` +
+      `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+
+    let kb = new InlineKeyboard()
+      .text(`💰 Live Fund: ₹${totalFund.toFixed(2)}`, "live_fund").row()
+      .text("🔄 Refresh", "live_fund").row()
+      .text("🔙 Back to Balance", "back_to_balance");
+
+    await ctx.editMessageText(msg, {
+      reply_markup: kb,
+      parse_mode: "Markdown"
+    }).catch(() => {});
+  } catch (e) {
+    console.error("live_fund error:", e);
+    await ctx.editMessageText("❌ Error loading", {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "back_to_balance")
+    }).catch(() => {});
+  }
 });
 
 // ============================================================
@@ -3427,7 +3523,7 @@ bot.callbackQuery("add_fund_cancel", async (ctx) => {
 });
 
 // ============================================================
-// 🎯 TASK DO / APPROVE / REJECT
+// 🎯 TASK CALLBACKS
 // ============================================================
 bot.callbackQuery(/^do_task_/, async (ctx) => {
   let userId = ctx.from.id;
@@ -3438,20 +3534,19 @@ bot.callbackQuery(/^do_task_/, async (ctx) => {
     return ctx.answerCallbackQuery({ text: "❌ Already completed!", show_alert: true });
   }
   await ctx.answerCallbackQuery();
-
   let taskType = task.taskType || "photo";
   if (taskType === "refer") {
     userState[userId] = `TASK_REFER_${taskId}`;
     await ctx.editMessageText(
       `📋 *${task.title}*\n💰 Reward: ₹${task.reward}\n🔗 Link: ${task.link}\n\n📝 Send your referral code/ID:`,
       { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "canc_task") }
-    );
+    ).catch(() => {});
   } else {
     userState[userId] = `WAITING_TASK_PHOTO_${taskId}`;
     await ctx.editMessageText(
       `📋 *${task.title}*\n💰 Reward: ₹${task.reward}\n🔗 Link: ${task.link}\n\n📸 Complete the task and send screenshot:`,
       { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Cancel", "canc_task") }
-    );
+    ).catch(() => {});
   }
 });
 
@@ -3498,75 +3593,7 @@ bot.callbackQuery(/^task_rej_/, async (ctx) => {
 });
 
 // ============================================================
-// 🌐 GATEWAY USER CALLBACKS
-// ============================================================
-bot.callbackQuery(/^gw_user_/, async (ctx) => {
-  let userId = ctx.from.id;
-  let gwName = ctx.callbackQuery.data.replace("gw_user_", "");
-  let user = await getUser(userId);
-  let gateway = await Gateway.findOne({ name: gwName, isActive: true });
-  if (!gateway) return ctx.answerCallbackQuery({ text: "❌ Gateway not found", show_alert: true });
-  if (!user.gatewayName) {
-    await ctx.answerCallbackQuery();
-    userState[userId] = `GATEWAY_WAIT_NAME_${gwName}`;
-    return ctx.editMessageText(`📝 First Time Setup\n\nPlease enter your Name:`, { reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }).catch(() => {});
-  }
-  if (!user.gatewayUpi) {
-    await ctx.answerCallbackQuery();
-    userState[userId] = `GATEWAY_WAIT_UPI_${gwName}`;
-    return ctx.editMessageText(`📝 Enter your UPI ID:\n\n📌 Example: <code>yourname@upi</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }).catch(() => {});
-  }
-  await ctx.answerCallbackQuery();
-  userState[userId] = `GATEWAY_WAIT_AMOUNT_${gwName}`;
-  await ctx.editMessageText(
-    `💠 ${gateway.name} Payment\n\n👤 ${user.gatewayName}\n📱 UPI: <code>${user.gatewayUpi}</code>\n\n💰 Enter Amount:`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }
-  ).catch(() => {});
-});
-
-// ============================================================
-// 💠 UPI ADMIN APPROVE/REJECT
-// ============================================================
-bot.callbackQuery(/^upi_app_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let orderId = ctx.callbackQuery.data.replace("upi_app_", "");
-  let payment = await UPIPayment.findOne({ orderId });
-  if (!payment || payment.status === "Approved") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  payment.status = "Approved";
-  payment.verifiedAt = new Date();
-  payment.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
-  await payment.save();
-  let user = await getUser(payment.userId);
-  user.balance += payment.amount;
-  await user.save();
-  await logBalanceHistory(payment.userId, `UPI Deposit (Manual)`, payment.amount);
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "UPI Deposit Approved", `₹${payment.amount}`, payment.amount, payment.userId);
-  await ctx.answerCallbackQuery({ text: "✅ Approved!" });
-  await ctx.editMessageText((ctx.callbackQuery.message.text || "") + `\n\n✅ <b>APPROVED</b>`, { parse_mode: "HTML" }).catch(() => {});
-  const styledTitle = toSmallCaps("Deposit Auto-Approved!");
-  const styledAdded = toSmallCaps("Added:");
-  const styledUTR = toSmallCaps("UTR:");
-  try {
-    await ctx.api.sendMessage(payment.userId,
-      `💫 ✅ ${styledTitle}\n\n💰 ${styledAdded} ₹${payment.amount}\n🔐 ${styledUTR} ${payment.utr}`,
-      { parse_mode: "Markdown" });
-  } catch (e) {}
-});
-
-bot.callbackQuery(/^upi_rej_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let orderId = ctx.callbackQuery.data.replace("upi_rej_", "");
-  let payment = await UPIPayment.findOne({ orderId });
-  if (!payment || payment.status === "Rejected") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  payment.status = "Rejected";
-  payment.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
-  await payment.save();
-  await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
-  await ctx.editMessageText((ctx.callbackQuery.message.text || "") + `\n\n❌ <b>REJECTED</b>`, { parse_mode: "HTML" }).catch(() => {});
-});
-
-// ============================================================
-// ⚡ QUICK PAY CONFIRM
+// ⚡ QUICK PAY CONFIRM/CANCEL
 // ============================================================
 bot.callbackQuery("qp_cancel", async (ctx) => {
   let userId = ctx.from.id;
@@ -3590,8 +3617,11 @@ bot.callbackQuery("qp_confirm", async (ctx) => {
   let sender = await getUser(userId);
   let receiver = await User.findOne({ userId: targetId });
   let isAdminUser = await isAdmin(userId);
+  let isOwnerUser = await isOwner(userId);
+  let isPrivilegedUser = isAdminUser || isOwnerUser;
+
   if (!receiver) return ctx.answerCallbackQuery({ text: "❌ Receiver not found!", show_alert: true });
-  if (!isAdminUser && sender.balance < amount) return ctx.answerCallbackQuery({ text: "❌ Insufficient!", show_alert: true });
+  if (!isPrivilegedUser && sender.balance < amount) return ctx.answerCallbackQuery({ text: "❌ Insufficient!", show_alert: true });
 
   await ctx.answerCallbackQuery({ text: "⏳ Sending..." });
 
@@ -3605,8 +3635,17 @@ bot.callbackQuery("qp_confirm", async (ctx) => {
     receiverAmount = amount - taxAmount;
   }
 
-  let wasNegative = sender.balance < amount;
-  sender.balance -= amount;
+  // ✅ Calculate new balance
+  let newSenderBalance = sender.balance - amount;
+  let wasCapped = false;
+
+  if (isPrivilegedUser && newSenderBalance < 0) {
+    sender.balance = 0;
+    wasCapped = true;
+  } else {
+    sender.balance = newSenderBalance;
+  }
+
   receiver.balance += receiverAmount;
   await sender.save();
   await receiver.save();
@@ -3618,33 +3657,74 @@ bot.callbackQuery("qp_confirm", async (ctx) => {
     await logBalanceHistory(ownerId, `Quick Pay Tax from ${userId}`, taxAmount);
   }
 
-  if (isAdminUser && wasNegative) {
+  // Log
+  if (isPrivilegedUser && wasCapped) {
     await logBalanceHistory(sender.userId, `Admin Add Fund - Quick Pay to ${receiver.userId}`, -amount);
-  } else if (isAdminUser) {
+  } else if (isPrivilegedUser) {
     await logBalanceHistory(sender.userId, `Admin Quick Pay to ${receiver.userId}`, -amount);
   } else {
     await logBalanceHistory(sender.userId, `Quick Pay to ${receiver.userId}`, -amount);
   }
-  await logBalanceHistory(receiver.userId, `Quick Pay from ${isAdminUser ? "Admin" : sender.userId}`, receiverAmount);
+  await logBalanceHistory(receiver.userId, `Quick Pay from ${isPrivilegedUser ? "Admin" : sender.userId}`, receiverAmount);
 
-  let successMsg;
-  if (isAdminUser && wasNegative) {
-    successMsg = `✅ Payment Successful!\n\n👤 To: ${receiver.firstName || "User"}\n🆔 <code>${receiver.userId}</code>\n💰 Amount: ₹${amount.toFixed(2)}\n\n⚠️ Admin Add Fund Used\n📊 Admin Balance: ${sender.balance < 0 ? "-" : ""}₹${Math.abs(sender.balance).toFixed(2)}`;
-  } else {
-    successMsg = `✅ Payment Successful!\n\n👤 To: ${receiver.firstName || "User"}\n🆔 <code>${receiver.userId}</code>\n💰 Amount: ₹${amount.toFixed(2)}` +
-      (taxAmount > 0 ? `\n💸 Tax: ₹${taxAmount.toFixed(2)}\n💵 Receiver Gets: ₹${receiverAmount.toFixed(2)}` : '') +
-      `\n\n💵 New Balance: ₹${sender.balance.toFixed(2)}`;
-  }
-  await ctx.editMessageText(successMsg, { parse_mode: "HTML" }).catch(() => {});
+  // ✅ SUCCESS MESSAGE
+  let receiverName = receiver.firstName || "User";
+  let yourBalance = sender.balance <= 0 ? "Add Fund ➕" : `₹${sender.balance.toFixed(2)}`;
+  let receiverBalance = receiver.balance <= 0 ? "Add Fund ➕" : `₹${receiver.balance.toFixed(2)}`;
+
+  let successMsg =
+    `✅ *PAYMENT SUCCESSFUL!*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👤 To: ${receiverName}\n` +
+    `🆔 <code>${receiver.userId}</code>\n` +
+    `💰 Amount: <code>₹${amount.toFixed(2)}</code>` +
+    (taxAmount > 0 ? `\n💸 Tax: <code>₹${taxAmount.toFixed(2)}</code>\n💵 Receiver Gets: <code>₹${receiverAmount.toFixed(2)}</code>` : '') +
+    `\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📊 *BALANCE UPDATE*\n\n` +
+    `┌─────────────────────────────┐\n` +
+    `│  💵 *Your Balance*            │\n` +
+    `│     <code>${yourBalance}</code>                  │\n` +
+    `└─────────────────────────────┘\n\n` +
+    `┌─────────────────────────────┐\n` +
+    `│  👤 *${receiverName}'s Balance*`.padEnd(30) + `│\n` +
+    `│     <code>${receiverBalance}</code>                  │\n` +
+    `└─────────────────────────────┘` +
+    (wasCapped ? `\n\n⚠️ _Admin Unlimited - Balance Reset to ₹0_` : '');
+
+  await ctx.editMessageText(successMsg, { parse_mode: "HTML" }).catch(async () => {
+    let plainMsg =
+      `✅ <b>PAYMENT SUCCESSFUL!</b>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👤 To: ${receiverName}\n` +
+      `🆔 <code>${receiver.userId}</code>\n` +
+      `💰 Amount: <code>₹${amount.toFixed(2)}</code>` +
+      (taxAmount > 0 ? `\n💸 Tax: <code>₹${taxAmount.toFixed(2)}</code>\n💵 Receiver Gets: <code>₹${receiverAmount.toFixed(2)}</code>` : '') +
+      `\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📊 <b>BALANCE UPDATE</b>\n\n` +
+      `💵 Your Balance:\n` +
+      `<code>${yourBalance}</code>\n\n` +
+      `👤 ${receiverName}'s Balance:\n` +
+      `<code>${receiverBalance}</code>` +
+      (wasCapped ? `\n\n⚠️ <i>Admin Unlimited - Balance Reset to ₹0</i>` : '');
+    await ctx.editMessageText(plainMsg, { parse_mode: "HTML" }).catch(() => {});
+  });
+
+  // Notify receiver
   try {
     await ctx.api.sendMessage(receiver.userId,
-      `🎉 Payment Received!\n\n👤 From: ${isAdminUser ? "Admin" : (sender.firstName || "User")}\n🆔 <code>${sender.userId}</code>\n💰 ₹${receiverAmount.toFixed(2)}\n\n💵 New Balance: ₹${receiver.balance.toFixed(2)}`,
+      `🎉 *Payment Received!*\n\n` +
+      `👤 From: ${isPrivilegedUser ? "Admin" : (sender.firstName || "User")}\n` +
+      `🆔 <code>${sender.userId}</code>\n` +
+      `💰 <code>₹${receiverAmount.toFixed(2)}</code>\n\n` +
+      `💵 New Balance: <code>₹${receiver.balance.toFixed(2)}</code>`,
       { parse_mode: "HTML" });
   } catch (e) {}
 });
 
 // ============================================================
-// ⚙️ USER SETTINGS
+// ⚙️ USER SETTINGS CALLBACKS
 // ============================================================
 bot.callbackQuery("user_settings", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
@@ -3663,7 +3743,11 @@ bot.callbackQuery("uset_edit_payment", async (ctx) => {
   let userId = ctx.from.id;
   let user = await getUser(userId);
   let text =
-    `💳 Your Payment Methods\n\n👛 Wallet: <code>${user.walletAccount || "Not Set"}</code>\n⚡ UPI: <code>${user.upiId || "Not Set"}</code>\n🏦 Bank: <code>${user.bankAccNo || "Not Set"}</code>\n\n👇 Click to edit:`;
+    `💳 Your Payment Methods\n\n` +
+    `👛 Wallet: <code>${user.walletAccount || "Not Set"}</code>\n` +
+    `⚡ UPI: <code>${user.upiId || "Not Set"}</code>\n` +
+    `🏦 Bank: <code>${user.bankAccNo || "Not Set"}</code>\n\n` +
+    `👇 Click to edit:`;
   let kb = new InlineKeyboard()
     .text("👛 Edit Wallet", "uset_edit_wallet").row()
     .text("⚡ Edit UPI", "uset_edit_upi").row()
@@ -3719,7 +3803,6 @@ bot.callbackQuery(/^uset_kb_edit_/, async (ctx) => {
   let kb = new InlineKeyboard()
     .text("📝 Rename", `uset_kb_rename_${idx}`).row()
     .text("⬆️ Up", `uset_kb_up_${idx}`).text("⬇️ Down", `uset_kb_down_${idx}`).row()
-    .text("⬅️ Left", `uset_kb_left_${idx}`).text("➡️ Right", `uset_kb_right_${idx}`).row()
     .text("🗑️ Remove", `uset_kb_del_${idx}`).row()
     .text("🔙 Back", "uset_reply_kb");
   await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
@@ -3755,32 +3838,6 @@ bot.callbackQuery(/^uset_kb_down_/, async (ctx) => {
   await rerender(ctx, "uset_reply_kb");
 });
 
-bot.callbackQuery(/^uset_kb_left_/, async (ctx) => {
-  let userId = ctx.from.id;
-  let idx = parseInt(ctx.callbackQuery.data.replace("uset_kb_left_", ""), 10);
-  let layout = await getCurrentKeyboardLayoutForUser(userId);
-  if (idx <= 0 || idx >= layout.length) return;
-  if (layout[idx].row === layout[idx - 1].row) {
-    let temp = layout[idx]; layout[idx] = layout[idx - 1]; layout[idx - 1] = temp;
-    await saveUserKeyboard(userId, layout);
-  }
-  ctx.answerCallbackQuery({ text: "⬅️ Moved" });
-  await rerender(ctx, "uset_reply_kb");
-});
-
-bot.callbackQuery(/^uset_kb_right_/, async (ctx) => {
-  let userId = ctx.from.id;
-  let idx = parseInt(ctx.callbackQuery.data.replace("uset_kb_right_", ""), 10);
-  let layout = await getCurrentKeyboardLayoutForUser(userId);
-  if (idx >= layout.length - 1) return;
-  if (layout[idx].row === layout[idx + 1].row) {
-    let temp = layout[idx]; layout[idx] = layout[idx + 1]; layout[idx + 1] = temp;
-    await saveUserKeyboard(userId, layout);
-  }
-  ctx.answerCallbackQuery({ text: "➡️ Moved" });
-  await rerender(ctx, "uset_reply_kb");
-});
-
 bot.callbackQuery(/^uset_kb_del_/, async (ctx) => {
   let userId = ctx.from.id;
   let idx = parseInt(ctx.callbackQuery.data.replace("uset_kb_del_", ""), 10);
@@ -3797,83 +3854,6 @@ bot.callbackQuery("uset_reset_kb", async (ctx) => {
   let userId = ctx.from.id;
   await UserPreference.updateOne({ userId }, { $unset: { keyboardLayout: "" } });
   await rerender(ctx, "uset_reply_kb");
-});
-
-bot.callbackQuery("uset_inline_kb", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  let text = `🎨 Inline Buttons\n\n👇 Which menu to customize?`;
-  let kb = new InlineKeyboard()
-    .text("💰 Balance Menu", "uset_inline_balance").row()
-    .text("🚀 Withdraw Menu", "uset_inline_withdraw").row()
-    .text("💳 Payment Menu", "uset_inline_payment").row()
-    .text("🔙 Back", "user_settings");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-});
-
-bot.callbackQuery(/^uset_inline_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  let menuKey = ctx.callbackQuery.data.replace("uset_inline_", "");
-  let styleMap = await getConfig("inline_button_styles", {});
-  let buttons = [];
-  if (menuKey === "balance") {
-    buttons = [
-      { key: "add_fund_btn", name: "➕ Add Fund" },
-      { key: "balance_statement", name: "📊 Statement" },
-      { key: "customer_support", name: "💬 Support" },
-      { key: "refresh_balance_only", name: "🔄 Refresh" },
-      { key: "live_fund", name: "💰 Live Fund" }
-    ];
-  } else if (menuKey === "withdraw") {
-    buttons = [
-      { key: "wd_wallet", name: "🌐 Wallet" },
-      { key: "wd_upi", name: "⚡ UPI" },
-      { key: "wd_bank", name: "🏦 Bank" },
-      { key: "canc_wd", name: "❌ Cancel" }
-    ];
-  } else if (menuKey === "payment") {
-    buttons = [
-      { key: "set_wallet", name: "🌐 Wallet" },
-      { key: "set_upi", name: "⚡ UPI" },
-      { key: "set_bank", name: "🏦 Bank" }
-    ];
-  }
-  let text = `🎨 ${menuKey.toUpperCase()} Menu\n\n👇 Click a button to set color:`;
-  let kb = new InlineKeyboard();
-  for (let b of buttons) {
-    let cur = styleMap[b.key] || "none";
-    let icon = (cur !== "none" && INLINE_STYLE_COLORS[cur]) ? INLINE_STYLE_COLORS[cur].emoji : "⚫";
-    kb.text(`${icon} ${b.name}`, `uset_color_${b.key}`).row();
-  }
-  kb.text("🔙 Back", "uset_inline_kb");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-});
-
-bot.callbackQuery(/^uset_color_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  let btnKey = ctx.callbackQuery.data.replace("uset_color_", "");
-  let styleMap = await getConfig("inline_button_styles", {});
-  let cur = styleMap[btnKey] || "none";
-  let text = `🎨 Set Color\n\n📌 ${btnKey}\n🎨 Current: ${cur}`;
-  let kb = new InlineKeyboard();
-  for (let [key, info] of Object.entries(INLINE_STYLE_COLORS)) {
-    let mark = cur === key ? "✅ " : "";
-    kb.text(`${mark}${info.emoji} ${info.label}`, `uset_setcolor_${btnKey}_${key}`).row();
-  }
-  kb.text(`${cur === "none" ? "✅ " : ""}⚫ Default`, `uset_setcolor_${btnKey}_none`).row();
-  kb.text("🔙 Back", "uset_inline_kb");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-});
-
-bot.callbackQuery(/^uset_setcolor_/, async (ctx) => {
-  let parts = ctx.callbackQuery.data.replace("uset_setcolor_", "").split("_");
-  let colorKey = parts.pop();
-  let btnKey = parts.join("_");
-  let styleMap = await getConfig("inline_button_styles", {});
-  if (colorKey === "none") delete styleMap[btnKey];
-  else if (INLINE_STYLE_COLORS[colorKey]) styleMap[btnKey] = colorKey;
-  await setConfig("inline_button_styles", styleMap);
-  ctx.answerCallbackQuery({ text: "✅ Applied!" });
-  await rerender(ctx, "uset_inline_kb");
 });
 
 bot.callbackQuery("uset_reset", async (ctx) => {
@@ -3950,16 +3930,19 @@ bot.callbackQuery("wd_add_wallet_start", async (ctx) => {
   userState[ctx.from.id] = "WD_ADD_WALLET";
   await ctx.editMessageText(`👛 Add Wallet\n\n📝 Send your wallet number:`, { reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }).catch(() => {});
 });
+
 bot.callbackQuery("wd_add_upi_start", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   userState[ctx.from.id] = "WD_ADD_UPI";
   await ctx.editMessageText(`⚡ Add UPI\n\n📝 Send your UPI ID:\n\n📌 Example: <code>yourname@upi</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }).catch(() => {});
 });
+
 bot.callbackQuery("wd_add_bank_start", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   userState[ctx.from.id] = "WD_ADD_BANK_ACCNO";
   await ctx.editMessageText(`🏦 Add Bank\n\n📝 Send Account Number:`, { reply_markup: new InlineKeyboard().text("❌ Cancel", "back_to_balance") }).catch(() => {});
 });
+
 bot.callbackQuery(/^wd_add_gw_start_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   let userId = ctx.from.id;
@@ -3973,11 +3956,13 @@ bot.callbackQuery("set_wallet", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   await ctx.reply(`🌐 *Send Wallet ID*`, { parse_mode: "Markdown", reply_markup: new Keyboard().text("❌ Cancel").resized() });
 });
+
 bot.callbackQuery("set_upi", async (ctx) => {
   userState[ctx.from.id] = "SET_UPI_ACC";
   ctx.answerCallbackQuery().catch(() => {});
   await ctx.reply(`⚡ *Send UPI Address*`, { parse_mode: "Markdown", reply_markup: new Keyboard().text("❌ Cancel").resized() });
 });
+
 bot.callbackQuery("set_bank", async (ctx) => {
   userState[ctx.from.id] = "SET_BANK_ACCNO";
   ctx.answerCallbackQuery().catch(() => {});
@@ -4135,212 +4120,18 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.").catch(() => {});
 });
 
-// ============================================================
-// 💰 WITHDRAWAL APPROVE/REJECT — Professional Design
-// ============================================================
-bot.callbackQuery(/^wd_app_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let wId = ctx.callbackQuery.data.replace("wd_app_", "");
-  let wd = await Withdrawal.findOne({ withdrawalId: wId });
-  if (!wd || wd.status !== "Pending") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  await ctx.answerCallbackQuery({ text: "⏳ Processing..." });
-
-  let txnNumber = generateTxnNumber();
-  let gateway = await Gateway.findOne({ isActive: true });
-  let gatewayName = gateway ? gateway.name : "TASK EARN";
-
-  if (gateway) {
-    let result = await processGatewayPayment({
-      gatewayKey: gateway.name,
-      upi: wd.details, wallet: wd.details, number: wd.details,
-      amount: wd.amount,
-      comment: `Withdrawal #${wd.userWithdrawalCount}`,
-      userId: wd.userId, orderId: wd.withdrawalId
-    });
-    if (result.status === 'success') {
-      txnNumber = result.txnNumber || txnNumber;
-    } else if (result.status === 'error') {
-      return ctx.editMessageText(
-        `❌ *Gateway Error!*\n\n🌐 ${gateway.name}\n📛 ${result.message}\n\n💡 Retry or Manual approve.`,
-        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔁 Retry", `wd_app_${wId}`).text("✅ Manual", `wd_manual_${wId}`) }
-      ).catch(() => {});
-    }
-  }
-
-  wd.status = "Approved";
-  wd.gateway = gatewayName;
-  wd.txnNumber = txnNumber;
-  wd.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
-  wd.approvedAt = new Date();
-  await wd.save();
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Withdrawal Approved", `WD #${wId}`, wd.amount, wd.userId);
-
-  let maskedUPI = halfMaskDetails(wd.method, wd.details);
-  let { tax, afterTax } = calculateTax(wd.amount);
-  let displayCount = wd.userWithdrawalCount || 1;
-
-  let userLink = `<a href="tg://user?id=${wd.userId}">${wd.userId}</a>`;
-  let hashTag = `<code>(#${displayCount})</code>`;
-
-  let serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-  if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
-  let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
-
-  const statusKb = new InlineKeyboard()
-    .url("✅ Check Status", receiptUrl);
-
-  let updatedMsg =
-    `⚠️ <b>New ${wd.method.toUpperCase()} Payout Request!</b> ${hashTag}\n\n` +
-    `👤 <b>User:</b> ${userLink}\n` +
-    `💰 <b>Request Amount:</b> <code>₹${wd.amount}</code>\n` +
-    `💸 <b>After Tax (${tax.toFixed(1)}%):</b> <code>₹${afterTax}</code>\n` +
-    `${wd.method === 'UPI' ? '⚡' : wd.method === 'Bank' ? '🏦' : '🌐'} <b>${wd.method}:</b> <code>${maskedUPI}</code>\n` +
-    `🔗 <b>Transaction ID:</b> <code>${txnNumber}</code>\n\n` +
-    `📊 <b>Status:</b> ✅ Approved\n` +
-    `✔️ <i>By ${wd.approvedBy} at ${formatDateTime(wd.approvedAt)}</i>`;
-
-  await ctx.editMessageText(updatedMsg, { parse_mode: "HTML", reply_markup: statusKb }).catch(() => {});
-
-  let accountType = wd.method;
-  try {
-    await ctx.api.sendMessage(wd.userId,
-      `🎁Your Withdrawal of Rs.${wd.amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
-      `🏦 Destination ==> ${wd.details}\n` +
-      `🚀Transaction ID ==> ${txnNumber}\n` +
-      `🗓 Date ==> ${formatDateTime(wd.approvedAt)}\n\n` +
-      `✅Please Check Your ${accountType} Account!`,
-      { reply_markup: new InlineKeyboard().url("🚀 Check Status", receiptUrl) });
-  } catch (e) {}
-});
-
-bot.callbackQuery(/^wd_manual_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let wId = ctx.callbackQuery.data.replace("wd_manual_", "");
-  let wd = await Withdrawal.findOne({ withdrawalId: wId });
-  if (!wd || wd.status !== "Pending") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  await ctx.answerCallbackQuery({ text: "✅ Manual" });
-
-  let txnNumber = generateTxnNumber();
-  wd.status = "Approved";
-  wd.txnNumber = txnNumber;
-  wd.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
-  wd.approvedAt = new Date();
-  await wd.save();
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Withdrawal Manual Approve", `WD #${wId}`, wd.amount, wd.userId);
-
-  let maskedUPI = halfMaskDetails(wd.method, wd.details);
-  let displayCount = wd.userWithdrawalCount || 1;
-  let userLink = `<a href="tg://user?id=${wd.userId}">${wd.userId}</a>`;
-  let hashTag = `<code>(#${displayCount})</code>`;
-
-  let serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-  let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
-  const statusKb = new InlineKeyboard().url("✅ Check Status", receiptUrl);
-
-  await ctx.editMessageText(
-    `⚠️ <b>New ${wd.method.toUpperCase()} Payout Request!</b> ${hashTag}\n\n` +
-    `👤 <b>User:</b> ${userLink}\n` +
-    `💰 <b>Request Amount:</b> <code>₹${wd.amount}</code>\n` +
-    `${wd.method === 'UPI' ? '⚡' : wd.method === 'Bank' ? '🏦' : '🌐'} <b>${wd.method}:</b> <code>${maskedUPI}</code>\n` +
-    `🔗 <b>Transaction ID:</b> <code>${txnNumber}</code>\n\n` +
-    `📊 <b>Status:</b> ✅ Approved\n` +
-    `✔️ <i>By ${wd.approvedBy} at ${formatDateTime(wd.approvedAt)}</i>`,
-    { parse_mode: "HTML", reply_markup: statusKb }
-  ).catch(() => {});
-
-  try {
-    await ctx.api.sendMessage(wd.userId,
-      `🎁Your Withdrawal of Rs.${wd.amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
-      `🏦 Destination ==> ${wd.details}\n` +
-      `🚀Transaction ID ==> ${txnNumber}\n\n` +
-      `✅Please Check Your ${wd.method} Account!`,
-      { reply_markup: new InlineKeyboard().url("🚀 Check Status", receiptUrl) });
-  } catch (e) {}
-});
-
-bot.callbackQuery(/^wd_rej_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let wId = ctx.callbackQuery.data.replace("wd_rej_", "");
-  let wd = await Withdrawal.findOne({ withdrawalId: wId });
-  if (!wd || wd.status !== "Pending") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-
-  wd.status = "Rejected";
-  wd.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
-  wd.approvedAt = new Date();
-  await wd.save();
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Withdrawal Rejected", `WD #${wId}`, wd.amount, wd.userId);
-
-  let user = await getUser(wd.userId);
-  user.balance += wd.amount;
-  user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
-  await user.save();
-  await logBalanceHistory(wd.userId, `Withdrawal Refunded`, wd.amount);
-
-  await ctx.answerCallbackQuery({ text: "Rejected & Refunded!" });
-
-  let maskedUPI = halfMaskDetails(wd.method, wd.details);
-  let displayCount = wd.userWithdrawalCount || 1;
-  let userLink = `<a href="tg://user?id=${wd.userId}">${wd.userId}</a>`;
-  let hashTag = `<code>(#${displayCount})</code>`;
-
-  let serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-  let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
-  const statusKb = new InlineKeyboard().url("❌ Rejected - Cancelled", receiptUrl);
-
-  await ctx.editMessageText(
-    `⚠️ <b>New ${wd.method.toUpperCase()} Payout Request!</b> ${hashTag}\n\n` +
-    `👤 <b>User:</b> ${userLink}\n` +
-    `💰 <b>Request Amount:</b> <code>₹${wd.amount}</code>\n` +
-    `${wd.method === 'UPI' ? '⚡' : wd.method === 'Bank' ? '🏦' : '🌐'} <b>${wd.method}:</b> <code>${maskedUPI}</code>\n` +
-    `🔗 <b>Transaction ID:</b> <code>-</code>\n\n` +
-    `📊 <b>Status:</b> ❌ Rejected\n` +
-    `✖️ <i>By ${wd.approvedBy} at ${formatDateTime(wd.approvedAt)}</i>`,
-    { parse_mode: "HTML", reply_markup: statusKb }
-  ).catch(() => {});
-
-  try {
-    await ctx.api.sendMessage(wd.userId,
-      `❌ *Withdrawal Rejected!*\n\n💰 ₹${wd.amount}\n\n💵 Refunded: ₹${user.balance.toFixed(2)}`,
-      { parse_mode: "Markdown" });
-  } catch (e) {}
-});
+console.log("✅ Part G loaded — Balance + Tasks + Withdraw callbacks");
 
 // ============================================================
-// 📢 BROADCAST
+// 🔚 END OF PART G
 // ============================================================
-bot.callbackQuery("broadcast_confirm", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let userId = ctx.from.id;
-  let cacheObj = global.broadcastCache?.[userId];
-  if (!cacheObj) return ctx.answerCallbackQuery({ text: "❌ Expired!", show_alert: true });
-  delete userState[userId];
-  delete global.broadcastCache[userId];
-  await ctx.answerCallbackQuery({ text: "⏳ Broadcasting..." });
-  let allUsers = await User.find({});
-  let count = 0, failed = 0;
-  for (let u of allUsers) {
-    try {
-      await ctx.api.sendMessage(u.userId, cacheObj.text);
-      count++;
-      await new Promise(r => setTimeout(r, 50));
-    } catch (e) { failed++; }
-  }
-  await ctx.editMessageText(
-    `✅ *Broadcast Complete!*\n\n✅ Sent: ${count}\n❌ Failed: ${failed}\n👥 Total: ${allUsers.length}`,
-    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }
-  ).catch(() => {});
-});
-
-bot.callbackQuery("broadcast_cancel", async (ctx) => {
-  ctx.answerCallbackQuery({ text: "❌ Cancelled!" }).catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  delete userState[ctx.from.id];
-  if (global.broadcastCache) delete global.broadcastCache[ctx.from.id];
-  await ctx.editMessageText("❌ *Cancelled.*", { parse_mode: "Markdown" }).catch(() => {});
-});
 
 // ============================================================
-// 🚀 /ADMIN COMMAND & PANEL
+// 📦 PART H — Admin Panel + All Admin Callbacks
+// ============================================================
+
+// ============================================================
+// 🚀 /ADMIN COMMAND
 // ============================================================
 bot.command("admin", async (ctx) => {
   let userId = ctx.from.id;
@@ -4375,6 +4166,7 @@ async function sendAdminPanel(ctx, edit = true) {
   let activeGw = await Gateway.findOne({ isActive: true });
   let quickTaxEnabled = await getConfig("quick_pay_tax_enabled", false);
   let quickTaxPercent = await getConfig("quick_pay_tax_percent", 0);
+  let upEnabled = await getConfig("ultrapay_enabled", false);
 
   let panelText =
     `👑 *Admin Panel*\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -4383,6 +4175,7 @@ async function sendAdminPanel(ctx, edit = true) {
     `📢 *Payout:* \`${pChannel}\`\n` +
     `💬 *Support:* \`${supportId}\`\n` +
     `🌐 *Gateway:* ${activeGw ? "`" + activeGw.name + "`" : "❌ None"}\n` +
+    `💳 *UltraPay:* ${upEnabled ? "🟢 ON" : "🔴 OFF"}\n` +
     `✅ *Verify:* ${verifyEnabled ? "🟢 ON" : "🔴 OFF"}\n` +
     `💠 *Auto UPI:* ${autoUPIEnabled ? "🟢 ON" : "🔴 OFF"}\n` +
     `  🤖 Auto: ${autoVerify ? "🟢" : "🔴"} | ✋ Manual: ${manualVerify ? "🟢" : "🔴"}\n` +
@@ -4392,73 +4185,52 @@ async function sendAdminPanel(ctx, edit = true) {
 
   let rawButtons = [
     [
-      { text: "👮 Add/Remove Admins Permission", callback_data: "adm_permissions" }
+      { text: "🔍 Find User Details", callback_data: "adm_find_user" },
+      { text: "📊 Statistics", callback_data: "adm_stats" }
     ],
     [
-      { text: "👑 Transfer Ownership", callback_data: "adm_transfer" },
-      { text: "💰 Set Withdraw Tax", callback_data: "adm_set_wd_tax" }
+      { text: "💰 Balance", callback_data: "adm_balance_menu" },
+      { text: "👥 Users", callback_data: "adm_users_menu" }
     ],
     [
-      { text: "💠 Verification Mode", callback_data: "adm_verification_mode" }
+      { text: "📋 Tasks", callback_data: "adm_tasks_manager" },
+      { text: "🎁 Gifts", callback_data: "adm_create_gift" }
     ],
     [
-      { text: "👮 Manage Admins", callback_data: "adm_admins" },
-      { text: "🚫 Manage Ban Users", callback_data: "adm_manage_ban" }
+      { text: "📧 Amazon", callback_data: "adm_amazon" },
+      { text: "🎁 Redeem", callback_data: "adm_redeem" }
     ],
     [
-      { text: `🤖 Bot Status ~ ${botActive ? "✅ Active" : "❌ Off"}`, callback_data: "adm_bot_status" }
-    ],
-    [
-      { text: "✅ Verify User", callback_data: "adm_verify_user" },
-      { text: "🚫 Manage Ban Wallet", callback_data: "adm_manage_ban_wallet" }
-    ],
-    [
-      { text: "💸 Withdraw Status", callback_data: "adm_wd_status" }
-    ],
-    [
-      { text: "➕ Add Balance", callback_data: "adm_add_bal" },
-      { text: "➖ Remove Balance", callback_data: "adm_rem_bal" }
-    ],
-    [
-      { text: "⚡ Manage Your Channels", callback_data: "adm_manage_channels" }
-    ],
-    [
-      { text: "⚠️ Reset Balance", callback_data: "adm_reset_all_bal" },
-      { text: "🎨 Customize Your Theme", callback_data: "adm_customize_theme" }
-    ],
-    [
-      { text: "💳 Manage Add Fund", callback_data: "adm_addfund_menu" }
+      { text: "📊 Add Fund", callback_data: "adm_addfund_menu" },
+      { text: "🌐 Gateway", callback_data: "adm_gateway_menu" }
     ],
     [
       { text: "📢 Broadcast", callback_data: "adm_broadcast" },
       { text: "💬 Talk With User", callback_data: "adm_talk_user" }
     ],
     [
-      { text: "📊 Manage Withdraw", callback_data: "adm_manage_withdraw" }
+      { text: "👑 Admins", callback_data: "adm_admins" },
+      { text: "✅ Verification", callback_data: "adm_verification" }
     ],
     [
-      { text: "🔍 Find User Details", callback_data: "adm_find_user" },
-      { text: "📊 Statistics", callback_data: "adm_stats" }
+      { text: "🎨 Customize Texts", callback_data: "adm_customize_texts" },
+      { text: "🎨 Theme", callback_data: "adm_customize_theme" }
     ],
     [
-      { text: `⚡ Quick Pay ~ ${quickTaxEnabled ? `🟢 ${quickTaxPercent}%` : "❌ Not Set"}`, callback_data: "adm_quick_pay" }
+      { text: "🖌️ Inline Styles", callback_data: "adm_edit_styles" },
+      { text: "💸 Withdraw Toggle", callback_data: "adm_withdraw_toggle" }
     ],
     [
-      { text: "🏦 Gateway Setup", callback_data: "adm_gateway_menu" },
-      { text: "🎁 Gift Codes", callback_data: "adm_create_gift" }
+      { text: "💰 Live Fund", callback_data: "adm_live_fund" },
+      { text: "📞 Setup Support", callback_data: "adm_setup_support" }
     ],
     [
-      { text: "🔔 New User Notification", callback_data: "adm_user_notif" }
+      { text: "💳 Ultra Pay", callback_data: "adm_ultrapay" },
+      { text: "📢 Setup Channel", callback_data: "adm_setup_channel" }
     ],
     [
-      { text: "🎁 Manage Redeem Codes", callback_data: "adm_redeem" },
-      { text: "📧 Manage Amazon Codes", callback_data: "adm_amazon" }
-    ],
-    [
-      { text: "📋 Manage Tasks", callback_data: "adm_tasks_manager" }
-    ],
-    [
-      { text: "🚀 Recent Admin Actions", callback_data: "adm_recent_actions" }
+      { text: "⚙️ Settings", callback_data: "adm_settings" },
+      { text: "🔄 Reset Balance", callback_data: "adm_reset_all_bal" }
     ],
     [{ text: "🔄 Refresh Panel", callback_data: "admin" }]
   ];
@@ -4481,182 +4253,326 @@ bot.callbackQuery("admin", async (ctx) => {
 bot.callbackQuery("noop", async (ctx) => ctx.answerCallbackQuery());
 
 // ============================================================
-// 👮 ADMIN PERMISSIONS PANEL
+// 🔍 FIND USER
 // ============================================================
-bot.callbackQuery("adm_permissions", async (ctx) => {
+bot.callbackQuery("adm_find_user", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  await renderPermissionsPanel(ctx);
+  userState[ctx.from.id] = "WAITING_FOR_TRACKER_ID";
+  await ctx.editMessageText("🔍 Send User ID:", { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }).catch(() => {});
 });
 
-async function renderPermissionsPanel(ctx) {
-  const ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
-  const ownerUser = await User.findOne({ userId: ownerId });
-  const admins = await BotAdmin.find({}).sort({ addedAt: -1 });
-  let text = `👮 *Admin Permissions*\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
-  text += `👑 *Owner:* ${ownerUser?.firstName || "Owner"}\n🆔 \`${ownerId}\`\n\n`;
-  text += `📊 *Total Admins:* ${admins.length}\n\n👇 Click to toggle:`;
-  let kb = new InlineKeyboard();
-  for (let a of admins) {
-    let u = await User.findOne({ userId: a.userId });
-    let name = u ? (u.firstName || "User") : "Unknown";
-    let status = a.isActive ? "🟢" : "🔴";
-    kb.text(`${status} ${name} — ${a.userId}`, `adm_perm_toggle_${a.userId}`).row();
-  }
-  kb.text("➕ Add New Admin", "admin_add").row();
-  kb.text("🔙 Back to Admin", "admin");
+// ============================================================
+// 📊 STATISTICS
+// ============================================================
+bot.callbackQuery("adm_stats", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+
+  let userCount = await User.countDocuments({});
+  let totalBalanceAgg = await User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]);
+  let totalWd = await Withdrawal.countDocuments({ status: "Approved" });
+  let totalWdAmtAgg = await Withdrawal.aggregate([{ $match: { status: "Approved" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]);
+  let pendingWd = await Withdrawal.countDocuments({ status: "Pending" });
+  let taskCount = await Task.countDocuments({});
+
+  let text =
+    `📊 *Statistics*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👥 *Users:* \`${userCount}\`\n` +
+    `💰 *Total Balance:* \`₹${(totalBalanceAgg[0]?.total || 0).toFixed(2)}\`\n\n` +
+    `✅ *Approved WD:* \`${totalWd}\`\n` +
+    `💵 *Total Paid:* \`₹${(totalWdAmtAgg[0]?.total || 0).toFixed(2)}\`\n` +
+    `⏳ *Pending WD:* \`${pendingWd}\`\n\n` +
+    `📋 *Tasks:* \`${taskCount}\`\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━`;
+
+  let kb = new InlineKeyboard()
+    .text("🔄 Refresh", "adm_stats").row()
+    .text("🔙 Back", "admin");
+
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+// ============================================================
+// 💰 BALANCE MENU
+// ============================================================
+bot.callbackQuery("adm_balance_menu", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+
+  let kb = await buildStyledKb([
+    [
+      { text: "➕ Add Balance", callback_data: "adm_add_bal" },
+      { text: "➖ Remove Balance", callback_data: "adm_rem_bal" }
+    ],
+    [{ text: "🔄 Reset User Balance", callback_data: "adm_reset_bal" }],
+    [{ text: "🔙 Back", callback_data: "admin" }]
+  ]);
+
+  await ctx.editMessageText(`💰 *Balance Management*`, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("adm_add_bal", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_ADD_BAL";
+  await ctx.editMessageText("➕ Add Balance:\n\nSend: `UserID Amount`", { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_balance_menu") });
+});
+
+bot.callbackQuery("adm_rem_bal", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_REM_BAL";
+  await ctx.editMessageText("➖ Remove Balance:\n\nSend: `UserID Amount`", { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_balance_menu") });
+});
+
+bot.callbackQuery("adm_reset_bal", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_RESET_BAL";
+  await ctx.editMessageText("🔄 Send UserID to reset:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_balance_menu") });
+});
+
+// ============================================================
+// 👥 USERS MENU
+// ============================================================
+bot.callbackQuery("adm_users_menu", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+
+  let totalUsers = await User.countDocuments({});
+  let banned = await User.countDocuments({ isBanned: true });
+
+  let kb = await buildStyledKb([
+    [{ text: "📊 All Users Balance", callback_data: "adm_all_balances" }],
+    [{ text: "🚫 Manage Ban Users", callback_data: "adm_manage_ban" }],
+    [{ text: "🔙 Back", callback_data: "admin" }]
+  ]);
+
+  await ctx.editMessageText(
+    `👥 *User Management*\n\nTotal: ${totalUsers}\nBanned: ${banned}`,
+    { reply_markup: kb, parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+// ============================================================
+// 📊 ALL BALANCES — Pagination 10 per page
+// ============================================================
+const USERS_PER_PAGE = 10;
+
+bot.callbackQuery("adm_all_balances", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderAllBalances(ctx, 1);
+});
+
+bot.callbackQuery(/^balpage_(\d+)$/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let page = parseInt(ctx.match[1], 10);
+  await renderAllBalances(ctx, page);
+});
+
+async function renderAllBalances(ctx, page = 1) {
+  try {
+    let users = await User.find({}).sort({ balance: -1 });
+    let totalUsers = users.length;
+    let totalBalance = users.reduce((s, u) => s + (u.balance || 0), 0);
+    let totalPages = Math.ceil(totalUsers / USERS_PER_PAGE) || 1;
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    let startIdx = (page - 1) * USERS_PER_PAGE;
+    let endIdx = startIdx + USERS_PER_PAGE;
+    let pageUsers = users.slice(startIdx, endIdx);
+
+    let text =
+      `💰 *All Users Balance*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👥 *Total Users:* \`${totalUsers}\`\n` +
+      `💵 *Total Balance:* \`₹${totalBalance.toFixed(2)}\`\n` +
+      `📄 *Page:* ${page}/${totalPages}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👇 *Tap name → Profile | ID → Copy*`;
+
+    let kb = new InlineKeyboard();
+    if (pageUsers.length === 0) {
+      kb.text("📭 No Users", "noop").row();
+    } else {
+      for (let u of pageUsers) {
+        let name = u.firstName || "User";
+        let shortName = name.length > 10 ? name.substring(0, 10) + ".." : name;
+        let balStr = `₹${u.balance.toFixed(2)}`;
+        kb
+          .text(`👤 ${shortName}`, `user_detail_${u.userId}`)
+          .text(`🆔 ${u.userId}`, `copy_id_${u.userId}`)
+          .text(`💰 ${balStr}`, "noop")
+          .row();
+      }
+    }
+
+    kb.row({ text: "🔄 Refresh", callback_data: "adm_all_balances" });
+
+    let navRow = [];
+    if (page > 1) navRow.push({ text: "◀️ Back", callback_data: `balpage_${page - 1}` });
+    else navRow.push({ text: "◀️ Back", callback_data: "admin" });
+    navRow.push({ text: `📄 ${page}/${totalPages}`, callback_data: "noop" });
+    if (page < totalPages) navRow.push({ text: "Next ▶️", callback_data: `balpage_${page + 1}` });
+    else navRow.push({ text: "✓ End", callback_data: "noop" });
+    kb.row(...navRow);
+    kb.row({ text: "🔙 Back to Admin", callback_data: "admin" });
+
+    await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  } catch (e) {
+    console.error("renderAllBalances error:", e);
+    await ctx.editMessageText("❌ Error loading balances", { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }).catch(() => {});
+  }
 }
 
-bot.callbackQuery(/^adm_perm_toggle_/, async (ctx) => {
-  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
-  let adminId = parseInt(ctx.callbackQuery.data.replace("adm_perm_toggle_", ""), 10);
-  let admin = await BotAdmin.findOne({ userId: adminId });
-  if (!admin) return ctx.answerCallbackQuery({ text: "Not found", show_alert: true });
-  admin.isActive = !admin.isActive;
-  if (!admin.isActive) { admin.disabledAt = new Date(); admin.disabledBy = ctx.from.id; }
-  else { admin.disabledAt = null; admin.disabledBy = null; }
-  await admin.save();
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Owner", admin.isActive ? "Admin Enabled" : "Admin Disabled", `${adminId}`, 0, adminId);
-  await ctx.answerCallbackQuery({ text: admin.isActive ? "🟢 Enabled" : "🔴 Disabled" });
-  await renderPermissionsPanel(ctx);
+bot.callbackQuery(/^copy_id_/, async (ctx) => {
+  let uid = ctx.callbackQuery.data.replace("copy_id_", "");
+  await ctx.answerCallbackQuery({ text: `ID: ${uid}`, show_alert: true });
 });
 
 // ============================================================
-// 👑 TRANSFER OWNERSHIP
+// 👤 USER DETAIL
 // ============================================================
-bot.callbackQuery("adm_transfer", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isOwner(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_NEW_OWNER";
-  await ctx.editMessageText(
-    `👑 *Transfer Ownership*\n\n⚠️ You will become an Admin.\n\n📝 Send new Owner User ID:`,
-    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_admins") }
-  );
-});
-
-bot.callbackQuery(/^admin_transfer_confirm_/, async (ctx) => {
-  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
-  let newOwnerId = parseInt(ctx.callbackQuery.data.replace("admin_transfer_confirm_", ""), 10);
-  let currentOwner = ctx.from.id;
-  await BotAdmin.findOneAndUpdate(
-    { userId: currentOwner },
-    { addedAt: new Date(), addedBy: currentOwner, isActive: true },
-    { upsert: true }
-  );
-  await setConfig("owner_id", newOwnerId);
-  cache.ownerId = newOwnerId;
-  await logAdminAction(currentOwner, ctx.from.first_name || "Owner", "Ownership Transferred", `New owner: ${newOwnerId}`, 0, newOwnerId);
-  await ctx.answerCallbackQuery({ text: "👑 Transferred!" });
-  await ctx.editMessageText(`✅ *Ownership Transferred!*\n\n👑 New Owner: \`${newOwnerId}\``, { parse_mode: "Markdown" }).catch(() => {});
-  try {
-    await ctx.api.sendMessage(newOwnerId, `👑 *Congratulations!*\n\nYou are now the *Owner*!\n\nUse /admin to access.`, { parse_mode: "Markdown" });
-  } catch (e) {}
-});
-
-// ============================================================
-// 💰 SET WITHDRAW TAX
-// ============================================================
-bot.callbackQuery("adm_set_wd_tax", async (ctx) => {
+bot.callbackQuery(/^user_detail_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  let cur = await getConfig("tax_percent", 0);
+  let uid = parseInt(ctx.callbackQuery.data.replace("user_detail_", ""), 10);
+  await renderUserDetail(ctx, uid);
+});
+
+async function renderUserDetail(ctx, uid) {
+  let user = await User.findOne({ userId: uid });
+  if (!user) return ctx.answerCallbackQuery({ text: "❌ User not found", show_alert: true });
+
+  let withdrawCount = await Withdrawal.countDocuments({ userId: uid });
+  let depositCount = await UPIPayment.countDocuments({ userId: uid });
+  let balanceHistoryCount = await BalanceHistory.countDocuments({ userId: uid });
+
+  let text =
+    `👤 USER DETAILS\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📛 Name: ${user.firstName || "Unknown"}\n` +
+    `🆔 User ID: <code>${user.userId}</code>\n` +
+    `📛 Username: ${user.username ? "@" + user.username : "Not Set"}\n\n` +
+    `💰 Balance: ₹${user.balance.toFixed(2)}\n` +
+    `🏧 Withdrawn: ₹${(user.withdrawnTotal || 0).toFixed(2)}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📅 Joined: ${new Date(user.createdAt).toLocaleDateString('en-IN')}`;
+
   let kb = new InlineKeyboard()
-    .text("✏️ Set Tax %", "adm_set_tax_val").row()
-    .text("🔄 Reset to 0%", "adm_reset_tax").row()
-    .text("🔙 Back", "admin");
+    .text(`💰 Withdraw (${withdrawCount})`, `uhist_wd_${uid}`).row()
+    .text(`💰 Deposit (${depositCount})`, `uhist_dp_${uid}`).row()
+    .text(`💰 Balance History (${balanceHistoryCount})`, `uhist_bal_${uid}`).row()
+    .row()
+    .text("📉 Remove Balance", `urem_bal_${uid}`)
+    .text("➕ Add Balance", `uadd_bal_${uid}`).row()
+    .text("💬 Send Message", `umsg_${uid}`).row()
+    .text("🔙 Back to List", "adm_all_balances");
+
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+}
+
+bot.callbackQuery(/^uhist_wd_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("uhist_wd_", ""), 10);
+  let withdrawals = await Withdrawal.find({ userId: uid }).sort({ createdAt: -1 }).limit(20);
+  if (withdrawals.length === 0) {
+    return ctx.editMessageText(`💰 Withdraw History\n\n🆔 ${uid}\n\n📭 No withdrawals found.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${uid}`) }).catch(() => {});
+  }
+  let text = `💰 WITHDRAW HISTORY\n\n👤 User: ${uid}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  let total = 0;
+  withdrawals.forEach((w, i) => {
+    let statusIcon = w.status === "Approved" ? "🟢" : (w.status === "Rejected" ? "🔴" : "🟡");
+    let dateStr = new Date(w.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    text += `${i + 1}. ₹${w.amount} · ${w.method}\n   ${statusIcon} ${w.status} · ${dateStr}\n\n`;
+    total += w.amount;
+  });
+  text += `━━━━━━━━━━━━━━━━━━━━\n📊 Total: ${withdrawals.length}\n💵 Sum: ₹${total.toFixed(2)}`;
+  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${uid}`) }).catch(() => {});
+});
+
+bot.callbackQuery(/^uhist_dp_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("uhist_dp_", ""), 10);
+  let deposits = await UPIPayment.find({ userId: uid }).sort({ createdAt: -1 }).limit(20);
+  if (deposits.length === 0) {
+    return ctx.editMessageText(`💰 Deposit History\n\n🆔 ${uid}\n\n📭 No deposits found.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${uid}`) }).catch(() => {});
+  }
+  let text = `💰 DEPOSIT HISTORY\n\n👤 User: ${uid}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  let total = 0;
+  deposits.forEach((d, i) => {
+    let statusIcon = d.status === "Approved" ? "🟢" : (d.status === "Rejected" ? "🔴" : "🟡");
+    let dateStr = new Date(d.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    text += `${i + 1}. ₹${d.amount} · ${d.source}\n   ${statusIcon} ${d.status}\n   UTR: \`${d.utr || "N/A"}\`\n   ${dateStr}\n\n`;
+    if (d.status === "Approved") total += d.amount;
+  });
+  text += `━━━━━━━━━━━━━━━━━━━━\n📊 Total: ${deposits.length}\n💵 Approved: ₹${total.toFixed(2)}`;
+  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${uid}`), parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^uhist_bal_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("uhist_bal_", ""), 10);
+  let history = await BalanceHistory.find({ userId: uid }).sort({ createdAt: -1 }).limit(30);
+  let user = await User.findOne({ userId: uid });
+  let text = `💰 BALANCE HISTORY\n\n👤 User: ${uid}\n💰 Current: ₹${(user?.balance || 0).toFixed(2)}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  if (history.length === 0) {
+    text += `📭 No transactions.`;
+  } else {
+    let totalIn = 0, totalOut = 0;
+    history.forEach((h) => {
+      let icon = h.amount >= 0 ? "🟢" : "🔴";
+      let sign = h.amount >= 0 ? "+" : "";
+      let dateStr = new Date(h.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      text += `${icon} ${sign}₹${h.amount.toFixed(2)} · ${h.action}\n   ${dateStr}\n\n`;
+      if (h.amount >= 0) totalIn += h.amount; else totalOut += Math.abs(h.amount);
+    });
+    text += `━━━━━━━━━━━━━━━━━━━━\n🟢 In: ₹${totalIn.toFixed(2)}\n🔴 Out: ₹${totalOut.toFixed(2)}`;
+  }
+  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${uid}`) }).catch(() => {});
+});
+
+bot.callbackQuery(/^urem_bal_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("urem_bal_", ""), 10);
+  let user = await User.findOne({ userId: uid });
+  if (!user) return ctx.answerCallbackQuery({ text: "❌ Not found", show_alert: true });
+  userState[ctx.from.id] = `UREM_WAIT_${uid}`;
   await ctx.editMessageText(
-    `💰 *Set Withdraw Tax*\n\n📊 Current: \`${cur}%\`\n\n👇 Choose action:`,
-    { reply_markup: kb, parse_mode: "Markdown" }
+    `📉 Remove Balance\n\n👤 User: ${user.firstName || "Unknown"}\n🆔 <code>${uid}</code>\n💰 Current: ₹${user.balance.toFixed(2)}\n\n📝 Send amount to remove:`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", `user_detail_${uid}`) }
   ).catch(() => {});
 });
 
-bot.callbackQuery("adm_set_tax_val", async (ctx) => {
+bot.callbackQuery(/^uadd_bal_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_TAX_PERCENT";
-  await ctx.editMessageText("📝 Send tax percentage (0-50):", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_set_wd_tax") });
-});
-
-bot.callbackQuery("adm_reset_tax", async (ctx) => {
-  ctx.answerCallbackQuery({ text: "✅ Reset!" });
-  if (!(await isAdmin(ctx.from.id))) return;
-  await setConfig("tax_percent", 0);
-  await rerender(ctx, "adm_set_wd_tax");
-});
-
-// ============================================================
-// 💠 VERIFICATION MODE
-// ============================================================
-bot.callbackQuery("adm_verification_mode", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let verifyEnabled = await getConfig("verification_enabled", false);
-  let kb = new InlineKeyboard()
-    .text(verifyEnabled ? "🔴 Turn OFF" : "🟢 Turn ON", "verify_toggle").row()
-    .text("🔙 Back", "admin");
+  let uid = parseInt(ctx.callbackQuery.data.replace("uadd_bal_", ""), 10);
+  let user = await User.findOne({ userId: uid });
+  if (!user) return ctx.answerCallbackQuery({ text: "❌ Not found", show_alert: true });
+  userState[ctx.from.id] = `UADD_WAIT_${uid}`;
   await ctx.editMessageText(
-    `💠 *Verification Mode*\n\n📊 Status: ${verifyEnabled ? "🟢 ON" : "🔴 OFF"}`,
-    { reply_markup: kb, parse_mode: "Markdown" }
+    `➕ Add Balance\n\n👤 User: ${user.firstName || "Unknown"}\n🆔 <code>${uid}</code>\n💰 Current: ₹${user.balance.toFixed(2)}\n\n📝 Send amount to add:`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", `user_detail_${uid}`) }
   ).catch(() => {});
 });
 
-bot.callbackQuery("verify_toggle", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("verification_enabled", false);
-  await setConfig("verification_enabled", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "✅ ON" : "❌ OFF" });
-  await rerender(ctx, "adm_verification_mode");
-});
-
-// ============================================================
-// 🤖 BOT STATUS
-// ============================================================
-bot.callbackQuery("adm_bot_status", async (ctx) => {
+bot.callbackQuery(/^umsg_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  let botActive = await getConfig("bot_active", true);
-  let offText = await getConfig("bot_off_text", "🤖 Bot is currently OFF\n\nPlease try again later.");
-  let kb = new InlineKeyboard()
-    .text(botActive ? "🔴 Turn OFF" : "🟢 Turn ON", "adm_bot_toggle").row()
-    .text("✏️ Edit OFF Message", "adm_edit_bot_off").row()
-    .text("🔙 Back", "admin");
+  let uid = parseInt(ctx.callbackQuery.data.replace("umsg_", ""), 10);
+  userState[ctx.from.id] = `UMSG_WAIT_${uid}`;
   await ctx.editMessageText(
-    `🤖 *Bot Status*\n\n📊 Status: ${botActive ? "🟢 Active" : "🔴 Off"}\n\n📝 OFF Message:\n${offText}`,
-    { reply_markup: kb, parse_mode: "Markdown" }
+    `💬 Send Message to User ${uid}\n\n📝 Send your message:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", `user_detail_${uid}`) }
   ).catch(() => {});
-});
-
-bot.callbackQuery("adm_bot_toggle", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("bot_active", true);
-  await setConfig("bot_active", !cur);
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", !cur ? "Bot Activated" : "Bot Deactivated", "", 0, null);
-  await ctx.answerCallbackQuery({ text: !cur ? "🟢 Bot ON" : "🔴 Bot OFF" });
-  await rerender(ctx, "adm_bot_status");
-});
-
-bot.callbackQuery("adm_edit_bot_off", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_BOT_OFF_TEXT";
-  await ctx.editMessageText("📝 Send new Bot OFF message:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_bot_status") });
-});
-
-// ============================================================
-// 👮 MANAGE ADMINS
-// ============================================================
-bot.callbackQuery("adm_admins", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  await renderPermissionsPanel(ctx);
-});
-
-bot.callbackQuery("admin_add", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isOwner(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_ADMIN_ADD";
-  await ctx.editMessageText(`➕ Add New Admin\n\n📝 Send User ID:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_admins") });
 });
 
 // ============================================================
@@ -4689,584 +4605,6 @@ bot.callbackQuery("adm_unban_user", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "UNBAN_USER_WAIT";
   await ctx.editMessageText("🔓 Send User ID to UNBAN:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_manage_ban") });
-});
-
-// ============================================================
-// 🚫 MANAGE BAN WALLET
-// ============================================================
-bot.callbackQuery("adm_manage_ban_wallet", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let bannedCount = await User.countDocuments({ walletId: { $exists: true } });
-  let kb = new InlineKeyboard()
-    .text("🚫 Ban Wallet", "adm_ban_wallet").row()
-    .text("♾️ Unlimited Wallet", "adm_unlimited_wallet").row()
-    .text("⏱️ One-Time Wallet", "adm_onetime_wallet").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(
-    `🚫 *Manage Ban Wallet*\n\n👇 Choose action:`,
-    { reply_markup: kb, parse_mode: "Markdown" }
-  ).catch(() => {});
-});
-
-bot.callbackQuery("adm_ban_wallet", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "BAN_WALLET_WAIT";
-  await ctx.editMessageText("🚫 Send Wallet ID to BAN:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_manage_ban_wallet") });
-});
-
-bot.callbackQuery("adm_unlimited_wallet", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("unlimited_wallet", false);
-  await setConfig("unlimited_wallet", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "♾️ ON" : "❌ OFF" });
-  await rerender(ctx, "adm_manage_ban_wallet");
-});
-
-bot.callbackQuery("adm_onetime_wallet", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("onetime_wallet", false);
-  await setConfig("onetime_wallet", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "⏱️ ON" : "❌ OFF" });
-  await rerender(ctx, "adm_manage_ban_wallet");
-});
-
-// ============================================================
-// 💸 WITHDRAW STATUS
-// ============================================================
-bot.callbackQuery("adm_wd_status", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let toggles = await getConfig("withdraw_toggles", { wallet: true, upi: true, bank: true });
-  let totalWd = await Withdrawal.countDocuments({ status: "Approved" });
-  let totalAmt = await Withdrawal.aggregate([
-    { $match: { status: "Approved" } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
-  let total = totalAmt[0]?.total || 0;
-
-  let text = `💸 *Withdraw Status*\n\n📊 Total Withdrawals: ${totalWd}\n💰 Total Amount: ₹${total.toFixed(2)}\n\n⚙️ Toggles:`;
-  let kb = new InlineKeyboard()
-    .text(`${toggles.wallet ? "✅" : "🔴"} Wallet`, "wt_toggle_wallet").row()
-    .text(`${toggles.upi ? "✅" : "🔴"} UPI`, "wt_toggle_upi").row()
-    .text(`${toggles.bank ? "✅" : "🔴"} Bank`, "wt_toggle_bank").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-bot.callbackQuery(/^wt_toggle_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let method = ctx.callbackQuery.data.replace("wt_toggle_", "");
-  let toggles = await getConfig("withdraw_toggles", { wallet: true, upi: true, bank: true });
-  toggles[method] = !toggles[method];
-  await setConfig("withdraw_toggles", toggles);
-  await ctx.answerCallbackQuery({ text: toggles[method] ? "✅ ON" : "🔴 OFF" });
-  await rerender(ctx, "adm_wd_status");
-});
-
-// ============================================================
-// 💰 BALANCE MENU
-// ============================================================
-bot.callbackQuery("adm_add_bal", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_FOR_ADD_BAL";
-  await ctx.editMessageText("➕ Add Balance:\n\nSend: `UserID Amount`", { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "admin") });
-});
-
-bot.callbackQuery("adm_rem_bal", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_FOR_REM_BAL";
-  await ctx.editMessageText("➖ Remove Balance:\n\nSend: `UserID Amount`", { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "admin") });
-});
-
-bot.callbackQuery("adm_reset_all_bal", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let userCount = await User.countDocuments({});
-  let kb = new InlineKeyboard().text("✅ Yes, Reset All", "adm_reset_all_confirm").row().text("❌ Cancel", "admin");
-  await ctx.editMessageText(
-    `⚠️ RESET ALL BALANCES\n\nUsers: ${userCount}\n\nThis will reset EVERYONE's balance to ₹0!\n\nConfirm?`,
-    { reply_markup: kb }
-  ).catch(() => {});
-});
-
-bot.callbackQuery("adm_reset_all_confirm", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  await ctx.answerCallbackQuery({ text: "⏳ Resetting..." });
-  await User.updateMany({}, { $set: { balance: 0, withdrawnTotal: 0 } });
-  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Reset All Balances", "All users", 0, null);
-  await ctx.editMessageText("✅ All balances reset to ₹0", { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }).catch(() => {});
-});
-
-// ============================================================
-// ⚡ MANAGE CHANNELS
-// ============================================================
-bot.callbackQuery("adm_manage_channels", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let channels = await Channel.find({ isActive: true });
-  let text = `⚡ *Manage Your Channels*\n\n📊 Total: ${channels.length}\n\n`;
-  channels.forEach((ch, i) => {
-    text += `${i + 1}. 📢 ${ch.displayName || ch.channelId}\n🔗 ${ch.inviteLink}\n\n`;
-  });
-  let kb = new InlineKeyboard()
-    .text("➕ Add Channel", "adm_add_channel").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text || "No channels", { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-bot.callbackQuery("adm_add_channel", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "ADD_CHANNEL_WAIT";
-  await ctx.editMessageText(
-    `📢 *Add Channel*\n\nFormat: <code>ChannelID | InviteLink</code>\n\nExample:\n<code>@mychannel | https://t.me/mychannel</code>\n\n📝 Send now:`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_manage_channels") }
-  );
-});
-
-// ============================================================
-// 🎨 THEME
-// ============================================================
-bot.callbackQuery("adm_customize_theme", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-  let text = "🎨 *Theme - Reply Keyboard*\n\n";
-  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
-  for (let r = 0; r <= maxRow; r++) {
-    let rowButtons = layout.filter(b => b.row === r);
-    if (rowButtons.length > 0) text += `Row ${r}: ${rowButtons.map(b => b.name).join(" | ")}\n`;
-  }
-  let kb = new InlineKeyboard();
-  for (let i = 0; i < layout.length; i++) kb.text(`✏️ ${layout[i].name}`, `theme_edit_${i}`).row();
-  kb.text("➕ Add Button", "theme_add").row();
-  kb.text("♻️ Reset to Default", "theme_reset").row();
-  kb.text("⚠️ Force Update All Users", "theme_force_update").row();
-  kb.text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-bot.callbackQuery("theme_reset", async (ctx) => {
-  ctx.answerCallbackQuery({ text: "♻️ Reset!" });
-  await setConfig("keyboard_layout", JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT)));
-  await rerender(ctx, "adm_customize_theme");
-});
-
-bot.callbackQuery("theme_force_update", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let userCount = await UserPreference.countDocuments({});
-  await ctx.editMessageText(
-    `⚠️ FORCE UPDATE ALL USERS\n\nUsers affected: ${userCount}\n\nConfirm?`,
-    { reply_markup: new InlineKeyboard().text("✅ Yes", "theme_force_confirm").text("❌ Cancel", "adm_customize_theme") }
-  ).catch(() => {});
-});
-
-bot.callbackQuery("theme_force_confirm", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let result = await UserPreference.deleteMany({});
-  await ctx.answerCallbackQuery({ text: "✅ Updated!" });
-  await ctx.editMessageText(`✅ FORCE UPDATE COMPLETE!\n\nUsers: ${result.deletedCount}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme") }).catch(() => {});
-});
-
-bot.callbackQuery("theme_add", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "THEME_WAIT_ADD";
-  await ctx.editMessageText("➕ Send new button name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme") });
-});
-
-bot.callbackQuery(/^theme_edit_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let idx = parseInt(ctx.callbackQuery.data.replace("theme_edit_", ""), 10);
-  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-  if (idx < 0 || idx >= layout.length) return;
-  let btn = layout[idx];
-  let text = `✏️ Edit Button\n\n📛 ${btn.name}\n📍 Row ${btn.row}`;
-  let kb = new InlineKeyboard()
-    .text("📝 Rename", `theme_rename_${idx}`).row()
-    .text("⬆️ Up", `theme_up_${idx}`).text("⬇️ Down", `theme_down_${idx}`).row()
-    .text("🗑️ Delete", `theme_del_${idx}`).row()
-    .text("🔙 Back", "adm_customize_theme");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-});
-
-bot.callbackQuery(/^theme_rename_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let idx = parseInt(ctx.callbackQuery.data.replace("theme_rename_", ""), 10);
-  userState[ctx.from.id] = `THEME_WAIT_RENAME_${idx}`;
-  await ctx.editMessageText("📝 Send new name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme") });
-});
-
-bot.callbackQuery(/^theme_up_/, async (ctx) => {
-  let idx = parseInt(ctx.callbackQuery.data.replace("theme_up_", ""), 10);
-  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-  if (layout[idx].row > 0) layout[idx].row -= 1;
-  await setConfig("keyboard_layout", layout);
-  ctx.answerCallbackQuery({ text: "⬆️" });
-  await rerender(ctx, "adm_customize_theme");
-});
-
-bot.callbackQuery(/^theme_down_/, async (ctx) => {
-  let idx = parseInt(ctx.callbackQuery.data.replace("theme_down_", ""), 10);
-  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-  layout[idx].row += 1;
-  await setConfig("keyboard_layout", layout);
-  ctx.answerCallbackQuery({ text: "⬇️" });
-  await rerender(ctx, "adm_customize_theme");
-});
-
-bot.callbackQuery(/^theme_del_/, async (ctx) => {
-  let idx = parseInt(ctx.callbackQuery.data.replace("theme_del_", ""), 10);
-  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
-  layout.splice(idx, 1);
-  await setConfig("keyboard_layout", layout);
-  ctx.answerCallbackQuery({ text: "🗑️" });
-  await rerender(ctx, "adm_customize_theme");
-});
-
-// ============================================================
-// 💳 ADD FUND
-// ============================================================
-bot.callbackQuery("adm_addfund_menu", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let upiId = await getConfig("auto_upi_id", "nasih@fam");
-  let minAmt = await getConfig("auto_upi_min", 5);
-  let maxAmt = await getConfig("auto_upi_max", 200);
-  let enabled = await getConfig("auto_upi_enabled", true);
-  let autoVerify = await getConfig("auto_verify_enabled", true);
-  let manualVerify = await getConfig("manual_verify_enabled", true);
-  let apiKey = await getConfig("auto_upi_api_key", "DEFAULT_SECRET_KEY");
-  let text =
-    `💠 *Auto UPI Settings*\n\n📌 UPI ID: <code>${upiId}</code>\n📉 Min: ₹${minAmt}\n📈 Max: ₹${maxAmt}\n🔐 API Key: <code>${apiKey.substring(0, 12)}...</code>\n\n` +
-    `⚙️ Mode:\n🤖 Auto: ${autoVerify ? "🟢" : "🔴"}\n✋ Manual: ${manualVerify ? "🟢" : "🔴"}\n\n🔘 Status: ${enabled ? "🟢 Active" : "🔴 Disabled"}`;
-  let kb = new InlineKeyboard()
-    .text("📌 UPI ID", "upiset_id").text("📉 Min", "upiset_min").text("📈 Max", "upiset_max").row()
-    .text(autoVerify ? "🤖 Auto: ON" : "🤖 Auto: OFF", "upiset_toggle_auto").row()
-    .text(manualVerify ? "✋ Manual: ON" : "✋ Manual: OFF", "upiset_toggle_manual").row()
-    .text("🔐 Generate API Key", "upiset_apikey").row()
-    .text(enabled ? "🔴 Turn OFF" : "🟢 Turn ON", "upiset_toggle").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery("upiset_id", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "UPI_SET_ID";
-  await ctx.reply("📌 Send new UPI ID:");
-});
-
-bot.callbackQuery("upiset_min", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "UPI_SET_MIN";
-  await ctx.reply("📉 Send min amount:");
-});
-
-bot.callbackQuery("upiset_max", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "UPI_SET_MAX";
-  await ctx.reply("📈 Send max amount:");
-});
-
-bot.callbackQuery("upiset_apikey", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let newKey = "KEY_" + crypto.randomBytes(16).toString("hex");
-  await setConfig("auto_upi_api_key", newKey);
-  await ctx.reply(`🔐 New API Key:\n\n<code>${newKey}</code>`, { parse_mode: "HTML" });
-  await rerender(ctx, "adm_addfund_menu");
-});
-
-bot.callbackQuery("upiset_toggle", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("auto_upi_enabled", true);
-  await setConfig("auto_upi_enabled", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "✅ ON" : "❌ OFF" });
-  await rerender(ctx, "adm_addfund_menu");
-});
-
-bot.callbackQuery("upiset_toggle_auto", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("auto_verify_enabled", true);
-  await setConfig("auto_verify_enabled", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "🤖 ON" : "🤖 OFF" });
-  await rerender(ctx, "adm_addfund_menu");
-});
-
-bot.callbackQuery("upiset_toggle_manual", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("manual_verify_enabled", true);
-  await setConfig("manual_verify_enabled", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "✋ ON" : "✋ OFF" });
-  await rerender(ctx, "adm_addfund_menu");
-});
-
-// ============================================================
-// 📢 SETUP CHANNEL (for /start)
-// ============================================================
-bot.callbackQuery("adm_setup_channel", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  await renderSetupChannelPanel(ctx);
-});
-
-async function renderSetupChannelPanel(ctx) {
-  let channelId = await getConfig("welcome_channel_id", null);
-  let channelLink = await getConfig("welcome_channel_link", null);
-  let channelName = await getConfig("welcome_channel_name", "Not Set");
-  let text = `📢 *Setup Channel*\n\n`;
-  if (channelId && channelLink) {
-    text += `📌 Current:\n   ID: <code>${channelId}</code>\n   Name: ${channelName}\n   Link: ${channelLink}\n\n⚙️ Actions:`;
-  } else {
-    text += `❌ No channel configured.`;
-  }
-  let kb = new InlineKeyboard();
-  if (channelId) {
-    kb.text("✏️ Change Channel", "setup_ch_add").row();
-    kb.text("👁️ Preview Start", "setup_ch_preview").row();
-    kb.text("🗑️ Remove Channel", "setup_ch_remove").row();
-  } else {
-    kb.text("➕ Add Channel", "setup_ch_add").row();
-  }
-  kb.text("🔙 Back to Admin", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-}
-
-bot.callbackQuery("setup_ch_add", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "SETUP_CH_WAIT";
-  await ctx.editMessageText(
-    `📢 Add Channel\n\nFormat: <code>ChannelID | InviteLink</code>\n\nExample:\n<code>@mychannel | https://t.me/mychannel</code>`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_setup_channel") }
-  );
-});
-
-bot.callbackQuery("setup_ch_preview", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let channelLink = await getConfig("welcome_channel_link", "https://t.me/yourchannel");
-  let previewText = `📱 PREVIEW START MESSAGE\n\n━━━━━━━━━━━━━━━━━━━━\n\n💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href="${channelLink}">CLICK HERE</a>\n\n━━━━━━━━━━━━━━━━━━━━`;
-  await ctx.editMessageText(previewText, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_setup_channel") }).catch(() => {});
-});
-
-bot.callbackQuery("setup_ch_remove", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  await setConfig("welcome_channel_id", "");
-  await setConfig("welcome_channel_link", "https://t.me/yourchannel");
-  await setConfig("welcome_channel_name", "");
-  await ctx.answerCallbackQuery({ text: "🗑️ Removed!" });
-  await renderSetupChannelPanel(ctx);
-});
-
-// ============================================================
-// 🎁 GIFT CODES
-// ============================================================
-bot.callbackQuery("adm_create_gift", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  await renderGiftCodePanel(ctx);
-});
-
-async function renderGiftCodePanel(ctx) {
-  let codes = await GiftCode.find({ type: "redeem" }).sort({ createdAt: -1 }).limit(20);
-  let totalCodes = await GiftCode.countDocuments({ type: "redeem" });
-  let text = `🎁 Gift Codes\n\nTotal: ${totalCodes}\n\n👇 Click code to edit:`;
-  let kb = new InlineKeyboard();
-  for (let c of codes) {
-    let shortCode = c.code.length > 15 ? c.code.substring(0, 15) + "..." : c.code;
-    let status = c.usedUsers.length >= c.maxUses ? "❌" : "✅";
-    kb.text(`${status} ${shortCode} — ₹${c.amount}`, `gc_view_${c.code}`).row();
-  }
-  kb.text("➕ Add Codes", "adm_redeem_add").row();
-  kb.text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-}
-
-bot.callbackQuery(/^gc_view_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("gc_view_", "");
-  let gc = await GiftCode.findOne({ code, type: "redeem" });
-  if (!gc) return;
-  let text = `🎁 Code: <code>${gc.code}</code>\n\n💰 Amount: ₹${gc.amount}\n📊 Claimed: ${gc.usedUsers.length}/${gc.maxUses}`;
-  let kb = new InlineKeyboard()
-    .text("✏️ Edit", `gc_edit_${gc.code}`)
-    .text("📋 Claim View", `gc_claim_${gc.code}`).row()
-    .text("🗑️ Delete", `gc_del_${gc.code}`).row()
-    .text("🔙 Back", "adm_create_gift");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^gc_edit_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("gc_edit_", "");
-  let gc = await GiftCode.findOne({ code, type: "redeem" });
-  if (!gc) return;
-  let kb = new InlineKeyboard()
-    .text("💰 Edit Amount", `gc_edit_amt_${code}`).row()
-    .text("👥 Edit Max Uses", `gc_edit_max_${code}`).row()
-    .text("🔙 Back", `gc_view_${code}`);
-  await ctx.editMessageText(`✏️ Edit Code\n\nCode: <code>${gc.code}</code>`, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^gc_edit_amt_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("gc_edit_amt_", "");
-  userState[ctx.from.id] = `WAITING_GC_AMT_${code}`;
-  await ctx.editMessageText(`✏️ Send new amount:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `gc_edit_${code}`) });
-});
-
-bot.callbackQuery(/^gc_edit_max_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("gc_edit_max_", "");
-  userState[ctx.from.id] = `WAITING_GC_MAX_${code}`;
-  await ctx.editMessageText(`✏️ Send new max uses:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `gc_edit_${code}`) });
-});
-
-bot.callbackQuery(/^gc_claim_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("gc_claim_", "");
-  let gc = await GiftCode.findOne({ code, type: "redeem" });
-  if (!gc || gc.usedUsers.length === 0) return ctx.editMessageText(`📋 No claims yet.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`) });
-  let text = `📋 Claims for <code>${code}</code>\n\n`;
-  for (let uid of gc.usedUsers.slice(0, 20)) {
-    let u = await User.findOne({ userId: uid });
-    text += `👤 ${u ? (u.firstName || "User") : "Unknown"} — <code>${uid}</code>\n`;
-  }
-  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`), parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^gc_del_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let code = ctx.callbackQuery.data.replace("gc_del_", "");
-  await GiftCode.deleteOne({ code, type: "redeem" });
-  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
-  await renderGiftCodePanel(ctx);
-});
-
-bot.callbackQuery("adm_redeem_add", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_REDEEM_CODES";
-  await ctx.editMessageText(
-    `➕ Add Redeem Codes\n\n📝 Format: <code>CODE AMOUNT</code>\n\nExample:\n<code>WELCOME100 100</code>`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_create_gift") }
-  );
-});
-
-// ============================================================
-// 📧 AMAZON CODES
-// ============================================================
-bot.callbackQuery("adm_amazon", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  await renderAmazonPanel(ctx);
-});
-
-async function renderAmazonPanel(ctx) {
-  let codes = await GiftCode.find({ type: "amazon" }).sort({ createdAt: -1 }).limit(20);
-  let totalCodes = await GiftCode.countDocuments({ type: "amazon" });
-  let text = `📧 Amazon Codes\n\nTotal: ${totalCodes}\n\n👇 Click code to edit:`;
-  let kb = new InlineKeyboard();
-  for (let c of codes) {
-    let shortCode = c.code.length > 15 ? c.code.substring(0, 15) + "..." : c.code;
-    let status = c.usedUsers.length >= c.maxUses ? "❌" : "✅";
-    kb.text(`${status} ${shortCode} — ₹${c.amount}`, `amz_view_${c.code}`).row();
-  }
-  kb.text("➕ Add Codes", "adm_amazon_add").row();
-  kb.text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
-}
-
-bot.callbackQuery(/^amz_view_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("amz_view_", "");
-  let gc = await GiftCode.findOne({ code, type: "amazon" });
-  if (!gc) return;
-  let text = `📧 Code: <code>${gc.code}</code>\n\n💰 Amount: ₹${gc.amount}\n📊 Claimed: ${gc.usedUsers.length}/${gc.maxUses}`;
-  let kb = new InlineKeyboard()
-    .text("✏️ Edit", `amz_edit_${gc.code}`)
-    .text("📋 Claim View", `amz_claim_${gc.code}`).row()
-    .text("🗑️ Delete", `amz_del_${gc.code}`).row()
-    .text("🔙 Back", "adm_amazon");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^amz_edit_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("amz_edit_", "");
-  let gc = await GiftCode.findOne({ code, type: "amazon" });
-  if (!gc) return;
-  let kb = new InlineKeyboard()
-    .text("💰 Edit Amount", `amz_edit_amt_${code}`).row()
-    .text("👥 Edit Max Uses", `amz_edit_max_${code}`).row()
-    .text("🔙 Back", `amz_view_${code}`);
-  await ctx.editMessageText(`✏️ Edit Amazon Code\n\nCode: <code>${gc.code}</code>`, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^amz_edit_amt_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("amz_edit_amt_", "");
-  userState[ctx.from.id] = `WAITING_AMZ_AMT_${code}`;
-  await ctx.editMessageText(`✏️ Send new amount:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `amz_edit_${code}`) });
-});
-
-bot.callbackQuery(/^amz_edit_max_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("amz_edit_max_", "");
-  userState[ctx.from.id] = `WAITING_AMZ_MAX_${code}`;
-  await ctx.editMessageText(`✏️ Send new max uses:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `amz_edit_${code}`) });
-});
-
-bot.callbackQuery(/^amz_claim_/, async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let code = ctx.callbackQuery.data.replace("amz_claim_", "");
-  let gc = await GiftCode.findOne({ code, type: "amazon" });
-  if (!gc || gc.usedUsers.length === 0) return ctx.editMessageText(`📋 No claims yet.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `amz_view_${code}`) });
-  let text = `📋 Claims for <code>${code}</code>\n\n`;
-  for (let uid of gc.usedUsers.slice(0, 20)) {
-    let u = await User.findOne({ userId: uid });
-    text += `👤 ${u ? (u.firstName || "User") : "Unknown"} — <code>${uid}</code>\n`;
-  }
-  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `amz_view_${code}`), parse_mode: "HTML" }).catch(() => {});
-});
-
-bot.callbackQuery(/^amz_del_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let code = ctx.callbackQuery.data.replace("amz_del_", "");
-  await GiftCode.deleteOne({ code, type: "amazon" });
-  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
-  await renderAmazonPanel(ctx);
-});
-
-bot.callbackQuery("adm_amazon_add", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_AMAZON_CODES";
-  await ctx.editMessageText(
-    `➕ Add Amazon Codes\n\n📝 Format: <code>CODE AMOUNT</code>\n\nExample:\n<code>AMZ100 100</code>`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_amazon") }
-  );
 });
 
 // ============================================================
@@ -5364,181 +4702,167 @@ bot.callbackQuery("adm_create_task", async (ctx) => {
 });
 
 // ============================================================
-// 🚀 RECENT ADMIN ACTIONS
+// 🎁 GIFTS / REDEEM / AMAZON
 // ============================================================
-bot.callbackQuery("adm_recent_actions", async (ctx) => {
+bot.callbackQuery("adm_create_gift", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  let logs = await AdminLog.find({}).sort({ createdAt: -1 }).limit(20);
-  let text = `🚀 *Recent Admin Actions*\n\n`;
-  if (logs.length === 0) text += "📭 No actions yet.";
-  else {
-    logs.forEach((log, i) => {
-      let dateStr = new Date(log.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      text += `${i + 1}. 👤 *${log.adminName}*\n   📌 ${log.action}${log.details ? `: ${log.details}` : ''}\n   🕐 ${dateStr}\n\n`;
-    });
+  await renderGiftCodePanel(ctx);
+});
+
+async function renderGiftCodePanel(ctx) {
+  let codes = await GiftCode.find({ type: "redeem" }).sort({ createdAt: -1 }).limit(20);
+  let totalCodes = await GiftCode.countDocuments({ type: "redeem" });
+  let text = `🎁 Gift Codes\n\nTotal: ${totalCodes}\n\n👇 Click code to edit:`;
+  let kb = new InlineKeyboard();
+  for (let c of codes) {
+    let shortCode = c.code.length > 15 ? c.code.substring(0, 15) + "..." : c.code;
+    let status = c.usedUsers.length >= c.maxUses ? "❌" : "✅";
+    kb.text(`${status} ${shortCode} — ₹${c.amount}`, `gc_view_${c.code}`).row();
   }
-  let kb = new InlineKeyboard().text("🔄 Refresh", "adm_recent_actions").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
+  kb.text("➕ Add Codes", "adm_redeem_add").row();
+  kb.text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
+}
 
-// ============================================================
-// 📊 STATISTICS
-// ============================================================
-bot.callbackQuery("adm_stats", async (ctx) => {
+bot.callbackQuery(/^gc_view_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  let userCount = await User.countDocuments({});
-  let totalBalance = await User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]);
-  let totalWd = await Withdrawal.countDocuments({ status: "Approved" });
-  let totalWdAmt = await Withdrawal.aggregate([{ $match: { status: "Approved" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]);
-  let pendingWd = await Withdrawal.countDocuments({ status: "Pending" });
-  let taskCount = await Task.countDocuments({});
-  let text =
-    `📊 *Statistics*\n\n👥 Users: \`${userCount}\`\n💰 Total Balance: \`₹${(totalBalance[0]?.total || 0).toFixed(2)}\`\n\n` +
-    `✅ Approved WD: \`${totalWd}\`\n💵 Total Paid: \`₹${(totalWdAmt[0]?.total || 0).toFixed(2)}\`\n⏳ Pending WD: \`${pendingWd}\`\n\n📋 Tasks: \`${taskCount}\``;
-  let kb = new InlineKeyboard().text("🔄 Refresh", "adm_stats").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-// ============================================================
-// 🔍 FIND USER
-// ============================================================
-bot.callbackQuery("adm_find_user", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_FOR_TRACKER_ID";
-  await ctx.editMessageText("🔍 Send User ID:", { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") });
-});
-
-// ============================================================
-// 💬 TALK WITH USER
-// ============================================================
-bot.callbackQuery("adm_talk_user", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_FOR_USER_MESSAGE";
-  await ctx.editMessageText(`💬 Format: \`UserID | Message\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "admin") });
-});
-
-// ============================================================
-// ✅ VERIFY USER
-// ============================================================
-bot.callbackQuery("adm_verify_user", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let verifyEnabled = await getConfig("verification_enabled", false);
-  let verifiedCount = await Verification.countDocuments({ verified: true });
-  let totalUsers = await User.countDocuments({});
-  let text = `✅ *Verify User*\n\nStatus: ${verifyEnabled ? "🟢 ON" : "🔴 OFF"}\nVerified: ${verifiedCount}/${totalUsers}`;
+  let code = ctx.callbackQuery.data.replace("gc_view_", "");
+  let gc = await GiftCode.findOne({ code, type: "redeem" });
+  if (!gc) return;
+  let text = `🎁 Code: <code>${gc.code}</code>\n\n💰 Amount: ₹${gc.amount}\n📊 Claimed: ${gc.usedUsers.length}/${gc.maxUses}`;
   let kb = new InlineKeyboard()
-    .text(verifyEnabled ? "🔴 Turn OFF" : "🟢 Turn ON", "verify_toggle").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+    .text("✏️ Edit Amount", `gc_edit_amt_${gc.code}`)
+    .text("👥 Edit Max", `gc_edit_max_${gc.code}`).row()
+    .text("📋 Claims", `gc_claim_${gc.code}`).row()
+    .text("🗑️ Delete", `gc_del_${gc.code}`).row()
+    .text("🔙 Back", "adm_create_gift");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
 });
 
-// ============================================================
-// 📊 MANAGE WITHDRAW
-// ============================================================
-bot.callbackQuery("adm_manage_withdraw", async (ctx) => {
+bot.callbackQuery(/^gc_edit_amt_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let code = ctx.callbackQuery.data.replace("gc_edit_amt_", "");
+  userState[ctx.from.id] = `WAITING_GC_AMT_${code}`;
+  await ctx.editMessageText(`✏️ Send new amount:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `gc_view_${code}`) });
+});
+
+bot.callbackQuery(/^gc_edit_max_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let code = ctx.callbackQuery.data.replace("gc_edit_max_", "");
+  userState[ctx.from.id] = `WAITING_GC_MAX_${code}`;
+  await ctx.editMessageText(`✏️ Send new max uses:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `gc_view_${code}`) });
+});
+
+bot.callbackQuery(/^gc_claim_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let code = ctx.callbackQuery.data.replace("gc_claim_", "");
+  let gc = await GiftCode.findOne({ code, type: "redeem" });
+  if (!gc || gc.usedUsers.length === 0) return ctx.editMessageText(`📋 No claims yet.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`) });
+  let text = `📋 Claims for <code>${code}</code>\n\n`;
+  for (let uid of gc.usedUsers.slice(0, 20)) {
+    let u = await User.findOne({ userId: uid });
+    text += `👤 ${u ? (u.firstName || "User") : "Unknown"} — <code>${uid}</code>\n`;
+  }
+  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`), parse_mode: "HTML" }).catch(() => {});
+});
+
+bot.callbackQuery(/^gc_del_/, async (ctx) => {
+  let code = ctx.callbackQuery.data.replace("gc_del_", "");
+  await GiftCode.deleteOne({ code, type: "redeem" });
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
+  await renderGiftCodePanel(ctx);
+});
+
+bot.callbackQuery("adm_redeem_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_REDEEM_CODES";
+  await ctx.editMessageText(
+    `➕ Add Redeem Codes\n\n📝 Format: <code>CODE AMOUNT</code>\n\nExample:\n<code>WELCOME100 100</code>`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_create_gift") }
+  );
+});
+
+bot.callbackQuery("adm_amazon", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
-  let minW = await getConfig("min_withdraw", 10);
-  let maxW = await getConfig("max_withdraw", 10000);
-  let refReq = await getConfig("required_referrals", 0);
-  let taxP = await getConfig("tax_percent", 0);
-  let text =
-    `📊 *Manage Withdraw*\n\n📉 Min: ₹${minW}\n📈 Max: ₹${maxW}\n🎯 Required Refs: ${refReq}\n💸 Tax: ${taxP}%`;
+  await renderAmazonPanel(ctx);
+});
+
+async function renderAmazonPanel(ctx) {
+  let codes = await GiftCode.find({ type: "amazon" }).sort({ createdAt: -1 }).limit(20);
+  let totalCodes = await GiftCode.countDocuments({ type: "amazon" });
+  let text = `📧 Amazon Codes\n\nTotal: ${totalCodes}\n\n👇 Click code to edit:`;
+  let kb = new InlineKeyboard();
+  for (let c of codes) {
+    let shortCode = c.code.length > 15 ? c.code.substring(0, 15) + "..." : c.code;
+    let status = c.usedUsers.length >= c.maxUses ? "❌" : "✅";
+    kb.text(`${status} ${shortCode} — ₹${c.amount}`, `amz_view_${c.code}`).row();
+  }
+  kb.text("➕ Add Codes", "adm_amazon_add").row();
+  kb.text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
+}
+
+bot.callbackQuery(/^amz_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let code = ctx.callbackQuery.data.replace("amz_view_", "");
+  let gc = await GiftCode.findOne({ code, type: "amazon" });
+  if (!gc) return;
+  let text = `📧 Code: <code>${gc.code}</code>\n\n💰 Amount: ₹${gc.amount}\n📊 Claimed: ${gc.usedUsers.length}/${gc.maxUses}`;
   let kb = new InlineKeyboard()
-    .text("📉 Set Min", "adm_set_min_w").row()
-    .text("📈 Set Max", "adm_set_max_w").row()
-    .text("🎯 Set Referrals", "adm_set_referrals").row()
-    .text("💸 Set Tax %", "adm_set_tax_val").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+    .text("✏️ Edit Amount", `amz_edit_amt_${gc.code}`)
+    .text("👥 Edit Max", `amz_edit_max_${gc.code}`).row()
+    .text("📋 Claims", `amz_claim_${gc.code}`).row()
+    .text("🗑️ Delete", `amz_del_${gc.code}`).row()
+    .text("🔙 Back", "adm_amazon");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
 });
 
-bot.callbackQuery("adm_set_min_w", async (ctx) => {
+bot.callbackQuery(/^amz_edit_amt_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
-  userState[ctx.from.id] = "WAITING_FOR_MIN_W";
-  await ctx.editMessageText("📉 Send min withdraw:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_withdraw") });
+  let code = ctx.callbackQuery.data.replace("amz_edit_amt_", "");
+  userState[ctx.from.id] = `WAITING_AMZ_AMT_${code}`;
+  await ctx.editMessageText(`✏️ Send new amount:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `amz_view_${code}`) });
 });
 
-bot.callbackQuery("adm_set_max_w", async (ctx) => {
+bot.callbackQuery(/^amz_edit_max_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
-  userState[ctx.from.id] = "WAITING_FOR_MAX_W";
-  await ctx.editMessageText("📈 Send max withdraw:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_withdraw") });
+  let code = ctx.callbackQuery.data.replace("amz_edit_max_", "");
+  userState[ctx.from.id] = `WAITING_AMZ_MAX_${code}`;
+  await ctx.editMessageText(`✏️ Send new max uses:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", `amz_view_${code}`) });
 });
 
-bot.callbackQuery("adm_set_referrals", async (ctx) => {
+bot.callbackQuery(/^amz_claim_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
-  userState[ctx.from.id] = "WAITING_FOR_REFERRALS";
-  await ctx.editMessageText("🎯 Send required referrals count:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_withdraw") });
+  let code = ctx.callbackQuery.data.replace("amz_claim_", "");
+  let gc = await GiftCode.findOne({ code, type: "amazon" });
+  if (!gc || gc.usedUsers.length === 0) return ctx.editMessageText(`📋 No claims yet.`, { reply_markup: new InlineKeyboard().text("🔙 Back", `amz_view_${code}`) });
+  let text = `📋 Claims for <code>${code}</code>\n\n`;
+  for (let uid of gc.usedUsers.slice(0, 20)) {
+    let u = await User.findOne({ userId: uid });
+    text += `👤 ${u ? (u.firstName || "User") : "Unknown"} — <code>${uid}</code>\n`;
+  }
+  await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", `amz_view_${code}`), parse_mode: "HTML" }).catch(() => {});
 });
 
-// ============================================================
-// ⚡ QUICK PAY
-// ============================================================
-bot.callbackQuery("adm_quick_pay", async (ctx) => {
+bot.callbackQuery(/^amz_del_/, async (ctx) => {
+  let code = ctx.callbackQuery.data.replace("amz_del_", "");
+  await GiftCode.deleteOne({ code, type: "amazon" });
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
+  await renderAmazonPanel(ctx);
+});
+
+bot.callbackQuery("adm_amazon_add", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let enabled = await getConfig("quick_pay_tax_enabled", false);
-  let percent = await getConfig("quick_pay_tax_percent", 0);
-  let text = `⚡ *Quick Pay Tax*\n\n📊 Status: ${enabled ? "🟢 ON" : "🔴 OFF"}\n💸 Tax: ${percent}%`;
-  let kb = new InlineKeyboard()
-    .text("💸 Set Tax %", "adm_set_qp_tax").row()
-    .text(enabled ? "🔴 Turn OFF" : "🟢 Turn ON", "adm_toggle_qp_tax").row()
-    .text("🔄 Reset to 0%", "adm_reset_qp_tax").row()
-    .text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  userState[ctx.from.id] = "WAITING_AMAZON_CODES";
+  await ctx.editMessageText(
+    `➕ Add Amazon Codes\n\n📝 Format: <code>CODE AMOUNT</code>\n\nExample:\n<code>AMZ100 100</code>`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_amazon") }
+  );
 });
 
-bot.callbackQuery("adm_set_qp_tax", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  userState[ctx.from.id] = "WAITING_QUICK_PAY_TAX";
-  await ctx.editMessageText("💸 Send tax % (0-50):", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_quick_pay") });
-});
-
-bot.callbackQuery("adm_toggle_qp_tax", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("quick_pay_tax_enabled", false);
-  await setConfig("quick_pay_tax_enabled", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
-  await rerender(ctx, "adm_quick_pay");
-});
-
-bot.callbackQuery("adm_reset_qp_tax", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  await setConfig("quick_pay_tax_percent", 0);
-  await setConfig("quick_pay_tax_enabled", false);
-  await ctx.answerCallbackQuery({ text: "✅ Reset!" });
-  await rerender(ctx, "adm_quick_pay");
-});
-
-// ============================================================
-// 🔔 NEW USER NOTIFICATION
-// ============================================================
-bot.callbackQuery("adm_user_notif", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let enabled = await getConfig("new_user_notif", true);
-  let kb = new InlineKeyboard().text(enabled ? "🔕 Turn OFF" : "🔔 Turn ON", "adm_toggle_notif").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(`🔔 *New User Notification*\n\n📊 Status: ${enabled ? "🟢 ON" : "🔴 OFF"}`,
-    { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-bot.callbackQuery("adm_toggle_notif", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("new_user_notif", true);
-  await setConfig("new_user_notif", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
-  await rerender(ctx, "adm_user_notif");
-});
-
-// ============================================================
-// 🎁 REDEEM MODE
-// ============================================================
 bot.callbackQuery("adm_redeem", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -5563,99 +4887,1766 @@ bot.callbackQuery("toggle_redeem_mode", async (ctx) => {
 });
 
 // ============================================================
-// 💸 WITHDRAW API (bot callbacks for want to withdraw)
+// 📊 ADD FUND MENU
 // ============================================================
-bot.callbackQuery("wd_redeem", async (ctx) => {
+bot.callbackQuery("adm_addfund_menu", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
-  let userId = ctx.from.id;
-  let user = await getUser(userId);
-  if (!user.redeemCodeAddr || user.redeemCodeAddr === "Not Set") {
-    return ctx.answerCallbackQuery({ text: "⚠️ Set Redeem Code first!", show_alert: true });
-  }
-  let mode = await getConfig("redeem_mode", "manual");
-  let amounts = [10, 50, 100, 200, 500];
-  let kb = new InlineKeyboard();
-  for (let i = 0; i < amounts.length; i += 3) {
-    let row = amounts.slice(i, i + 3);
-    row.forEach(a => { kb = kb.text(`₹${a}`, `rdm_amt_redeem_${a}`); });
-    kb = kb.row();
-  }
-  kb = kb.text("🔙 Cancel", "canc_rdm");
-  await ctx.reply(`🎁 Redeem Code\n\n💰 Balance: ₹${user.balance.toFixed(2)}\n📌 Mode: ${mode === "manual" ? "Manual" : "Auto"}\n\n👇 Choose:`, { reply_markup: kb });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let upiId = await getConfig("auto_upi_id", "nasih@fam");
+  let minAmt = await getConfig("auto_upi_min", 5);
+  let maxAmt = await getConfig("auto_upi_max", 200);
+  let enabled = await getConfig("auto_upi_enabled", true);
+  let autoVerify = await getConfig("auto_verify_enabled", true);
+  let manualVerify = await getConfig("manual_verify_enabled", true);
+  let text =
+    `💠 *Auto UPI Settings*\n\n📌 UPI ID: <code>${upiId}</code>\n📉 Min: ₹${minAmt}\n📈 Max: ₹${maxAmt}\n\n` +
+    `⚙️ Mode:\n🤖 Auto: ${autoVerify ? "🟢" : "🔴"}\n✋ Manual: ${manualVerify ? "🟢" : "🔴"}\n\n🔘 Status: ${enabled ? "🟢 Active" : "🔴 Disabled"}`;
+  let kb = new InlineKeyboard()
+    .text("📌 UPI ID", "upiset_id").text("📉 Min", "upiset_min").text("📈 Max", "upiset_max").row()
+    .text(autoVerify ? "🤖 Auto: ON" : "🤖 Auto: OFF", "upiset_toggle_auto").row()
+    .text(manualVerify ? "✋ Manual: ON" : "✋ Manual: OFF", "upiset_toggle_manual").row()
+    .text(enabled ? "🔴 Turn OFF" : "🟢 Turn ON", "upiset_toggle").row()
+    .text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
 });
 
-bot.callbackQuery(/^rdm_amt_redeem_/, async (ctx) => {
-  let amount = parseFloat(ctx.callbackQuery.data.replace("rdm_amt_redeem_", ""));
-  let userId = ctx.from.id;
-  let user = await getUser(userId);
-  if (user.balance < amount) return ctx.answerCallbackQuery({ text: "❌ Insufficient!", show_alert: true });
-  let mode = await getConfig("redeem_mode", "manual");
-  await ctx.answerCallbackQuery();
-  if (mode === "auto") {
-    let gift = await GiftCode.findOneAndUpdate(
-      { type: "redeem", amount, usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } },
-      { $push: { usedUsers: userId } },
-      { new: true, sort: { createdAt: 1 } }
-    );
-    if (!gift) return ctx.editMessageText(`❌ No codes available for ₹${amount}!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "back_to_balance") });
-    user.balance -= amount;
-    await user.save();
-    await logBalanceHistory(userId, `Redeem Auto (${gift.code})`, -amount);
-    await ctx.editMessageText(
-      `✅ *Redeem Code Assigned!*\n\n📌 <code>${gift.code}</code>\n💰 ₹${gift.amount}\n\n💵 Balance: ₹${user.balance.toFixed(2)}`,
-      { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Back", "back_to_balance") }
-    );
-  } else {
-    let requestId = Math.floor(100000 + Math.random() * 900000).toString();
-    await RedeemRequest.create({
-      requestId, userId, userName: user.firstName || "User",
-      userEmail: user.redeemCodeAddr,
-      amount, type: "redeem", status: "Pending"
-    });
-    await ctx.editMessageText(
-      `⏳ *Request Submitted!*\n\n📌 Redeem Code\n💰 ₹${amount}\n🆔 \`${requestId}\`\n\n🕐 Admin will process shortly.`,
-      { parse_mode: "Markdown" }
-    );
-    let payoutChannel = await getConfig("payout_channel", null);
-    if (payoutChannel) {
-      let msg = `🔔 *Redeem Request*\n\n👤 ${user.firstName || "User"}\n🆔 \`${user.userId}\`\n💰 ₹${amount}\n📧 \`${user.redeemCodeAddr}\``;
-      let kb = new InlineKeyboard().text("✅ Approve", `rdm_app_${requestId}`).text("❌ Reject", `rdm_rej_${requestId}`);
-      try { await ctx.api.sendMessage(payoutChannel, msg, { parse_mode: "Markdown", reply_markup: kb }); } catch (e) {}
-    }
-  }
+bot.callbackQuery("upiset_id", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "UPI_SET_ID";
+  await ctx.reply("📌 Send new UPI ID:");
 });
 
-bot.callbackQuery(/^rdm_app_/, async (ctx) => {
+bot.callbackQuery("upiset_min", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "UPI_SET_MIN";
+  await ctx.reply("📉 Send min amount:");
+});
+
+bot.callbackQuery("upiset_max", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "UPI_SET_MAX";
+  await ctx.reply("📈 Send max amount:");
+});
+
+bot.callbackQuery("upiset_toggle", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let reqId = ctx.callbackQuery.data.replace("rdm_app_", "");
-  let req = await RedeemRequest.findOne({ requestId: reqId });
-  if (!req || req.status !== "Pending") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  userState[ctx.from.id] = `WAITING_RDM_CODE_${reqId}`;
-  await ctx.answerCallbackQuery({ text: "Send code" });
+  let cur = await getConfig("auto_upi_enabled", true);
+  await setConfig("auto_upi_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "✅ ON" : "❌ OFF" });
+  await rerender(ctx, "adm_addfund_menu");
+});
+
+bot.callbackQuery("upiset_toggle_auto", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("auto_verify_enabled", true);
+  await setConfig("auto_verify_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🤖 ON" : "🤖 OFF" });
+  await rerender(ctx, "adm_addfund_menu");
+});
+
+bot.callbackQuery("upiset_toggle_manual", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("manual_verify_enabled", true);
+  await setConfig("manual_verify_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "✋ ON" : "✋ OFF" });
+  await rerender(ctx, "adm_addfund_menu");
+});
+
+// ============================================================
+// 🌐 GATEWAY MENU
+// ============================================================
+bot.callbackQuery("adm_gateway_menu", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let gateways = await Gateway.find({}).sort({ createdAt: -1 });
+  let activeGW = await Gateway.findOne({ isActive: true });
+  let upEnabled = await getConfig("ultrapay_enabled", false);
+  let text =
+    `🌐 *Gateway Setup*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📊 *Status:*\n` +
+    `├── Active: ${activeGW ? "`" + activeGW.name + "`" : "❌ None"}\n` +
+    `├── Total: ${gateways.length}\n` +
+    `└── UltraPay: ${upEnabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+  let kb = new InlineKeyboard()
+    .text("💳 Ultra Pay (Cashfree)", "adm_ultrapay").row();
+  for (let gw of gateways) {
+    let typeIcon = gw.type === "deposit" ? "💰" : (gw.type === "withdraw" ? "⚡" : "🔄");
+    kb.text(`${gw.isActive ? "✅" : "⚪"} ${typeIcon} ${gw.name}`, `gw_view_${gw.name}`).row();
+  }
+  kb.text("➕ Add Custom Gateway", "gw_add").row();
+  kb.text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("gw_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_GW_NAME";
+  await ctx.editMessageText("🌐 Send Gateway name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_gateway_menu") });
+});
+
+bot.callbackQuery(/^gw_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let gwName = ctx.callbackQuery.data.replace("gw_view_", "");
+  let gw = await Gateway.findOne({ name: gwName });
+  if (!gw) return;
+  let typeLabel = gw.type === "deposit" ? "💰 Deposit" : (gw.type === "withdraw" ? "⚡ Withdraw" : "🔄 Both");
+  let text = `🌐 ${gw.name}\n\n🔗 URL:\n<code>${gw.url}</code>\n\n⚙️ Type: ${typeLabel}\n🔘 Status: ${gw.isActive ? "🟢 Active" : "⚪ Inactive"}`;
+  let kb = new InlineKeyboard();
+  if (gw.isActive) kb.text("🔴 Deactivate", `gw_deactivate_${gw.name}`).row();
+  else kb.text("🟢 Activate", `gw_activate_${gw.name}`).row();
+  kb.text("🗑️ Delete", `gw_del_${gw.name}`).row();
+  kb.text("🔙 Back", "adm_gateway_menu");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+});
+
+bot.callbackQuery(/^gw_activate_/, async (ctx) => {
+  let gwName = ctx.callbackQuery.data.replace("gw_activate_", "");
+  await Gateway.updateOne({ name: gwName }, { isActive: true });
+  await ctx.answerCallbackQuery({ text: `✅ Activated` });
+  await rerender(ctx, "adm_gateway_menu");
+});
+
+bot.callbackQuery(/^gw_deactivate_/, async (ctx) => {
+  let gwName = ctx.callbackQuery.data.replace("gw_deactivate_", "");
+  await Gateway.updateOne({ name: gwName }, { isActive: false });
+  await ctx.answerCallbackQuery({ text: `🔴 Deactivated` });
+  await rerender(ctx, "adm_gateway_menu");
+});
+
+bot.callbackQuery(/^gw_del_/, async (ctx) => {
+  let gwName = ctx.callbackQuery.data.replace("gw_del_", "");
+  await Gateway.deleteOne({ name: gwName });
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
+  await rerender(ctx, "adm_gateway_menu");
+});
+
+console.log("✅ Part H loaded — Admin Panel + Admin callbacks");
+
+// ============================================================
+// 🔚 END OF PART H
+// ============================================================
+
+// ============================================================
+// 📦 PART I — Settings, Customize, Broadcast, UltraPay, Admins
+// ============================================================
+
+// ============================================================
+// ⚙️ SETTINGS
+// ============================================================
+bot.callbackQuery("adm_settings", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let botActive = await getConfig("bot_active", true);
+  let minW = await getConfig("min_withdraw", 10);
+  let maxW = await getConfig("max_withdraw", 10000);
+  let pChannel = await getConfig("payout_channel", "Not Set");
+  let supportId = await getConfig("support_username", "Not Set");
+  let text =
+    `⚙️ Settings\n\n` +
+    `🤖 Bot: ${botActive ? "✅" : "❌"}\n` +
+    `💸 Min WD: ₹${minW}\n` +
+    `💰 Max WD: ₹${maxW}\n` +
+    `📢 Payout: <code>${pChannel}</code>\n` +
+    `💬 Support: <code>${supportId}</code>`;
+  let kb = new InlineKeyboard()
+    .text(botActive ? "🔴 Bot OFF" : "🟢 Bot ON", "adm_toggle_bot").row()
+    .text("📉 Min WD", "adm_set_min_w").text("📈 Max WD", "adm_set_max_w").row()
+    .text("📢 Payout Channel", "adm_set_p_chan").row()
+    .text("💬 Support ID", "adm_set_support").row()
+    .text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+});
+
+bot.callbackQuery("adm_toggle_bot", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("bot_active", true);
+  await setConfig("bot_active", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "✅ ON" : "❌ OFF" });
+  await rerender(ctx, "adm_settings");
+});
+
+bot.callbackQuery("adm_set_min_w", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_FOR_MIN_W";
+  await ctx.editMessageText("📉 Send min withdraw:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings") });
+});
+
+bot.callbackQuery("adm_set_max_w", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_FOR_MAX_W";
+  await ctx.editMessageText("📈 Send max withdraw:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings") });
+});
+
+bot.callbackQuery("adm_set_p_chan", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_FOR_P_CHAN";
+  await ctx.editMessageText("📢 Send payout channel ID:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings") });
+});
+
+bot.callbackQuery("adm_set_support", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_FOR_SUPPORT_ID";
+  await ctx.editMessageText("💬 Send support username or ID:", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_settings") });
+});
+
+// ============================================================
+// 📞 SETUP SUPPORT
+// ============================================================
+bot.callbackQuery("adm_setup_support", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let supportId = await getConfig("support_username", "Not Set");
+  let displayId = supportId;
+  if (supportId !== "Not Set" && !supportId.startsWith('@') && !/^\d+$/.test(supportId)) {
+    displayId = '@' + supportId;
+  }
+  let text =
+    `📞 *SETUP SUPPORT*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📌 *Current:* ${displayId}\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Support ID", "adm_support_edit").row()
+    .text("🔄 Refresh", "adm_setup_support").row()
+    .text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("adm_support_edit", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "WAITING_SUPPORT_ID";
+  let current = await getConfig("support_username", "Not Set");
+  await ctx.editMessageText(
+    `✏️ *EDIT SUPPORT ID*\n\n` +
+    `📌 Current: \`${current}\`\n\n` +
+    `📝 Send new Support ID:\n\n` +
+    `Format:\n• @username\n• 8061612320`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_setup_support"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+// ============================================================
+// 💰 LIVE FUND ADMIN
+// ============================================================
+bot.callbackQuery("adm_live_fund", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderLiveFundPanel(ctx);
+});
+
+async function renderLiveFundPanel(ctx) {
+  let displayEnabled = await getConfig("live_fund_display_enabled", false);
+  let remainingEnabled = await getConfig("live_fund_remaining_enabled", false);
+  const excludes = await LiveFundExclude.find({});
+  const excludedIds = excludes.map(e => e.userId);
+  const totalUsers = await User.countDocuments({});
+  const includedUsers = await User.find({ userId: { $nin: excludedIds } });
+  const includedTotal = includedUsers.reduce((s, u) => s + (u.balance || 0), 0);
+  const excludedUsers = await User.find({ userId: { $in: excludedIds } });
+  const excludedTotal = excludedUsers.reduce((s, u) => s + (u.balance || 0), 0);
+
+  let text =
+    `💰 *Live Fund Settings*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📊 *Status:*\n` +
+    `├── 💰 Live Fund: ${displayEnabled ? "🟢 ON" : "🔴 OFF"}\n` +
+    `└── 📈 Remaining: ${remainingEnabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
+    `👥 Total: ${totalUsers}\n` +
+    `✅ Included: ${includedUsers.length} (₹${includedTotal.toFixed(2)})\n` +
+    `❌ Excluded: ${excludedUsers.length} (₹${excludedTotal.toFixed(2)})\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+
+  let kb = new InlineKeyboard()
+    .text(displayEnabled ? "🟢 💰 Live Fund Display" : "🔴 💰 Live Fund Display", "adm_lf_display").row()
+    .text(remainingEnabled ? "🟢 📈 Live Fund Remaining" : "🔴 📈 Live Fund Remaining", "adm_lf_remaining").row()
+    .text("✏️ Manage Users", "adm_lf_manage").row()
+    .text("🔄 Refresh", "adm_live_fund").row()
+    .text("🔙 Back to Admin", "admin");
+
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+}
+
+bot.callbackQuery("adm_lf_display", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let cur = await getConfig("live_fund_display_enabled", false);
+  await setConfig("live_fund_display_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await renderLiveFundPanel(ctx);
+});
+
+bot.callbackQuery("adm_lf_remaining", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let cur = await getConfig("live_fund_remaining_enabled", false);
+  await setConfig("live_fund_remaining_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await renderLiveFundPanel(ctx);
+});
+
+const LF_PER_PAGE = 10;
+
+bot.callbackQuery("adm_lf_manage", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderLiveFundUsers(ctx, 1);
+});
+
+bot.callbackQuery(/^lf_page_(\d+)$/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let page = parseInt(ctx.match[1], 10);
+  await renderLiveFundUsers(ctx, page);
+});
+
+async function renderLiveFundUsers(ctx, page = 1) {
+  try {
+    let users = await User.find({}).sort({ balance: -1 });
+    let totalUsers = users.length;
+    let totalPages = Math.ceil(totalUsers / LF_PER_PAGE) || 1;
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    let startIdx = (page - 1) * LF_PER_PAGE;
+    let endIdx = startIdx + LF_PER_PAGE;
+    let pageUsers = users.slice(startIdx, endIdx);
+
+    let excludes = await LiveFundExclude.find({});
+    let excludedSet = new Set(excludes.map(e => Number(e.userId)));
+
+    let lf = await calculateLiveFund();
+
+    let text =
+      `✏️ *Manage Live Fund Users*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📄 *Page:* ${page}/${totalPages}\n` +
+      `✅ Included: \`${lf.includedCount}\` · \`₹${lf.includedTotal.toFixed(2)}\`\n` +
+      `❌ Excluded: \`${lf.excludedCount}\`\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👇 *Tap ON/OFF to toggle*`;
+
+    let kb = new InlineKeyboard();
+    if (pageUsers.length === 0) {
+      kb.text("📭 No Users", "noop").row();
+    } else {
+      for (let u of pageUsers) {
+        let name = u.firstName || "User";
+        let shortName = name.length > 8 ? name.substring(0, 8) + ".." : name;
+        let isExcluded = excludedSet.has(u.userId);
+        let toggleText = isExcluded ? "🔴 OFF" : "✅ ON";
+        kb
+          .text(`👤 ${shortName}`, `user_detail_${u.userId}`)
+          .text(`🆔 ${u.userId}`, `copy_id_${u.userId}`)
+          .text(toggleText, `lf_toggle_${u.userId}_${page}`)
+          .row();
+      }
+    }
+
+    kb.row({ text: "🔄 Refresh", callback_data: `lf_page_${page}` });
+    let navRow = [];
+    if (page > 1) navRow.push({ text: "◀️ Back", callback_data: `lf_page_${page - 1}` });
+    else navRow.push({ text: "◀️ Back", callback_data: "adm_live_fund" });
+    navRow.push({ text: `📄 ${page}/${totalPages}`, callback_data: "noop" });
+    if (page < totalPages) navRow.push({ text: "Next ▶️", callback_data: `lf_page_${page + 1}` });
+    else navRow.push({ text: "✓ End", callback_data: "noop" });
+    kb.row(...navRow);
+    kb.row({ text: "🔙 Back to Live Fund", callback_data: "adm_live_fund" });
+
+    await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  } catch (e) {
+    console.error("renderLiveFundUsers error:", e);
+    await ctx.editMessageText("❌ Error", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_live_fund") }).catch(() => {});
+  }
+}
+
+bot.callbackQuery(/^lf_toggle_(\d+)_(\d+)$/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let targetId = parseInt(ctx.match[1], 10);
+  let page = parseInt(ctx.match[2], 10);
+  let existing = await LiveFundExclude.findOne({ userId: targetId });
+  if (existing) {
+    await LiveFundExclude.deleteOne({ userId: targetId });
+    await ctx.answerCallbackQuery({ text: "✅ Included!" });
+  } else {
+    await LiveFundExclude.create({ userId: targetId, excludedBy: ctx.from.id });
+    await ctx.answerCallbackQuery({ text: "🔴 Excluded!" });
+  }
+  await renderLiveFundUsers(ctx, page);
+});
+
+// ============================================================
+// 💳 ULTRAPAY ADMIN
+// ============================================================
+bot.callbackQuery("adm_ultrapay", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderUltraPayMenu(ctx);
+});
+
+async function renderUltraPayMenu(ctx) {
+  let enabled = await getConfig("ultrapay_enabled", false);
+  let token = await getConfig("ultrapay_token", "");
+  let key = await getConfig("ultrapay_key", "");
+  let autoPayout = await getConfig("ultrapay_auto_payout", false);
+
+  let tokenDisplay = token ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}` : "Not Set";
+  let keyDisplay = key ? `${key.substring(0, 4)}...${key.substring(key.length - 2)}` : "Not Set";
+
+  let text =
+    `💳 *ULTRA PAY SETTINGS*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📊 *Status:* ${enabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
+    `🔑 *Token:* \`${tokenDisplay}\`\n` +
+    `🔑 *Key:* \`${keyDisplay}\`\n\n` +
+    `⚙️ *Auto Payout:* ${autoPayout ? "🟢 ON" : "🔴 OFF"}\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+
+  let kb = new InlineKeyboard()
+    .text(`🎛️ System: ${enabled ? "🟢 ON" : "🔴 OFF"}`, "up_toggle_enabled").row()
+    .text("🔑 Edit Token", "up_edit_token").row()
+    .text("🔑 Edit Key", "up_edit_key").row()
+    .text(`⚙️ Auto Payout: ${autoPayout ? "🟢" : "🔴"}`, "up_toggle_auto").row()
+    .text("🧪 Test Connection", "up_test").row()
+    .text("🔙 Back to Gateway", "adm_gateway_menu");
+
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+}
+
+bot.callbackQuery("up_toggle_enabled", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("ultrapay_enabled", false);
+  let token = await getConfig("ultrapay_token", "");
+  let key = await getConfig("ultrapay_key", "");
+  if (!cur && (!token || !key)) {
+    return ctx.answerCallbackQuery({ text: "❌ Configure API keys first!", show_alert: true });
+  }
+  await setConfig("ultrapay_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await renderUltraPayMenu(ctx);
+});
+
+bot.callbackQuery("up_toggle_auto", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("ultrapay_auto_payout", false);
+  await setConfig("ultrapay_auto_payout", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await renderUltraPayMenu(ctx);
+});
+
+bot.callbackQuery("up_edit_token", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "UP_WAIT_TOKEN";
+  let current = await getConfig("ultrapay_token", "");
+  let display = current ? `${current.substring(0, 15)}...` : "Not Set";
+  await ctx.editMessageText(
+    `🔑 *EDIT ULTRAPAY TOKEN*\n\n📌 Current: \`${display}\`\n\n📝 Send new Token:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_ultrapay"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("up_edit_key", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "UP_WAIT_KEY";
+  let current = await getConfig("ultrapay_key", "");
+  let display = current ? `${current.substring(0, 8)}...` : "Not Set";
+  await ctx.editMessageText(
+    `🔑 *EDIT ULTRAPAY KEY*\n\n📌 Current: \`${display}\`\n\n📝 Send new Key:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_ultrapay"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("up_test", async (ctx) => {
+  ctx.answerCallbackQuery("🧪 Testing...");
+  if (!(await isAdmin(ctx.from.id))) return;
+  let token = await getConfig("ultrapay_token", "");
+  let key = await getConfig("ultrapay_key", "");
+  if (!token || !key) {
+    return ctx.reply("❌ Token and Key not set!");
+  }
   await ctx.reply(
-    `📝 Send code for user:\n\n🆔 <code>${req.userId}</code>\n💰 ₹${req.amount}`,
-    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", `rdm_rej_${reqId}`) }
+    `🧪 *CONNECTION TEST*\n\n` +
+    `✅ Token: Set (${token.length} chars)\n` +
+    `✅ Key: Set (${key.length} chars)\n\n` +
+    `📊 Status: Ready to use`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_ultrapay") }
   );
 });
 
-bot.callbackQuery(/^rdm_rej_/, async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let reqId = ctx.callbackQuery.data.replace("rdm_rej_", "");
-  let req = await RedeemRequest.findOne({ requestId: reqId });
-  if (!req || req.status !== "Pending") return ctx.answerCallbackQuery({ text: "Processed!", show_alert: true });
-  req.status = "Rejected";
-  await req.save();
+// ============================================================
+// 📢 BROADCAST
+// ============================================================
+bot.callbackQuery("adm_broadcast", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "BROADCAST_WAIT_MESSAGE";
+  let text = `📢 *BROADCAST*\n\nSend Your Message To Broadcast`;
+  let kb = new InlineKeyboard().text("🔙 Cancel", "adm_broadcast_cancel");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("adm_broadcast_cancel", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "❌ Cancelled" });
   delete userState[ctx.from.id];
-  await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
-  await ctx.editMessageText((ctx.callbackQuery.message.text || "") + `\n\n❌ REJECTED`).catch(() => {});
-  try { await ctx.api.sendMessage(req.userId, `❌ *Request Rejected*\n\n🆔 \`${req.requestId}\`\n💰 ₹${req.amount}`, { parse_mode: "Markdown" }); } catch (e) {}
+  if (global.broadcastCache) delete global.broadcastCache[ctx.from.id];
+  if (await isAdmin(ctx.from.id)) await sendAdminPanel(ctx, true);
+});
+
+// Capture message
+bot.on("message", async (ctx, next) => {
+  let userId = ctx.from.id;
+  let state = userState[userId];
+  if (state !== "BROADCAST_WAIT_MESSAGE") return next();
+  if (!(await isAdmin(userId))) return next();
+  try {
+    let msg = ctx.message;
+    let msgType = "text";
+    let fileId = "";
+    let caption = "";
+    let text = "";
+    if (msg.text) { msgType = "text"; text = msg.text; }
+    else if (msg.photo) { msgType = "photo"; fileId = msg.photo[msg.photo.length - 1].file_id; caption = msg.caption || ""; }
+    else if (msg.video) { msgType = "video"; fileId = msg.video.file_id; caption = msg.caption || ""; }
+    else if (msg.document) { msgType = "document"; fileId = msg.document.file_id; caption = msg.caption || ""; }
+    else if (msg.animation) { msgType = "animation"; fileId = msg.animation.file_id; caption = msg.caption || ""; }
+    else return ctx.reply("❌ Unsupported message type.");
+
+    global.broadcastCache = global.broadcastCache || {};
+    global.broadcastCache[userId] = { msgType, fileId, caption, text };
+    delete userState[userId];
+
+    let kb = new InlineKeyboard()
+      .text("✅ Confirm", "broadcast_confirm").row()
+      .text("❌ Cancel", "adm_broadcast_cancel");
+
+    if (msgType === "text") {
+      await ctx.reply(`📢 *BROADCAST PREVIEW*\n\n━━━━━━━━━━━━━━━━━━━━\n\n${text}\n\n━━━━━━━━━━━━━━━━━━━━`,
+        { reply_markup: kb, parse_mode: "Markdown" });
+    } else if (msgType === "photo") {
+      await ctx.replyWithPhoto(fileId, { caption: `📢 *BROADCAST PREVIEW*\n\n${caption || "(no caption)"}`, reply_markup: kb, parse_mode: "Markdown" });
+    } else if (msgType === "video") {
+      await ctx.replyWithVideo(fileId, { caption: `📢 *BROADCAST PREVIEW*\n\n${caption || "(no caption)"}`, reply_markup: kb, parse_mode: "Markdown" });
+    } else if (msgType === "document") {
+      await ctx.replyWithDocument(fileId, { caption: `📢 *BROADCAST PREVIEW*\n\n${caption || "(no caption)"}`, reply_markup: kb, parse_mode: "Markdown" });
+    } else if (msgType === "animation") {
+      await ctx.replyWithAnimation(fileId, { caption: `📢 *BROADCAST PREVIEW*\n\n${caption || "(no caption)"}`, reply_markup: kb, parse_mode: "Markdown" });
+    }
+  } catch (e) { console.error("Broadcast capture error:", e); }
+});
+
+bot.callbackQuery("broadcast_confirm", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let userId = ctx.from.id;
+  let cacheObj = global.broadcastCache?.[userId];
+  if (!cacheObj) return ctx.answerCallbackQuery({ text: "❌ Expired!", show_alert: true });
+  await ctx.answerCallbackQuery({ text: "⏳ Broadcasting..." });
+
+  let startTime = Date.now();
+  let broadcastId = "BC_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  let allUsers = await User.find({});
+  let totalUsers = allUsers.length;
+  let sent = 0, failed = 0;
+  let sentMessageIds = [];
+
+  let progressMsg = await ctx.reply(`📢 *BROADCASTING...*\n\n⏳ Progress: 0/${totalUsers}`, { parse_mode: "Markdown" }).catch(() => null);
+
+  for (let i = 0; i < allUsers.length; i++) {
+    let u = allUsers[i];
+    try {
+      let sentMsg;
+      if (cacheObj.msgType === "text") sentMsg = await ctx.api.sendMessage(u.userId, cacheObj.text);
+      else if (cacheObj.msgType === "photo") sentMsg = await ctx.api.sendPhoto(u.userId, cacheObj.fileId, { caption: cacheObj.caption || "" });
+      else if (cacheObj.msgType === "video") sentMsg = await ctx.api.sendVideo(u.userId, cacheObj.fileId, { caption: cacheObj.caption || "" });
+      else if (cacheObj.msgType === "document") sentMsg = await ctx.api.sendDocument(u.userId, cacheObj.fileId, { caption: cacheObj.caption || "" });
+      else if (cacheObj.msgType === "animation") sentMsg = await ctx.api.sendAnimation(u.userId, cacheObj.fileId, { caption: cacheObj.caption || "" });
+
+      if (sentMsg && sentMsg.message_id) {
+        sentMessageIds.push({ userId: u.userId, messageId: sentMsg.message_id });
+      }
+      sent++;
+      if (progressMsg && (i + 1) % 10 === 0) {
+        await ctx.api.editMessageText(ctx.chat.id, progressMsg.message_id,
+          `📢 *BROADCASTING...*\n\n⏳ Progress: ${i + 1}/${totalUsers}\n✅ Sent: ${sent}\n❌ Failed: ${failed}`,
+          { parse_mode: "Markdown" }).catch(() => {});
+      }
+    } catch (e) { failed++; }
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  let durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+  let successRate = totalUsers > 0 ? ((sent / totalUsers) * 100).toFixed(1) : "0.0";
+
+  try {
+    await BroadcastLog.create({
+      broadcastId, adminId: userId,
+      adminName: ctx.from.first_name || "Admin",
+      messageType: cacheObj.msgType,
+      messageFileId: cacheObj.fileId,
+      caption: cacheObj.caption,
+      text: cacheObj.text,
+      sentMessageIds, sent, failed, totalUsers,
+      successRate: parseFloat(successRate),
+      duration: parseFloat(durationSec),
+      status: "sent"
+    });
+  } catch (e) { console.error("Broadcast log error:", e); }
+
+  delete userState[userId];
+  delete global.broadcastCache[userId];
+
+  if (progressMsg) await ctx.api.deleteMessage(ctx.chat.id, progressMsg.message_id).catch(() => {});
+
+  let statusText =
+    `✅ *BROADCAST COMPLETED!*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📊 *Report:*\n\n` +
+    `👥 *Total Users:* \`${totalUsers}\`\n` +
+    `✅ *Success:* \`${sent}\`\n` +
+    `❌ *Failed:* \`${failed}\`\n` +
+    `📈 *Success Rate:* \`${successRate}%\`\n\n` +
+    `🕐 *Time:* \`${durationSec}s\`\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+
+  let kb = new InlineKeyboard()
+    .text("🗑️ Delete Broadcast", `bc_delete_${broadcastId}`).row()
+    .text("🔙 Back to Admin", "admin");
+
+  await ctx.reply(statusText, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^bc_delete_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let broadcastId = ctx.callbackQuery.data.replace("bc_delete_", "");
+  let bc = await BroadcastLog.findOne({ broadcastId });
+  if (!bc) return ctx.answerCallbackQuery({ text: "❌ Not found", show_alert: true });
+  if (bc.status === "deleted") return ctx.answerCallbackQuery({ text: "Already deleted", show_alert: true });
+
+  await ctx.answerCallbackQuery({ text: "⏳ Deleting..." });
+  let deleted = 0, failedDel = 0;
+  for (let item of bc.sentMessageIds) {
+    try {
+      await ctx.api.deleteMessage(item.userId, item.messageId);
+      deleted++;
+    } catch (e) { failedDel++; }
+    await new Promise(r => setTimeout(r, 30));
+  }
+  bc.status = "deleted";
+  await bc.save();
+
+  await ctx.editMessageText(
+    `✅ *Broadcast Deleted!*\n\n🗑️ Deleted: \`${deleted}\`\n❌ Failed: \`${failedDel}\`\n📊 Total: \`${bc.sentMessageIds.length}\``,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back to Admin", "admin") }
+  ).catch(() => {});
 });
 
 // ============================================================
-// 🚀 FINAL START — MongoDB + Bot
+// 💬 TALK WITH USER
+// ============================================================
+bot.callbackQuery("adm_talk_user", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_USER_MESSAGE";
+  await ctx.editMessageText(`💬 Format: \`UserID | Message\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "admin") });
+});
+
+// ============================================================
+// ✅ VERIFICATION
+// ============================================================
+bot.callbackQuery("adm_verification", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let verifyEnabled = await getConfig("verification_enabled", false);
+  let verifiedCount = await Verification.countDocuments({ verified: true });
+  let totalUsers = await User.countDocuments({});
+  let text = `✅ *Verification*\n\nStatus: ${verifyEnabled ? "🟢 ON" : "🔴 OFF"}\nVerified: ${verifiedCount}/${totalUsers}`;
+  let kb = new InlineKeyboard()
+    .text(verifyEnabled ? "🔴 Turn OFF" : "🟢 Turn ON", "verify_toggle").row()
+    .text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("verify_toggle", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("verification_enabled", false);
+  await setConfig("verification_enabled", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "✅ ON" : "❌ OFF" });
+  await rerender(ctx, "adm_verification");
+});
+
+// ============================================================
+// 👑 ADMINS
+// ============================================================
+bot.callbackQuery("adm_admins", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isOwner(ctx.from.id))) return;
+  await renderAdminsPanel(ctx);
+});
+
+async function renderAdminsPanel(ctx) {
+  const ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+  const ownerUser = await User.findOne({ userId: ownerId });
+  const admins = await BotAdmin.find({}).sort({ addedAt: -1 });
+  let text =
+    `👑 *Admin Management*\n\n` +
+    `👑 Owner: \`${ownerId}\` (${ownerUser?.firstName || "Owner"})\n\n` +
+    `📊 Total Admins: ${admins.length}\n\n` +
+    `👇 Click admin:`;
+  let kb = new InlineKeyboard();
+  if (admins.length === 0) {
+    kb.text("📂 No Admins Yet", "noop").row();
+  } else {
+    for (let a of admins) {
+      let u = await User.findOne({ userId: a.userId });
+      let name = u ? (u.firstName || "User") : "Unknown";
+      let status = a.isActive ? "🟢" : "🔴";
+      kb.text(`${status} 👤 ${name} — ${a.userId}`, `admin_view_${a.userId}`).row();
+    }
+  }
+  kb.text("➕ Add New Admin", "admin_add").row();
+  kb.text("👑 Transfer Ownership", "adm_transfer").row();
+  kb.text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+}
+
+bot.callbackQuery(/^admin_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isOwner(ctx.from.id))) return;
+  let adminId = parseInt(ctx.callbackQuery.data.replace("admin_view_", ""), 10);
+  let adminUser = await User.findOne({ userId: adminId });
+  let botAdmin = await BotAdmin.findOne({ userId: adminId });
+  if (!adminUser) return;
+  let status = botAdmin?.isActive ? "🟢 ACTIVE" : "🔴 DISABLED";
+  let text =
+    `👤 Admin Details\n\n📛 Name: ${adminUser.firstName || "Unknown"}\n` +
+    `🆔 <code>${adminId}</code>\n📛 Username: ${adminUser.username ? "@" + adminUser.username : "Not Set"}\n` +
+    `💰 Balance: ₹${adminUser.balance.toFixed(2)}\n\n⚡ Status: ${status}`;
+  let kb = new InlineKeyboard();
+  if (botAdmin?.isActive) kb.text("🔴 Disable", `admin_disable_${adminId}`).row();
+  else kb.text("🟢 Enable", `admin_enable_${adminId}`).row();
+  kb.text("🗑️ Remove Admin", `admin_remove_${adminId}`).row();
+  kb.text("🔙 Back", "adm_admins");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+});
+
+bot.callbackQuery(/^admin_disable_/, async (ctx) => {
+  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
+  let adminId = parseInt(ctx.callbackQuery.data.replace("admin_disable_", ""), 10);
+  let botAdmin = await BotAdmin.findOne({ userId: adminId });
+  if (!botAdmin) return;
+  botAdmin.isActive = false;
+  botAdmin.disabledAt = new Date();
+  botAdmin.disabledBy = ctx.from.id;
+  await botAdmin.save();
+  await ctx.answerCallbackQuery({ text: "🔴 Disabled!" });
+  try { await ctx.api.sendMessage(adminId, `❌ Your admin access has been disabled by Owner.`); } catch (e) {}
+  await rerender(ctx, `admin_view_${adminId}`);
+});
+
+bot.callbackQuery(/^admin_enable_/, async (ctx) => {
+  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
+  let adminId = parseInt(ctx.callbackQuery.data.replace("admin_enable_", ""), 10);
+  let botAdmin = await BotAdmin.findOne({ userId: adminId });
+  if (!botAdmin) return;
+  botAdmin.isActive = true;
+  botAdmin.disabledAt = null;
+  botAdmin.disabledBy = null;
+  await botAdmin.save();
+  await ctx.answerCallbackQuery({ text: "🟢 Enabled!" });
+  try { await ctx.api.sendMessage(adminId, `✅ Your admin access has been re-enabled!`); } catch (e) {}
+  await rerender(ctx, `admin_view_${adminId}`);
+});
+
+bot.callbackQuery(/^admin_remove_/, async (ctx) => {
+  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
+  let adminId = parseInt(ctx.callbackQuery.data.replace("admin_remove_", ""), 10);
+  await BotAdmin.deleteOne({ userId: adminId });
+  await ctx.answerCallbackQuery({ text: "🗑️ Removed!" });
+  try { await ctx.api.sendMessage(adminId, `❌ Your admin access has been removed.`); } catch (e) {}
+  await rerender(ctx, "adm_admins");
+});
+
+bot.callbackQuery("admin_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isOwner(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_ADMIN_ADD";
+  await ctx.editMessageText(`➕ Add New Admin\n\n📝 Send User ID:`, { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_admins") });
+});
+
+bot.callbackQuery("adm_transfer", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isOwner(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_NEW_OWNER";
+  await ctx.editMessageText(
+    `👑 *Transfer Ownership*\n\n⚠️ You will become an Admin.\n\n📝 Send new Owner User ID:`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_admins") }
+  );
+});
+
+bot.callbackQuery(/^admin_transfer_confirm_/, async (ctx) => {
+  if (!(await isOwner(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Owner only!", show_alert: true });
+  let newOwnerId = parseInt(ctx.callbackQuery.data.replace("admin_transfer_confirm_", ""), 10);
+  let currentOwner = ctx.from.id;
+  await BotAdmin.findOneAndUpdate(
+    { userId: currentOwner },
+    { addedAt: new Date(), addedBy: currentOwner, isActive: true },
+    { upsert: true }
+  );
+  await setConfig("owner_id", newOwnerId);
+  cache.ownerId = newOwnerId;
+  await logAdminAction(currentOwner, ctx.from.first_name || "Owner", "Ownership Transferred", `New owner: ${newOwnerId}`, 0, newOwnerId);
+  await ctx.answerCallbackQuery({ text: "👑 Transferred!" });
+  await ctx.editMessageText(`✅ *Ownership Transferred!*\n\n👑 New Owner: \`${newOwnerId}\``, { parse_mode: "Markdown" }).catch(() => {});
+  try { await ctx.api.sendMessage(newOwnerId, `👑 *Congratulations!*\n\nYou are now the OWNER!`, { parse_mode: "Markdown" }); } catch (e) {}
+});
+
+// ============================================================
+// 🎨 CUSTOMIZE TEXTS
+// ============================================================
+bot.callbackQuery("adm_customize_texts", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let text =
+    `🎨 *CUSTOMIZE TEXTS*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📝 *Select Category:*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+  let kb = new InlineKeyboard()
+    .text("📄 Balance Text Edit", "ct_cat_balance").row()
+    .text("🚀 Start Command Edit", "ct_cat_start").row()
+    .text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("ct_cat_balance", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
+  let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+  let walletLabel = await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+  let amountLabel = await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
+  let text =
+    `📄 *BALANCE TEXT EDIT*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `*1️⃣ Welcome:*\n${welcomeText}\n\n` +
+    `*2️⃣ Wallet Label:*\n${walletLabel}\n\n` +
+    `*3️⃣ Balance Label:*\n${amountLabel}\n\n` +
+    `*4️⃣ Footer:*\n${footerText}\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Welcome Text", "ct_edit_welcome").row()
+    .text("✏️ Edit Wallet ID Label", "ct_edit_wallet").row()
+    .text("✏️ Edit Balance Label", "ct_edit_amount").row()
+    .text("✏️ Edit Footer Text", "ct_edit_footer").row()
+    .text("🔄 Reset All to Default", "ct_reset_balance").row()
+    .text("🔙 Back to Categories", "adm_customize_texts");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("ct_cat_start", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let welcomeMsg = await getConfig("start_welcome_text", "");
+  let channelLink = await getConfig("start_channel_link", "");
+  let buttonText = await getConfig("start_button_text", "CLICK HERE");
+  let preview = welcomeMsg.replace(/{link}/g, channelLink);
+  let text =
+    `🚀 *START COMMAND EDIT*\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟\n\n` +
+    `📝 *Current Message:*\n\n${preview}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📌 *Channel:* ${channelLink}\n\n🔘 *Button:* ${buttonText}\n\n` +
+    `🌟 ━━━━━━━━━━━━━━━━━━ 🌟`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Welcome Message", "ct_edit_start_msg").row()
+    .text("✏️ Edit Channel Link", "ct_edit_start_link").row()
+    .text("✏️ Edit Button Text", "ct_edit_start_btn").row()
+    .text("👁️ Preview", "ct_preview_start").row()
+    .text("🔄 Reset to Default", "ct_reset_start").row()
+    .text("🔙 Back to Categories", "adm_customize_texts");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_welcome", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_WELCOME";
+  let current = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
+  await ctx.editMessageText(
+    `✏️ *EDIT WELCOME TEXT*\n\n📌 Current:\n${current}\n\n📝 Send new text:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_balance"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_wallet", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_WALLET";
+  let current = await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+  await ctx.editMessageText(
+    `✏️ *EDIT WALLET LABEL*\n\n📌 Current: ${current}\n\n📝 Send new label:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_balance"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_amount", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_AMOUNT";
+  let current = await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
+  await ctx.editMessageText(
+    `✏️ *EDIT BALANCE LABEL*\n\n📌 Current: ${current}\n\n📝 Send new label:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_balance"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_footer", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_FOOTER";
+  let current = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+  await ctx.editMessageText(
+    `✏️ *EDIT FOOTER TEXT*\n\n📌 Current:\n${current}\n\n📝 Send new text:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_balance"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_start_msg", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_START_MSG";
+  let current = await getConfig("start_welcome_text", "");
+  await ctx.editMessageText(
+    `✏️ *EDIT START MESSAGE*\n\n📌 Current:\n${current}\n\n📝 Send new message:\n\nℹ️ Use {link} for channel`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_start"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_start_link", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_START_LINK";
+  let current = await getConfig("start_channel_link", "");
+  await ctx.editMessageText(
+    `✏️ *EDIT CHANNEL LINK*\n\n📌 Current: ${current}\n\n📝 Send new link:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_start"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_edit_start_btn", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "CT_WAIT_START_BTN";
+  let current = await getConfig("start_button_text", "CLICK HERE");
+  await ctx.editMessageText(
+    `✏️ *EDIT BUTTON TEXT*\n\n📌 Current: ${current}\n\n📝 Send new text:`,
+    { reply_markup: new InlineKeyboard().text("🔙 Cancel", "ct_cat_start"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_preview_start", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let welcomeMsg = await getConfig("start_welcome_text", "");
+  let channelLink = await getConfig("start_channel_link", "");
+  let buttonText = await getConfig("start_button_text", "CLICK HERE");
+  let preview = welcomeMsg.replace(/{link}/g, channelLink).replace(/CLICK HERE/g, buttonText);
+  await ctx.reply(`👁️ *PREVIEW*\n\n━━━━━━━━━━━━━━━━━━━━\n\n${preview}\n\n━━━━━━━━━━━━━━━━━━━━`, { parse_mode: "HTML" });
+});
+
+bot.callbackQuery("ct_reset_balance", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  await ctx.editMessageText(
+    `⚠️ *RESET BALANCE TEXTS*\n\nAre you sure?`,
+    { reply_markup: new InlineKeyboard().text("✅ Yes, Reset", "ct_reset_balance_confirm").text("❌ Cancel", "ct_cat_balance"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_reset_balance_confirm", async (ctx) => {
+  await setConfig("balance_welcome_text", "━━━━━━ 💳 Wallet Overview ━━━━━━");
+  await setConfig("balance_footer_text", "❝ Built with security you can Trust.\nSupport that responds promptly ❞");
+  await setConfig("balance_wallet_label", "🔵 Wallet ID ➝");
+  await setConfig("balance_amount_label", "🧾 Balance ➝");
+  await ctx.answerCallbackQuery({ text: "✅ Reset!" });
+  await ctx.editMessageText("✅ Balance texts reset!", { reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_balance") }).catch(() => {});
+});
+
+bot.callbackQuery("ct_reset_start", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  await ctx.editMessageText(
+    `⚠️ *RESET START COMMAND*\n\nAre you sure?`,
+    { reply_markup: new InlineKeyboard().text("✅ Yes, Reset", "ct_reset_start_confirm").text("❌ Cancel", "ct_cat_start"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("ct_reset_start_confirm", async (ctx) => {
+  await setConfig("start_welcome_text", "💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href=\"{link}\">CLICK HERE</a>");
+  await setConfig("start_channel_link", "https://t.me/yourchannel");
+  await setConfig("start_button_text", "CLICK HERE");
+  await ctx.answerCallbackQuery({ text: "✅ Reset!" });
+  await ctx.editMessageText("✅ Start Command reset!", { reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_start") }).catch(() => {});
+});
+
+// ============================================================
+// 🎨 THEME
+// ============================================================
+bot.callbackQuery("adm_customize_theme", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  let text = "🎨 *Theme - Reply Keyboard*\n\n";
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+  for (let r = 0; r <= maxRow; r++) {
+    let rowButtons = layout.filter(b => b.row === r);
+    if (rowButtons.length > 0) text += `Row ${r}: ${rowButtons.map(b => b.name).join(" | ")}\n`;
+  }
+  let kb = new InlineKeyboard();
+  for (let i = 0; i < layout.length; i++) kb.text(`✏️ ${layout[i].name}`, `theme_edit_${i}`).row();
+  kb.text("➕ Add Button", "theme_add").row();
+  kb.text("♻️ Reset to Default", "theme_reset").row();
+  kb.text("⚠️ Force Update All Users", "theme_force_update").row();
+  kb.text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("theme_reset", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "♻️ Reset!" });
+  await setConfig("keyboard_layout", JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT)));
+  await rerender(ctx, "adm_customize_theme");
+});
+
+bot.callbackQuery("theme_force_update", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let userCount = await UserPreference.countDocuments({});
+  await ctx.editMessageText(
+    `⚠️ FORCE UPDATE ALL USERS\n\nUsers affected: ${userCount}\n\nConfirm?`,
+    { reply_markup: new InlineKeyboard().text("✅ Yes", "theme_force_confirm").text("❌ Cancel", "adm_customize_theme") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("theme_force_confirm", async (ctx) => {
+  let result = await UserPreference.deleteMany({});
+  await ctx.answerCallbackQuery({ text: "✅ Updated!" });
+  await ctx.editMessageText(`✅ FORCE UPDATE COMPLETE!\n\nUsers: ${result.deletedCount}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme") }).catch(() => {});
+});
+
+bot.callbackQuery("theme_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "THEME_WAIT_ADD";
+  await ctx.editMessageText("➕ Send new button name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme") });
+});
+
+bot.callbackQuery(/^theme_edit_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("theme_edit_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  let btn = layout[idx];
+  let kb = new InlineKeyboard()
+    .text("📝 Rename", `theme_rename_${idx}`).row()
+    .text("⬆️ Up", `theme_up_${idx}`).text("⬇️ Down", `theme_down_${idx}`).row()
+    .text("🗑️ Delete", `theme_del_${idx}`).row()
+    .text("🔙 Back", "adm_customize_theme");
+  await ctx.editMessageText(`✏️ Edit Button\n\n📛 ${btn.name}\n📍 Row ${btn.row}`, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^theme_rename_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("theme_rename_", ""), 10);
+  userState[ctx.from.id] = `THEME_WAIT_RENAME_${idx}`;
+  await ctx.editMessageText("📝 Send new name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_customize_theme") });
+});
+
+bot.callbackQuery(/^theme_up_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("theme_up_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (layout[idx].row > 0) layout[idx].row -= 1;
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬆️" });
+  await rerender(ctx, "adm_customize_theme");
+});
+
+bot.callbackQuery(/^theme_down_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("theme_down_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  layout[idx].row += 1;
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬇️" });
+  await rerender(ctx, "adm_customize_theme");
+});
+
+bot.callbackQuery(/^theme_del_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("theme_del_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  layout.splice(idx, 1);
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "🗑️" });
+  await rerender(ctx, "adm_customize_theme");
+});
+
+// ============================================================
+// 🖌️ INLINE STYLES
+// ============================================================
+bot.callbackQuery("adm_edit_styles", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let styleMap = await getConfig("inline_button_styles", {});
+  let text = `🖌️ Inline Button Colors\n\nColored: ${Object.keys(styleMap).length}\n\n👇 Click to change:`;
+  let buttons = [
+    { key: "add_fund_btn", name: "➕ Add Fund" },
+    { key: "balance_statement", name: "📊 Statement" },
+    { key: "customer_support", name: "📞 Support" },
+    { key: "refresh_balance_only", name: "🔄 Refresh" },
+    { key: "live_fund", name: "💰 Live Fund" },
+    { key: "user_settings", name: "⚙️ Settings" }
+  ];
+  let kb = new InlineKeyboard();
+  for (let b of buttons) {
+    let cur = styleMap[b.key] || "none";
+    let icon = (cur !== "none" && INLINE_STYLE_COLORS[cur]) ? INLINE_STYLE_COLORS[cur].emoji : "⚫";
+    kb.text(`${icon} ${b.name}`, `istyle_${b.key}`).row();
+  }
+  kb.text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^istyle_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let btnKey = ctx.callbackQuery.data.replace("istyle_", "");
+  let styleMap = await getConfig("inline_button_styles", {});
+  let cur = styleMap[btnKey] || "none";
+  let curLabel = (cur !== "none" && INLINE_STYLE_COLORS[cur]) ? `${INLINE_STYLE_COLORS[cur].emoji} ${INLINE_STYLE_COLORS[cur].label}` : "⚫ Default";
+  let kb = new InlineKeyboard();
+  for (let [key, info] of Object.entries(INLINE_STYLE_COLORS)) {
+    let mark = cur === key ? "✅ " : "";
+    kb.text(`${mark}${info.emoji} ${info.label}`, `isetc_${btnKey}_${key}`).row();
+  }
+  kb.text(`${cur === "none" ? "✅ " : ""}⚫ Default`, `isetc_${btnKey}_none`).row();
+  kb.text("🔙 Back", "adm_edit_styles");
+  await ctx.editMessageText(`🎨 Set Color\n\n📌 ${btnKey}\n🎨 Current: ${curLabel}`, { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^isetc_/, async (ctx) => {
+  let parts = ctx.callbackQuery.data.replace("isetc_", "").split("_");
+  let colorKey = parts.pop();
+  let btnKey = parts.join("_");
+  let styleMap = await getConfig("inline_button_styles", {});
+  if (colorKey === "none") delete styleMap[btnKey];
+  else if (INLINE_STYLE_COLORS[colorKey]) styleMap[btnKey] = colorKey;
+  await setConfig("inline_button_styles", styleMap);
+  ctx.answerCallbackQuery({ text: "✅ Applied!" });
+  await rerender(ctx, "adm_edit_styles");
+});
+
+// ============================================================
+// 💸 WITHDRAW TOGGLE
+// ============================================================
+bot.callbackQuery("adm_withdraw_toggle", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let toggles = await getConfig("withdraw_toggles", { wallet: true, upi: true, bank: true });
+  let kb = new InlineKeyboard()
+    .text(`${toggles.wallet ? "✅" : "🔴"} Wallet`, "wt_toggle_wallet").row()
+    .text(`${toggles.upi ? "✅" : "🔴"} UPI`, "wt_toggle_upi").row()
+    .text(`${toggles.bank ? "✅" : "🔴"} Bank", "wt_toggle_bank").row()
+    .text("🔙 Back", "admin");
+  await ctx.editMessageText("💸 Withdraw Toggle", { reply_markup: kb }).catch(() => {});
+});
+
+bot.callbackQuery(/^wt_toggle_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let method = ctx.callbackQuery.data.replace("wt_toggle_", "");
+  let toggles = await getConfig("withdraw_toggles", { wallet: true, upi: true, bank: true });
+  toggles[method] = !toggles[method];
+  await setConfig("withdraw_toggles", toggles);
+  await ctx.answerCallbackQuery({ text: toggles[method] ? "✅ ON" : "🔴 OFF" });
+  await rerender(ctx, "adm_withdraw_toggle");
+});
+
+// ============================================================
+// 📢 SETUP CHANNEL
+// ============================================================
+bot.callbackQuery("adm_setup_channel", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderSetupChannelPanel(ctx);
+});
+
+async function renderSetupChannelPanel(ctx) {
+  let channelId = await getConfig("welcome_channel_id", null);
+  let channelLink = await getConfig("welcome_channel_link", null);
+  let channelName = await getConfig("welcome_channel_name", "Not Set");
+  let text = `📢 *Setup Channel*\n\n`;
+  if (channelId && channelLink) {
+    text += `📌 Current:\n   ID: <code>${channelId}</code>\n   Name: ${channelName}\n   Link: ${channelLink}\n\n⚙️ Actions:`;
+  } else {
+    text += `❌ No channel configured.`;
+  }
+  let kb = new InlineKeyboard();
+  if (channelId) {
+    kb.text("✏️ Change Channel", "setup_ch_add").row();
+    kb.text("👁️ Preview Start", "setup_ch_preview").row();
+    kb.text("🗑️ Remove Channel", "setup_ch_remove").row();
+  } else {
+    kb.text("➕ Add Channel", "setup_ch_add").row();
+  }
+  kb.text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+}
+
+bot.callbackQuery("setup_ch_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  userState[ctx.from.id] = "SETUP_CH_WAIT";
+  await ctx.editMessageText(
+    `📢 Add Channel\n\nFormat: <code>ChannelID | InviteLink</code>\n\nExample:\n<code>@mychannel | https://t.me/mychannel</code>`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_setup_channel") }
+  );
+});
+
+bot.callbackQuery("setup_ch_preview", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let channelLink = await getConfig("welcome_channel_link", "https://t.me/yourchannel");
+  await ctx.editMessageText(
+    `📱 PREVIEW START MESSAGE\n\n━━━━━━━━━━━━━━━━━━━━\n\n💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href="${channelLink}">CLICK HERE</a>\n\n━━━━━━━━━━━━━━━━━━━━`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_setup_channel") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("setup_ch_remove", async (ctx) => {
+  await setConfig("welcome_channel_id", "");
+  await setConfig("welcome_channel_link", "https://t.me/yourchannel");
+  await setConfig("welcome_channel_name", "");
+  await ctx.answerCallbackQuery({ text: "🗑️ Removed!" });
+  await renderSetupChannelPanel(ctx);
+});
+
+// ============================================================
+// 🔄 RESET ALL BALANCE
+// ============================================================
+bot.callbackQuery("adm_reset_all_bal", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let userCount = await User.countDocuments({});
+  await ctx.editMessageText(
+    `⚠️ RESET ALL BALANCES\n\nUsers: ${userCount}\n\nThis will reset EVERYONE's balance to ₹0!\n\nConfirm?`,
+    { reply_markup: new InlineKeyboard().text("✅ Yes, Reset All", "adm_reset_all_confirm").row().text("❌ Cancel", "admin") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("adm_reset_all_confirm", async (ctx) => {
+  await User.updateMany({}, { $set: { balance: 0, withdrawnTotal: 0 } });
+  await ctx.answerCallbackQuery({ text: "⏳ Resetting..." });
+  await ctx.editMessageText("✅ All balances reset to ₹0", { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }).catch(() => {});
+});
+
+console.log("✅ Part I loaded — Settings + Customize + Broadcast + UltraPay");
+
+// ============================================================
+// 🔚 END OF PART I
+// ============================================================
+
+// ============================================================
+// 📦 PART J — Admin Text Handlers, Server Start, Config Init
+// ============================================================
+
+// ============================================================
+// 💬 ADMIN TEXT HANDLERS — Insert into existing bot.on("message:text")
+// These go INSIDE the existing text handler where state is checked
+// ============================================================
+// NOTE: This part contains the admin-state handlers that go inside
+// the existing `bot.on("message:text")` block from Part F.
+// Since the function is already defined, we add additional handlers
+// separately as a CONTINUATION — use separate bot.on() handlers.
+
+bot.on("message:text", async (ctx, next) => {
+  let text = ctx.message.text.trim();
+  let userId = ctx.from.id;
+  let state = userState[userId];
+
+  if (!state) return next();
+
+  // ----- ADMIN: FIND USER -----
+  if (state === "WAITING_FOR_TRACKER_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    return ctx.reply(
+      `🙇‍♂️ USER DETAILS\n\n🚻 ${targetUser.firstName || "Unknown"}\n🆔 ${targetUser.userId}\n💰 ₹${targetUser.balance.toFixed(2)}`,
+      { reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }
+    );
+  }
+
+  // ----- ADMIN: ADD BALANCE (quick) -----
+  if (state === "WAITING_FOR_ADD_BAL" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split(/\s+/);
+    let targetId = parseInt(parts[0], 10);
+    let amount = parseFloat(parts[1]);
+    if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) {
+      targetUser = await User.create({ userId: targetId, firstName: "Unknown", balance: amount });
+      await logBalanceHistory(targetId, "Admin Added Balance (New)", amount);
+      await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance (New User)", `+₹${amount} to ${targetId}`, amount, targetId);
+      return ctx.reply(`✅ Added ₹${amount} to new user ${targetId}.`);
+    }
+    targetUser.balance += amount;
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Added Balance", amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
+    return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
+  }
+
+  // ----- ADMIN: REMOVE BALANCE (quick) -----
+  if (state === "WAITING_FOR_REM_BAL" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split(/\s+/);
+    let targetId = parseInt(parts[0], 10);
+    let amount = parseFloat(parts[1]);
+    if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    targetUser.balance = Math.max(0, targetUser.balance - amount);
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
+    return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
+  }
+
+  // ----- ADMIN: RESET BALANCE -----
+  if (state === "WAITING_FOR_RESET_BAL" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.balance = 0;
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Reset Balance", 0);
+    return ctx.reply(`✅ Reset ${targetId}'s balance to ₹0`);
+  }
+
+  // ----- USER DETAIL: REMOVE BALANCE -----
+  if (state.startsWith("UREM_WAIT_")) {
+    let targetId = parseInt(state.replace("UREM_WAIT_", ""), 10);
+    delete userState[userId];
+    let amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.balance = Math.max(0, targetUser.balance - amount);
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
+    try {
+      await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n📉 Removed: ₹${amount}\n💵 New Balance: ₹${targetUser.balance.toFixed(2)}`);
+    } catch (e) {}
+    return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back to User", `user_detail_${targetId}`)
+    });
+  }
+
+  // ----- USER DETAIL: ADD BALANCE -----
+  if (state.startsWith("UADD_WAIT_")) {
+    let targetId = parseInt(state.replace("UADD_WAIT_", ""), 10);
+    delete userState[userId];
+    let amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.balance += amount;
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Added Balance", amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
+    try {
+      await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n🟢 Added: ₹${amount}\n💵 New Balance: ₹${targetUser.balance.toFixed(2)}`);
+    } catch (e) {}
+    return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back to User", `user_detail_${targetId}`)
+    });
+  }
+
+  // ----- USER DETAIL: SEND MESSAGE -----
+  if (state.startsWith("UMSG_WAIT_")) {
+    let targetId = parseInt(state.replace("UMSG_WAIT_", ""), 10);
+    delete userState[userId];
+    try {
+      await ctx.api.sendMessage(targetId, `📨 Message from Admin:\n\n${text}`);
+      return ctx.reply(`✅ Sent to ${targetId}`, {
+        reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${targetId}`)
+      });
+    } catch (e) {
+      return ctx.reply(`❌ Failed: ${e.message}`);
+    }
+  }
+
+  // ----- BAN USER -----
+  if (state === "BAN_USER_WAIT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.isBanned = true;
+    await targetUser.save();
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "User Banned", `${targetId}`, 0, targetId);
+    try { await ctx.api.sendMessage(targetId, `🚫 You have been banned from using this bot.`); } catch (e) {}
+    return ctx.reply(`✅ User ${targetId} BANNED`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban") });
+  }
+
+  if (state === "UNBAN_USER_WAIT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.isBanned = false;
+    await targetUser.save();
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "User Unbanned", `${targetId}`, 0, targetId);
+    try { await ctx.api.sendMessage(targetId, `✅ You have been unbanned. Welcome back!`); } catch (e) {}
+    return ctx.reply(`✅ User ${targetId} UNBANNED`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban") });
+  }
+
+  // ----- MIN/MAX WITHDRAW -----
+  if (state === "WAITING_FOR_MIN_W" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
+    await setConfig("min_withdraw", amt);
+    return ctx.reply(`✅ Min: ₹${amt}`);
+  }
+  if (state === "WAITING_FOR_MAX_W" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
+    await setConfig("max_withdraw", amt);
+    return ctx.reply(`✅ Max: ₹${amt}`);
+  }
+  if (state === "WAITING_FOR_P_CHAN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("payout_channel", text);
+    return ctx.reply(`✅ Payout Channel: ${text}`);
+  }
+  if (state === "WAITING_FOR_SUPPORT_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("support_username", text.trim());
+    return ctx.reply(`✅ Support: ${text.trim()}`);
+  }
+
+  // ----- SUPPORT EDIT -----
+  if (state === "WAITING_SUPPORT_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let newId = text.trim();
+    if (!newId.startsWith('@') && !/^\d+$/.test(newId) && newId.length < 3) {
+      return ctx.reply(`❌ *Invalid Support ID*`, { parse_mode: "Markdown" });
+    }
+    await setConfig("support_username", newId);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Support ID Updated", newId, 0, null);
+    let displayId = newId.startsWith('@') || /^\d+$/.test(newId) ? newId : '@' + newId;
+    return ctx.reply(
+      `✅ *Support ID Updated!*\n\n📌 New: \`${displayId}\``,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back to Support", "adm_setup_support") }
+    );
+  }
+
+  // ----- UPI SETTINGS -----
+  if (state === "UPI_SET_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("auto_upi_id", text.trim());
+    return ctx.reply(`✅ UPI ID: \`${text.trim()}\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
+  }
+  if (state === "UPI_SET_MIN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 1) return ctx.reply("❌ Invalid");
+    await setConfig("auto_upi_min", amt);
+    return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
+  }
+  if (state === "UPI_SET_MAX" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 1) return ctx.reply("❌ Invalid");
+    await setConfig("auto_upi_max", amt);
+    return ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu") });
+  }
+
+  // ----- ADMIN ADD -----
+  if (state === "WAITING_ADMIN_ADD" && (await isOwner(userId))) {
+    delete userState[userId];
+    let newAdminId = parseInt(text.trim(), 10);
+    if (isNaN(newAdminId)) return ctx.reply("❌ Invalid!");
+    if (newAdminId === userId) return ctx.reply("❌ You are owner!");
+    let targetUser = await User.findOne({ userId: newAdminId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    await BotAdmin.findOneAndUpdate(
+      { userId: newAdminId },
+      { addedAt: new Date(), addedBy: userId, isActive: true },
+      { upsert: true }
+    );
+    await logAdminAction(userId, ctx.from.first_name || "Owner", "Admin Added", `Added ${newAdminId}`, 0, newAdminId);
+    try { await ctx.api.sendMessage(newAdminId, `✅ You have been added as Admin!`); } catch (e) {}
+    return ctx.reply(`✅ Admin Added!\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newAdminId}\``, {
+      parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_admins")
+    });
+  }
+
+  // ----- TRANSFER OWNER -----
+  if (state === "WAITING_NEW_OWNER" && (await isOwner(userId))) {
+    delete userState[userId];
+    let newOwnerId = parseInt(text.trim(), 10);
+    if (isNaN(newOwnerId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: newOwnerId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    let kb = new InlineKeyboard()
+      .text("✅ Yes, Transfer", `admin_transfer_confirm_${newOwnerId}`).row()
+      .text("❌ Cancel", "adm_admins");
+    return ctx.reply(`⚠️ *Confirm Transfer*\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newOwnerId}\`\n\nSure?`, {
+      parse_mode: "Markdown", reply_markup: kb
+    });
+  }
+
+  // ----- SETUP CHANNEL -----
+  if (state === "SETUP_CH_WAIT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length !== 2) return ctx.reply("❌ Format: `ChannelID | InviteLink`", { parse_mode: "Markdown" });
+    let channelId = parts[0];
+    let inviteLink = parts[1];
+    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply("❌ Invalid Channel ID!");
+    if (!inviteLink.startsWith("https://t.me/")) return ctx.reply("❌ Invalid Invite Link!");
+    let channelTitle = "";
+    try {
+      let chatInfo = await ctx.api.getChat(channelId);
+      channelTitle = chatInfo.title || channelId;
+      let botInfo = await ctx.api.getMe();
+      let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
+      if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply("❌ Bot must be admin in channel!");
+    } catch (e) {
+      return ctx.reply(`❌ Cannot access channel: ${e.message}`);
+    }
+    await setConfig("welcome_channel_id", channelId);
+    await setConfig("welcome_channel_link", inviteLink);
+    await setConfig("welcome_channel_name", channelTitle);
+    return ctx.reply(
+      `✅ Channel Added!\n\n📢 ID: <code>${channelId}</code>\n📛 Name: ${channelTitle}\n🔗 Link: ${inviteLink}`,
+      { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_setup_channel") }
+    );
+  }
+
+  // ----- USER MESSAGE -----
+  if (state === "WAITING_FOR_USER_MESSAGE" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 2) return ctx.reply(`❌ Format: \`UserID | Message\``, { parse_mode: "Markdown" });
+    let targetId = parseInt(parts[0], 10);
+    let message = parts.slice(1).join("|").trim();
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
+    try {
+      await ctx.api.sendMessage(targetId, `📨 *Admin Message*\n\n${message}`, { parse_mode: "Markdown" });
+      return ctx.reply(`✅ Sent to \`${targetId}\`!`, { parse_mode: "Markdown" });
+    } catch (e) {
+      return ctx.reply(`❌ Failed: ${e.message}`);
+    }
+  }
+
+  // ----- GIFT CODES -----
+  if (state === "WAITING_REDEEM_CODES" && (await isAdmin(userId))) {
+    delete userState[userId];
+    return await saveCodes(text, "redeem", ctx);
+  }
+  if (state === "WAITING_AMAZON_CODES" && (await isAdmin(userId))) {
+    delete userState[userId];
+    return await saveCodes(text, "amazon", ctx);
+  }
+  if (state.startsWith("WAITING_GC_AMT_") && (await isAdmin(userId))) {
+    let code = state.replace("WAITING_GC_AMT_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "redeem" }, { amount: amt });
+    return ctx.reply(`✅ Amount: ₹${amt}`);
+  }
+  if (state.startsWith("WAITING_GC_MAX_") && (await isAdmin(userId))) {
+    let code = state.replace("WAITING_GC_MAX_", "");
+    delete userState[userId];
+    let maxUses = parseInt(text);
+    if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "redeem" }, { maxUses });
+    return ctx.reply(`✅ Max: ${maxUses}`);
+  }
+  if (state.startsWith("WAITING_AMZ_AMT_") && (await isAdmin(userId))) {
+    let code = state.replace("WAITING_AMZ_AMT_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "amazon" }, { amount: amt });
+    return ctx.reply(`✅ Amount: ₹${amt}`);
+  }
+  if (state.startsWith("WAITING_AMZ_MAX_") && (await isAdmin(userId))) {
+    let code = state.replace("WAITING_AMZ_MAX_", "");
+    delete userState[userId];
+    let maxUses = parseInt(text);
+    if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "amazon" }, { maxUses });
+    return ctx.reply(`✅ Max: ${maxUses}`);
+  }
+
+  // ----- TASK CREATE -----
+  if (state === "WAITING_FOR_TASK_CREATE" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 4) return ctx.reply("❌ Use: TaskID | Title | Reward | Link");
+    await Task.create({
+      taskId: parts[0], title: parts[1],
+      reward: parseFloat(parts[2]), link: parts[3],
+      alertChannel: await getConfig("default_task_alert_channel", "Not Set")
+    });
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Task Created", `${parts[1]}`, parseFloat(parts[2]));
+    return ctx.reply(`✅ Task '${parts[1]}' created!`);
+  }
+
+  // ----- TASK EDIT -----
+  if (state.startsWith("TASK_EDIT_TITLE_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_TITLE_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { title: text.trim() });
+    return ctx.reply(`✅ Title updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_REWARD_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_REWARD_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await Task.updateOne({ taskId }, { reward: amt });
+    return ctx.reply(`✅ Reward updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_LINK_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_LINK_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { link: text.trim() });
+    return ctx.reply(`✅ Link updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_CHANNEL_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_CHANNEL_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { alertChannel: text.trim() });
+    return ctx.reply(`✅ Alert Channel updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+
+  // ----- GATEWAY -----
+  if (state === "WAITING_GW_NAME" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let gwName = text.trim().toUpperCase();
+    userState[userId] = `WAITING_GW_URL_${gwName}`;
+    return ctx.reply(`🌐 Gateway: ${gwName}\n\n📝 Send Gateway URL:\n\n⚠️ Placeholders: {upi} {wallet} {amount} {userId} {orderId}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_gateway_menu")
+    });
+  }
+  if (state.startsWith("WAITING_GW_URL_") && (await isAdmin(userId))) {
+    let gwName = state.replace("WAITING_GW_URL_", "");
+    delete userState[userId];
+    let url = text.trim();
+    if (!url.startsWith("http")) return ctx.reply("❌ Invalid URL!");
+    await Gateway.create({ name: gwName, url, type: "deposit", isActive: false });
+    return ctx.reply(`✅ Gateway Saved!\n\n📛 ${gwName}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_gateway_menu")
+    });
+  }
+
+  // ----- ULTRAPAY TOKEN/KEY -----
+  if (state === "UP_WAIT_TOKEN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let newToken = text.trim();
+    if (newToken.length < 20) return ctx.reply("❌ Token too short!");
+    await setConfig("ultrapay_token", newToken);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "UltraPay Token Updated", "", 0, null);
+    return ctx.reply(`✅ Token Updated!\n\n📌 \`${newToken.substring(0, 15)}...\``,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_ultrapay") });
+  }
+  if (state === "UP_WAIT_KEY" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let newKey = text.trim();
+    if (newKey.length < 10) return ctx.reply("❌ Key too short!");
+    await setConfig("ultrapay_key", newKey);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "UltraPay Key Updated", "", 0, null);
+    return ctx.reply(`✅ Key Updated!\n\n📌 \`${newKey.substring(0, 8)}...\``,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_ultrapay") });
+  }
+
+  // ----- THEME -----
+  if (state === "THEME_WAIT_ADD" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+    layout.push({ name: text.trim(), key: `btn_custom_${Date.now()}`, row: maxRow });
+    await setConfig("keyboard_layout", layout);
+    return ctx.reply(`✅ Button added: ${text.trim()}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme")
+    });
+  }
+  if (state.startsWith("THEME_WAIT_RENAME_") && (await isAdmin(userId))) {
+    let idx = parseInt(state.replace("THEME_WAIT_RENAME_", ""), 10);
+    delete userState[userId];
+    let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    if (idx < 0 || idx >= layout.length) return ctx.reply("❌ Invalid");
+    layout[idx].name = text.trim();
+    await setConfig("keyboard_layout", layout);
+    return ctx.reply(`✅ Renamed to: ${text.trim()}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_customize_theme")
+    });
+  }
+
+  // ----- CUSTOMIZE TEXTS -----
+  if (state === "CT_WAIT_WELCOME" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("balance_welcome_text", text);
+    return ctx.reply(`✅ Welcome text updated!\n\n📝 New:\n${text}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_balance") });
+  }
+  if (state === "CT_WAIT_FOOTER" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("balance_footer_text", text);
+    return ctx.reply(`✅ Footer text updated!\n\n📝 New:\n${text}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_balance") });
+  }
+  if (state === "CT_WAIT_WALLET" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("balance_wallet_label", text);
+    return ctx.reply(`✅ Wallet label updated!\n\n📝 New: ${text}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_balance") });
+  }
+  if (state === "CT_WAIT_AMOUNT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("balance_amount_label", text);
+    return ctx.reply(`✅ Balance label updated!\n\n📝 New: ${text}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_balance") });
+  }
+  if (state === "CT_WAIT_START_MSG" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_welcome_text", text);
+    return ctx.reply(`✅ Start message updated!`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_start") });
+  }
+  if (state === "CT_WAIT_START_LINK" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_channel_link", text.trim());
+    return ctx.reply(`✅ Channel link updated!\n\n📝 New: ${text.trim()}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_start") });
+  }
+  if (state === "CT_WAIT_START_BTN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_button_text", text.trim());
+    return ctx.reply(`✅ Button text updated!\n\n📝 New: ${text.trim()}`,
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "ct_cat_start") });
+  }
+
+  return next();
+});
+
+// ============================================================
+// 🚀 BOT ERROR HANDLER
 // ============================================================
 bot.catch((err) => console.error("❌ Bot Error:", err.message));
 
+// ============================================================
+// 🚀 START BOT — Retry Logic
+// ============================================================
 let botRetryCount = 0;
 const MAX_BOT_RETRIES = 15;
 
@@ -5683,33 +6674,73 @@ async function startBotSafe() {
   }
 }
 
+// ============================================================
+// 🍃 MONGODB CONNECT + DEFAULTS + START BOT
+// ============================================================
 mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log("🍃 MongoDB Connected!");
 
-    // Init defaults
+    // ============================================================
+    // ⚙️ INITIALIZE DEFAULT CONFIG VALUES
+    // ============================================================
+    // Auto UPI
     await getConfig("auto_upi_id", "nasih@fam");
     await getConfig("auto_upi_min", 5);
     await getConfig("auto_upi_max", 200);
     await getConfig("auto_upi_enabled", true);
     await getConfig("auto_verify_enabled", true);
     await getConfig("manual_verify_enabled", true);
+
+    // Withdraw
     await getConfig("min_withdraw", 10);
     await getConfig("max_withdraw", 10000);
+    await getConfig("tax_percent", 0);
+
+    // Balance Text
     await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
     await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+    await getConfig("balance_wallet_label", DEFAULT_BALANCE_TEXT.walletId);
+    await getConfig("balance_amount_label", DEFAULT_BALANCE_TEXT.balance);
+
+    // Keyboard
     await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+
+    // Welcome channel
     await getConfig("welcome_channel_link", "https://t.me/yourchannel");
+
+    // Bot status
     await getConfig("bot_active", true);
+
+    // Quick Pay Tax
     await getConfig("quick_pay_tax_enabled", false);
     await getConfig("quick_pay_tax_percent", 0);
 
+    // Live Fund
+    await getConfig("live_fund_display_enabled", false);
+    await getConfig("live_fund_remaining_enabled", false);
+
+    // UltraPay
+    await getConfig("ultrapay_enabled", false);
+    await getConfig("ultrapay_token", "");
+    await getConfig("ultrapay_key", "");
+    await getConfig("ultrapay_auto_payout", false);
+
+    // Start Command
+    await getConfig("start_welcome_text", "💫 <b>Welcome To Task Payment Bot!</b>\n\nTo Know How To Earn → <a href=\"{link}\">CLICK HERE</a>");
+    await getConfig("start_channel_link", "https://t.me/yourchannel");
+    await getConfig("start_button_text", "CLICK HERE");
+
+    // API Key
     let apiKey = await getConfig("auto_upi_api_key", null);
     if (!apiKey) {
       apiKey = "KEY_" + crypto.randomBytes(16).toString("hex");
       await setConfig("auto_upi_api_key", apiKey);
       console.log("🔐 Generated new API Key:", apiKey);
     }
+
+    // Owner ID
+    await getConfig("owner_id", MAIN_OWNER_ID);
 
     console.log("⏳ Waiting 8s for cleanup...");
     await new Promise(r => setTimeout(r, 8000));
@@ -5778,3 +6809,7 @@ setInterval(() => {
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
 console.log("✅ All Mini App APIs loaded!");
+
+// ============================================================
+// 🔚 END OF PART J
+// ============================================================
