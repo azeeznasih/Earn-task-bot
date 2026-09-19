@@ -4,30 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Device Verification</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* ============================================================
-   VERIFY PAGE — Styles (inline)
-   ============================================================ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html, body {
-  background: #000;
-  color: #fff;
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-body {
-  background: radial-gradient(ellipse at top, #0a1a10 0%, #000 70%);
-}
+/* ═══════════════════════════════════════════════════════
+   VERIFY PAGE — Premium Styles (Green Glow)
+   ═══════════════════════════════════════════════════════ */
 
 .verify-app {
   max-width: 480px;
@@ -39,7 +21,7 @@ body {
   gap: 14px;
 }
 
-/* ============ TOP BAR ============ */
+/* ───── TOP BAR ───── */
 .verify-topbar {
   display: flex;
   justify-content: space-between;
@@ -49,11 +31,11 @@ body {
 }
 
 .back-btn {
-  background: rgba(0, 255, 136, 0.1);
-  border: 1px solid rgba(0, 255, 136, 0.25);
+  background: rgba(0, 255, 136, 0.08);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   color: #00ff88;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   font-size: 18px;
   font-weight: 700;
@@ -61,18 +43,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
 .back-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 .topbar-title {
   flex: 1;
   text-align: center;
   font-size: 15px;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
 }
 
 .status-badge {
@@ -81,16 +69,19 @@ body {
   gap: 6px;
   padding: 8px 12px;
   background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.25);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 800;
   color: #00ff88;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.3s;
 }
 
 .status-badge .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   background: #00ff88;
   border-radius: 50%;
   box-shadow: 0 0 10px #00ff88;
@@ -99,7 +90,7 @@ body {
 
 .status-badge.danger {
   background: rgba(255, 77, 77, 0.08);
-  border-color: rgba(255, 77, 77, 0.3);
+  border-color: rgba(255, 77, 77, 0.35);
   color: #ff4d4d;
 }
 
@@ -109,28 +100,31 @@ body {
 }
 
 @keyframes pulseDot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
 }
 
-/* ============ USER TOP INFO ============ */
+/* ───── USER TOP INFO ───── */
 .user-top-info {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px;
-  background: rgba(17, 26, 17, 0.55);
+  background: rgba(0, 20, 10, 0.55);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: cardSlideIn 0.4s ease backwards;
 }
 
 .user-avatar {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.15);
-  border: 2px solid rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.12);
+  border: 2.5px solid rgba(0, 255, 136, 0.5);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -138,12 +132,26 @@ body {
   font-size: 24px;
   flex-shrink: 0;
   box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  position: relative;
 }
 
 .user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.user-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #00ff88;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00ff88;
 }
 
 .user-details {
@@ -153,52 +161,67 @@ body {
 
 .user-name {
   font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 800;
+  color: #00ff88;
   margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.2px;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
 }
 
 .user-id {
-  font-size: 12px;
-  color: #7a9a7a;
-  font-family: 'Courier New', monospace;
+  font-size: 11.5px;
+  color: #00ff88;
+  opacity: 0.6;
+  font-family: 'SF Mono', 'Courier New', monospace;
   margin-bottom: 2px;
+  font-weight: 600;
 }
 
 .user-handle {
   font-size: 12px;
   color: #00ff88;
-  font-weight: 600;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
 }
 
-/* ============ MAIN CARD ============ */
+/* ───── MAIN CARD ───── */
 .main-card {
-  background: linear-gradient(145deg, rgba(0, 255, 136, 0.08), rgba(0, 255, 136, 0.02));
+  background: linear-gradient(145deg,
+    rgba(0, 255, 136, 0.08),
+    rgba(0, 255, 136, 0.02));
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.25);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-radius: 22px;
   padding: 20px;
   position: relative;
   overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(0, 255, 136, 0.1);
+  animation: cardSlideIn 0.4s ease 0.05s backwards;
 }
 
 .main-card::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: -100%;
+  width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+  background: linear-gradient(90deg,
+    transparent,
+    #00ff88,
+    transparent);
   animation: cardShine 3s infinite;
 }
 
 @keyframes cardShine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 .card-header {
@@ -206,20 +229,23 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 255, 136, 0.15);
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.12);
 }
 
 .card-label {
-  font-size: 11px;
-  color: #7affb0;
+  font-size: 10.5px;
+  color: #00ff88;
   letter-spacing: 1.5px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
+  opacity: 0.85;
 }
 
 .card-status-icon {
-  font-size: 20px;
+  font-size: 22px;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.4));
+  transition: all 0.3s;
 }
 
 .card-content {
@@ -231,23 +257,26 @@ body {
 .card-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .field-label {
-  font-size: 10px;
-  color: #7a9a7a;
+  font-size: 9.5px;
+  color: #00ff88;
+  opacity: 0.55;
   letter-spacing: 1.5px;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
 .field-value {
   font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  color: #00ff88;
+  font-family: 'SF Mono', 'Courier New', monospace;
   word-break: break-all;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
 .id-value {
@@ -258,85 +287,114 @@ body {
   font-family: inherit;
   font-size: 17px;
   font-weight: 800;
-  color: #fff;
+  color: #00ff88;
+  letter-spacing: 0.2px;
 }
 
 .field-handle {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #00ff88;
-  font-weight: 600;
+  opacity: 0.85;
+  font-weight: 700;
 }
 
 .card-bot-photo {
   margin-top: 18px;
   padding-top: 18px;
-  border-top: 1px solid rgba(0, 255, 136, 0.15);
+  border-top: 1px solid rgba(0, 255, 136, 0.12);
   display: flex;
   justify-content: center;
 }
 
 .card-bot-photo img {
-  width: 80px;
-  height: 80px;
+  width: 85px;
+  height: 85px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #00ff88;
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  box-shadow:
+    0 0 30px rgba(0, 255, 136, 0.5),
+    0 0 60px rgba(0, 255, 136, 0.2);
+  animation: botPhotoGlow 3s ease-in-out infinite alternate;
 }
 
-/* ============ STATUS SECTION ============ */
+@keyframes botPhotoGlow {
+  from {
+    box-shadow:
+      0 0 30px rgba(0, 255, 136, 0.5),
+      0 0 60px rgba(0, 255, 136, 0.2);
+  }
+  to {
+    box-shadow:
+      0 0 45px rgba(0, 255, 136, 0.7),
+      0 0 90px rgba(0, 255, 136, 0.3);
+  }
+}
+
+/* ───── STATUS SECTION ───── */
 .status-section {
   text-align: center;
-  padding: 6px 0;
+  padding: 8px 0;
+  animation: cardSlideIn 0.4s ease 0.1s backwards;
 }
 
 .status-title {
   font-size: 18px;
   font-weight: 800;
-  color: #00ff88;
   margin-bottom: 8px;
+  letter-spacing: 0.3px;
+  transition: all 0.3s;
 }
 
 .status-title.error {
   color: #ff4d4d;
+  text-shadow: 0 0 20px rgba(255, 77, 77, 0.4);
 }
 
 .status-title.success {
   color: #00ff88;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
 }
 
 .status-subtitle {
-  font-size: 13px;
-  color: #7a9a7a;
-  line-height: 1.5;
+  font-size: 12.5px;
+  color: #00ff88;
+  opacity: 0.65;
+  line-height: 1.55;
   max-width: 320px;
   margin: 0 auto;
+  font-weight: 600;
 }
 
-/* ============ BOT INFO CARD ============ */
+/* ───── BOT INFO CARD ───── */
 .bot-info-card {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: rgba(17, 26, 17, 0.55);
+  background: rgba(0, 20, 10, 0.55);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: cardSlideIn 0.4s ease 0.15s backwards;
+  transition: all 0.3s;
 }
 
 .bot-avatar {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.15);
-  border: 2px solid rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.12);
+  border: 2.5px solid rgba(0, 255, 136, 0.5);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
   flex-shrink: 0;
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.3);
 }
 
 .bot-avatar img {
@@ -352,94 +410,121 @@ body {
 
 .bot-name {
   font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 2px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
 .bot-status {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #00ff88;
-  font-weight: 600;
+  opacity: 0.75;
+  font-weight: 700;
 }
 
 .bot-check {
-  font-size: 20px;
+  font-size: 22px;
   color: #00ff88;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.5));
+  transition: all 0.3s;
 }
 
-/* ============ CONTINUE BUTTON ============ */
+/* ───── CONTINUE BUTTON ───── */
 .continue-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
   border: none;
-  padding: 16px;
+  padding: 17px;
   border-radius: 16px;
   font-weight: 800;
   font-size: 15px;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   cursor: pointer;
-  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+  box-shadow:
+    0 8px 32px rgba(0, 255, 136, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transition: transform 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+  animation: cardSlideIn 0.4s ease 0.2s backwards;
+}
+
+.continue-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent);
+  animation: btnShine 3s ease-in-out infinite;
+}
+
+@keyframes btnShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 .continue-btn:active {
   transform: scale(0.97);
 }
 
-/* ============ FOOTER ============ */
+/* ───── FOOTER ───── */
 .verify-footer {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 12px;
-  color: #7a9a7a;
+  font-size: 11.5px;
+  color: #00ff88;
+  opacity: 0.55;
   padding: 8px 0;
   margin-top: auto;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .lock-icon {
   font-size: 14px;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
-/* ============ TOAST ============ */
-.toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
-  padding: 14px 24px;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 13px;
-  z-index: 10000;
-  max-width: 90%;
-  text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
-  animation: toastUp 0.3s ease;
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .topbar-title { font-size: 13px; }
+  .status-badge { padding: 6px 10px; font-size: 9.5px; }
+  .user-name { font-size: 14px; }
+  .status-title { font-size: 16px; }
+  .card-bot-photo img { width: 70px; height: 70px; }
+  .continue-btn { font-size: 14px; padding: 15px; }
 }
 
-@keyframes toastUp {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+/* ───── SCROLL FIX ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
 </style>
 </head>
 <body>
+
 <div class="verify-app">
 
-  <!-- TOP BAR -->
+  <!-- ═══ TOP BAR ═══ -->
   <header class="verify-topbar">
     <button class="back-btn" onclick="goBack()">←</button>
     <div class="topbar-title">Device Verification</div>
@@ -449,7 +534,7 @@ body {
     </div>
   </header>
 
-  <!-- USER INFO -->
+  <!-- ═══ USER INFO ═══ -->
   <div class="user-top-info">
     <div class="user-avatar" id="userAvatar">
       <span id="userFallback">👤</span>
@@ -462,20 +547,21 @@ body {
     </div>
   </div>
 
-  <!-- MAIN CARD -->
+  <!-- ═══ MAIN CARD ═══ -->
   <div class="main-card" id="mainCard">
     <div class="card-header">
-      <span class="card-label">Device verification</span>
+      <span class="card-label">Device Verification</span>
       <span class="card-status-icon" id="cardStatusIcon">⏳</span>
     </div>
 
     <div class="card-content">
       <div class="card-field">
-        <div class="field-label">TELEGRAM ID</div>
+        <div class="field-label">Telegram ID</div>
         <div class="field-value id-value" id="cardTelegramId">-</div>
       </div>
 
       <div class="card-field">
+        <div class="field-label">Account</div>
         <div class="field-value name-value" id="cardName">-</div>
         <div class="field-handle" id="cardHandle">@-</div>
       </div>
@@ -486,13 +572,13 @@ body {
     </div>
   </div>
 
-  <!-- STATUS TEXT -->
+  <!-- ═══ STATUS ═══ -->
   <div class="status-section">
     <div class="status-title" id="statusTitle">⏳ Verifying...</div>
     <div class="status-subtitle" id="statusSubtitle">Please wait while we verify your device.</div>
   </div>
 
-  <!-- BOT INFO CARD -->
+  <!-- ═══ BOT INFO ═══ -->
   <div class="bot-info-card">
     <div class="bot-avatar" id="botAvatar">
       <span>🤖</span>
@@ -505,12 +591,12 @@ body {
     <div class="bot-check" id="botCheck">⏳</div>
   </div>
 
-  <!-- CONTINUE BUTTON -->
+  <!-- ═══ CONTINUE BUTTON ═══ -->
   <button class="continue-btn" id="continueBtn" onclick="continueToBot()" style="display:none;">
     Continue to Bot  ›
   </button>
 
-  <!-- FOOTER -->
+  <!-- ═══ FOOTER ═══ -->
   <div class="verify-footer">
     <span class="lock-icon">🔒</span>
     <span>Your access is ready when you are.</span>
@@ -520,7 +606,7 @@ body {
 
 <script>
 // ============================================================
-// ✅ VERIFY PAGE — Complete Logic
+// ✅ VERIFY PAGE — Complete Logic (Working Condition)
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -543,10 +629,12 @@ let verified = false;
 function showToast(msg) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
+
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
+
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
@@ -558,7 +646,6 @@ function showToast(msg) {
 // 🔒 DEVICE HASH GENERATOR
 // ============================================================
 async function generateDeviceHash() {
-  // Combine: Telegram user data + device info
   const deviceData = [
     tgUser?.id || 'unknown',
     tgUser?.language_code || 'unknown',
@@ -568,7 +655,6 @@ async function generateDeviceHash() {
     Intl.DateTimeFormat().resolvedOptions().timeZone || ''
   ].join('|');
 
-  // Generate SHA-256 hash
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(deviceData);
@@ -577,7 +663,6 @@ async function generateDeviceHash() {
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex;
   } catch (e) {
-    // Fallback: simple hash
     let hash = 0;
     for (let i = 0; i < deviceData.length; i++) {
       hash = ((hash << 5) - hash) + deviceData.charCodeAt(i);
@@ -633,7 +718,7 @@ async function runVerification() {
     document.getElementById('statusSubtitle').textContent = 'Reading device info...';
     deviceHash = await generateDeviceHash();
 
-    // 2. Fetch verification status from server
+    // 2. Fetch verification status
     document.getElementById('statusSubtitle').textContent = 'Checking verification status...';
     const res = await fetch(`/miniapp/api/verify/${userId}`);
     const data = await res.json();
@@ -653,7 +738,7 @@ async function runVerification() {
       }
     }
 
-    // 4. If verification disabled → auto-success
+    // 4. Verification disabled → auto-success
     if (data.verifyEnabled === false) {
       setStatus('success', '✅ Verified', 'Device verification is disabled.');
       setBadge('Verified', false);
@@ -665,7 +750,7 @@ async function runVerification() {
       return;
     }
 
-    // 5. If already verified → success
+    // 5. Already verified
     if (data.verified === true) {
       setStatus('success', '✅ Already Verified', 'Your device is verified. Welcome back!');
       setBadge('Verified', false);
@@ -699,7 +784,6 @@ async function runVerification() {
       verified = true;
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else {
-      // Rejected — device already used
       const reason = submitData.reason || 'This device has already been used by another account.';
       setStatus('error', '🚫 Verification Failed', reason);
       setBadge('Blocked', true);
@@ -751,7 +835,6 @@ function continueToBot() {
     return;
   }
 
-  // Try to close Mini App
   if (tg) {
     if (tg.close) {
       tg.close();
@@ -782,6 +865,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.goBack = goBack;
+window.continueToBot = continueToBot;
 </script>
+
 </body>
 </html>
