@@ -7,13 +7,46 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* Add Fund Page Specific Styles */
+/* ═══════════════════════════════════════════════════════
+   ADD FUND PAGE — Premium Styles (Green Glow Theme)
+   ═══════════════════════════════════════════════════════ */
 
+/* ───── PAGE HEADER ───── */
+.page-header {
+  text-align: center;
+  margin-bottom: 22px;
+  padding-top: 8px;
+}
+
+.page-title {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 60%, #FFD700 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  filter: drop-shadow(0 0 24px rgba(0, 255, 136, 0.35));
+}
+
+/* ───── AUTO UPI CARD ───── */
 .auto-upi-card {
-  border-radius: 20px;
-  padding: 22px 18px;
+  border-radius: 22px;
+  padding: 24px 18px;
   margin-bottom: 14px;
   animation: cardSlideIn 0.5s ease backwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.auto-upi-card::before {
+  content: '💠';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 100px;
+  opacity: 0.05;
+  transform: rotate(-15deg);
+  pointer-events: none;
 }
 
 .auto-upi-title {
@@ -26,110 +59,161 @@
   -webkit-text-fill-color: transparent;
   margin-bottom: 6px;
   letter-spacing: 1px;
+  text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
 }
 
 .auto-upi-sub {
   text-align: center;
-  color: #7a9a7a;
+  color: #00ff88;
+  opacity: 0.65;
   font-size: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  font-weight: 600;
 }
 
+/* ───── AMOUNT INPUT ───── */
 .amount-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 136, 0.25);
-  border-radius: 14px;
-  padding: 0 16px;
-  transition: all 0.2s;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 16px;
+  padding: 0 18px;
+  transition: all 0.25s;
+  position: relative;
 }
 
 .amount-input-wrap:focus-within {
   border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  box-shadow: 
+    0 0 24px rgba(0, 255, 136, 0.35),
+    0 0 60px rgba(0, 255, 136, 0.1),
+    inset 0 0 20px rgba(0, 255, 136, 0.05);
 }
 
 .amount-input-wrap .rupee {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 800;
   color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
 }
 
 .amount-input-wrap input {
   flex: 1;
   background: transparent;
   border: none;
-  color: #fff;
-  padding: 16px 10px;
-  font-size: 24px;
-  font-weight: 700;
+  color: #00ff88;
+  padding: 18px 10px;
+  font-size: 26px;
+  font-weight: 800;
   outline: none;
+  font-family: inherit;
+  letter-spacing: -0.5px;
 }
 
 .amount-input-wrap input::placeholder {
-  color: #4a6a4a;
+  color: #00ff88;
+  opacity: 0.25;
+}
+
+/* Remove number spinners */
+.amount-input-wrap input::-webkit-outer-spin-button,
+.amount-input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.amount-input-wrap input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .amount-range {
   text-align: center;
-  color: #7a9a7a;
-  font-size: 12px;
-  margin-top: 8px;
-  margin-bottom: 18px;
+  color: #00ff88;
+  opacity: 0.65;
+  font-size: 11.5px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  font-weight: 600;
 }
 
 .amount-range b {
   color: #00ff88;
+  opacity: 1;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
 
+/* ───── QUICK AMOUNTS ───── */
 .quick-amounts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 20px;
 }
 
 .quick-amounts button {
-  background: rgba(0, 255, 136, 0.08);
+  background: rgba(0, 255, 136, 0.06);
   color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  padding: 12px 8px;
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
+  padding: 13px 8px;
   border-radius: 12px;
   font-weight: 800;
   font-size: 15px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  letter-spacing: 0.3px;
 }
 
 .quick-amounts button:active,
 .quick-amounts button.selected {
-  background: #00ff88;
-  color: #000;
-  transform: scale(0.95);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  transform: scale(0.94);
+  box-shadow: 
+    0 0 25px rgba(0, 255, 136, 0.55),
+    0 0 50px rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
 }
 
+/* ───── UPI INFO CARD ───── */
 .upi-info-card {
-  border-radius: 20px;
-  padding: 18px;
+  border-radius: 22px;
+  padding: 20px 18px;
   margin-bottom: 14px;
   animation: cardSlideIn 0.5s ease 0.1s backwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.upi-info-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 255, 136, 0.08),
+    transparent);
+  animation: shine 4s infinite;
+  pointer-events: none;
 }
 
 .upi-info-label {
   font-size: 11px;
-  color: #7a9a7a;
+  color: #00ff88;
+  opacity: 0.7;
   letter-spacing: 1.5px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 12px;
   text-align: center;
+  text-transform: uppercase;
 }
 
 .upi-id-display {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 136, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px dashed rgba(0, 255, 136, 0.4);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -138,11 +222,15 @@
   gap: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  z-index: 2;
 }
 
 .upi-id-display:active {
-  background: rgba(0, 255, 136, 0.1);
+  background: rgba(0, 255, 136, 0.12);
   transform: scale(0.98);
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 .upi-id-text {
@@ -150,71 +238,88 @@
   font-weight: 800;
   font-size: 17px;
   word-break: break-all;
-  font-family: 'Courier New', monospace;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
 }
 
 .copy-badge {
-  background: rgba(0, 255, 136, 0.2);
-  color: #00ff88;
-  font-size: 10px;
-  padding: 4px 10px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  font-size: 9.5px;
+  padding: 5px 10px;
   border-radius: 8px;
-  font-weight: 700;
+  font-weight: 800;
   white-space: nowrap;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.35);
+  flex-shrink: 0;
 }
 
 .copy-hint {
   text-align: center;
-  color: #7a9a7a;
-  font-size: 11px;
-  margin-top: 8px;
+  color: #00ff88;
+  opacity: 0.55;
+  font-size: 10.5px;
+  margin-top: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
+/* ───── UTR CARD ───── */
 .utr-card {
-  border-radius: 20px;
-  padding: 18px;
+  border-radius: 22px;
+  padding: 20px 18px;
   margin-bottom: 14px;
   animation: cardSlideIn 0.5s ease 0.2s backwards;
 }
 
 .utr-label {
   font-size: 11px;
-  color: #7a9a7a;
-  letter-spacing: 1.5px;
-  font-weight: 700;
-  margin-bottom: 10px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.3px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  text-transform: uppercase;
 }
 
 .utr-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 136, 0.25);
-  border-radius: 12px;
-  padding: 14px 16px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 14px;
+  padding: 16px 18px;
+  color: #00ff88;
+  font-size: 17px;
+  font-weight: 800;
   outline: none;
-  font-family: 'Courier New', monospace;
+  font-family: 'SF Mono', 'Courier New', monospace;
   letter-spacing: 2px;
-  transition: all 0.2s;
+  transition: all 0.25s;
+  text-align: center;
 }
 
 .utr-input:focus {
   border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  box-shadow: 
+    0 0 24px rgba(0, 255, 136, 0.35),
+    inset 0 0 20px rgba(0, 255, 136, 0.05);
 }
 
 .utr-input::placeholder {
-  color: #4a6a4a;
+  color: #00ff88;
+  opacity: 0.3;
   letter-spacing: 1px;
   font-family: inherit;
+  font-weight: 600;
 }
 
+/* ───── VERIFY BUTTON ───── */
 .verify-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
   border: none;
   padding: 18px;
   border-radius: 16px;
@@ -222,10 +327,29 @@
   font-size: 16px;
   letter-spacing: 1px;
   cursor: pointer;
-  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+  box-shadow: 
+    0 8px 32px rgba(0, 255, 136, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transition: transform 0.15s;
-  margin-top: 14px;
+  margin-top: 16px;
   font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.verify-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent);
+  animation: shine 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .verify-btn:active {
@@ -233,40 +357,44 @@
 }
 
 .verify-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
+/* ───── SUCCESS SCREEN ───── */
 .success-screen {
   display: none;
   text-align: center;
-  padding: 40px 20px;
-  border-radius: 20px;
+  padding: 36px 20px;
+  border-radius: 22px;
+  animation: fadeIn 0.5s ease;
 }
 
 .success-screen.active {
   display: block;
-  animation: fadeIn 0.5s ease;
 }
 
 .success-icon-big {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.15);
+  background: rgba(0, 255, 136, 0.12);
   border: 3px solid #00ff88;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 50px;
+  font-size: 54px;
   margin: 0 auto 24px;
   animation: bounceIn 0.6s ease;
-  box-shadow: 0 0 40px rgba(0, 255, 136, 0.4);
+  box-shadow: 
+    0 0 40px rgba(0, 255, 136, 0.5),
+    0 0 80px rgba(0, 255, 136, 0.2);
 }
 
 @keyframes bounceIn {
   0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.1); }
+  50% { transform: scale(1.15); }
   100% { transform: scale(1); opacity: 1; }
 }
 
@@ -276,39 +404,64 @@
   color: #00ff88;
   margin-bottom: 10px;
   letter-spacing: 1px;
+  text-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
 }
 
 .success-amount-box {
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  border-radius: 16px;
-  padding: 20px;
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.08),
+    rgba(0, 255, 136, 0.04));
+  border: 1.5px solid rgba(0, 255, 136, 0.35);
+  border-radius: 18px;
+  padding: 22px;
   margin: 20px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.success-amount-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 255, 136, 0.1),
+    transparent);
+  animation: shine 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .success-amount-label {
-  color: #7a9a7a;
-  font-size: 12px;
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 11px;
   letter-spacing: 1.5px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 8px;
+  text-transform: uppercase;
 }
 
 .success-amount-value {
-  font-size: 36px;
+  font-size: 38px;
   font-weight: 800;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+  letter-spacing: -1px;
 }
 
 .success-row {
   display: flex;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  font-size: 12.5px;
+  gap: 10px;
 }
 
 .success-row:last-child {
@@ -316,14 +469,16 @@
 }
 
 .success-row span:first-child {
-  color: #7a9a7a;
-  font-weight: 600;
+  color: #00ff88;
+  opacity: 0.65;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .success-row span:last-child {
   color: #00ff88;
-  font-weight: 700;
-  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Courier New', monospace;
   font-size: 12px;
   word-break: break-all;
   text-align: right;
@@ -332,28 +487,32 @@
 
 .back-home-btn {
   width: 100%;
-  background: rgba(0, 255, 136, 0.1);
+  background: rgba(0, 255, 136, 0.08);
   color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.3);
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
   padding: 16px;
-  border-radius: 14px;
+  border-radius: 16px;
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
   margin-top: 20px;
   font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
 }
 
 .back-home-btn:active {
   background: rgba(0, 255, 136, 0.2);
   transform: scale(0.97);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
 }
 
+/* ───── LOADING SPINNER ───── */
 .loading-spinner {
   display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(0, 0, 0, 0.2);
   border-top-color: #000;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -366,8 +525,29 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(15px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ───── BOTTOM SPACING ───── */
+.app {
+  padding-bottom: 60px !important;
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .auto-upi-title { font-size: 18px; }
+  .amount-input-wrap input { font-size: 22px; }
+  .amount-input-wrap .rupee { font-size: 26px; }
+  .upi-id-text { font-size: 15px; }
+  .success-amount-value { font-size: 32px; }
+  .quick-amounts button { font-size: 13px; padding: 11px 6px; }
+}
+
+/* ───── SCROLL FIX ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
 </style>
 </head>
@@ -384,13 +564,13 @@
 
   <div class="app">
 
-    <!-- Header -->
-    <div class="page-header" style="text-align:center; margin-bottom: 20px;">
+    <!-- ═══ HEADER ═══ -->
+    <div class="page-header">
       <div class="page-title">💠 Add Fund</div>
       <div class="page-sub">Instant UPI Deposit</div>
     </div>
 
-    <!-- Main Form Container -->
+    <!-- ═══ MAIN FORM ═══ -->
     <div id="mainForm">
 
       <!-- Amount Card -->
@@ -407,18 +587,18 @@
         </div>
 
         <div class="quick-amounts">
-          <button onclick="setAmount(5)">₹5</button>
-          <button onclick="setAmount(8)">₹8</button>
-          <button onclick="setAmount(10)">₹10</button>
-          <button onclick="setAmount(50)">₹50</button>
-          <button onclick="setAmount(100)">₹100</button>
-          <button onclick="setAmount(200)">₹200</button>
+          <button onclick="setAmount(5, this)">₹5</button>
+          <button onclick="setAmount(8, this)">₹8</button>
+          <button onclick="setAmount(10, this)">₹10</button>
+          <button onclick="setAmount(50, this)">₹50</button>
+          <button onclick="setAmount(100, this)">₹100</button>
+          <button onclick="setAmount(200, this)">₹200</button>
         </div>
       </div>
 
       <!-- UPI Info Card -->
       <div class="upi-info-card glass">
-        <div class="upi-info-label">📌 PAY TO UPI ID</div>
+        <div class="upi-info-label">📌 Pay to UPI ID</div>
         <div class="upi-id-display" onclick="copyUPI()">
           <span class="upi-id-text" id="upiIdText">nasih@fam</span>
           <span class="copy-badge">TAP TO COPY</span>
@@ -428,7 +608,7 @@
 
       <!-- UTR Card -->
       <div class="utr-card glass">
-        <div class="utr-label">🔐 AFTER PAYMENT, ENTER UTR / TRANSACTION ID</div>
+        <div class="utr-label">🔐 After payment, enter UTR / Transaction ID</div>
         <input type="text" id="utrInput" class="utr-input" placeholder="Enter 12-digit UTR" inputmode="numeric" maxlength="20">
         <button class="verify-btn" id="verifyBtn" onclick="verifyPayment()">
           ✅ VERIFY PAYMENT
@@ -437,18 +617,20 @@
 
     </div>
 
-    <!-- Success Screen -->
+    <!-- ═══ SUCCESS SCREEN ═══ -->
     <div class="success-screen glass" id="successScreen">
       <div class="success-icon-big">✅</div>
       <div class="success-title">DEPOSIT AUTO-APPROVED!</div>
-      <div style="color:#7a9a7a;font-size:12px;letter-spacing:1px;">Your payment has been verified</div>
+      <div style="color:#00ff88;opacity:0.65;font-size:12px;letter-spacing:1px;font-weight:600;">
+        Your payment has been verified
+      </div>
 
       <div class="success-amount-box">
-        <div class="success-amount-label">AMOUNT ADDED</div>
+        <div class="success-amount-label">Amount Added</div>
         <div class="success-amount-value" id="successAmount">₹0.00</div>
       </div>
 
-      <div style="background:rgba(0,0,0,0.3);border-radius:14px;padding:14px;margin-top:10px;">
+      <div style="background:rgba(0,0,0,0.35);border-radius:14px;padding:16px;margin-top:10px;border:1px solid rgba(0,255,136,0.1);">
         <div class="success-row">
           <span>UTR</span>
           <span id="successUTR">-</span>
@@ -477,7 +659,7 @@
 
 <script>
 // ============================================================
-// 📱 ADD FUND PAGE — Complete
+// 📱 ADD FUND PAGE — Complete Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -516,10 +698,12 @@ function showToast(msg) {
 // ============================================================
 // 📌 SET AMOUNT
 // ============================================================
-function setAmount(amt) {
+function setAmount(amt, btn) {
   document.getElementById('amountInput').value = amt;
+
   document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('selected'));
-  if (event && event.target) event.target.classList.add('selected');
+  if (btn) btn.classList.add('selected');
+
   if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
@@ -528,6 +712,7 @@ function setAmount(amt) {
 // ============================================================
 function copyUPI() {
   const text = upiId;
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
       showToast('✅ UPI ID Copied!');
@@ -545,12 +730,14 @@ function fallbackCopy(text) {
   input.style.opacity = '0';
   document.body.appendChild(input);
   input.select();
+
   try {
     document.execCommand('copy');
     showToast('✅ UPI ID Copied!');
   } catch (e) {
     showToast('❌ Copy failed');
   }
+
   document.body.removeChild(input);
 }
 
@@ -585,6 +772,7 @@ async function verifyPayment() {
   const btn = document.getElementById('verifyBtn');
 
   const amount = parseFloat(amountStr);
+
   if (isNaN(amount) || amount < minAmount || amount > maxAmount) {
     showToast(`❌ Amount must be ₹${minAmount} - ₹${maxAmount}`);
     return;
@@ -667,9 +855,9 @@ function goHome() {
 document.addEventListener('DOMContentLoaded', async () => {
   if (!userId) {
     document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#fff;">
+      <div style="padding:50px;text-align:center;color:#00ff88;">
         <h2>⚠️ Open from Telegram</h2>
-        <p style="color:#7a9a7a;margin-top:20px;">This page works only inside Telegram Mini App.</p>
+        <p style="color:#00ff88;opacity:0.7;margin-top:20px;">This page works only inside Telegram Mini App.</p>
       </div>
     `;
     return;
@@ -691,6 +879,12 @@ document.addEventListener('keypress', (e) => {
     }
   }
 });
+
+// Expose globals
+window.setAmount = setAmount;
+window.copyUPI = copyUPI;
+window.verifyPayment = verifyPayment;
+window.goHome = goHome;
 </script>
 
 </body>
