@@ -1,38 +1,32 @@
 // ============================================================
-// 👑 ADMIN PANEL — Mini App (Complete JS)
-// All features — Withdrawals, Add Funds, Submissions, Users, Customize, Admins
+// 👑 TASK EARN BOT — ADMIN PAGE JS
 // ============================================================
 
-let adminUserId = null;
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const adminUserId = tg?.initDataUnsafe?.user?.id;
 let isAdminUser = false;
-let isOwnerUser = false;
-let appConfig = {};
-
-const DEFAULTS = {
-  app_logo: "Task Earn Bot",
-  btn_home: "HOME",
-  btn_task: "TASK",
-  btn_pay: "PAY",
-  btn_profile: "PROFILE"
-};
 
 // ============================================================
-// 🎨 UTILITIES
+// 🔔 TOAST
 // ============================================================
-function showToast(msg, duration = 2500) {
+function showToast(msg) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
-
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
-
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, duration);
+  }, 2500);
 }
 
 function escapeHtml(str) {
@@ -47,145 +41,494 @@ function formatDate(d) {
   });
 }
 
-function haptic(type = 'light') {
-  const tg = window.Telegram?.WebApp;
-  if (tg?.HapticFeedback) {
-    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
-    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
-    else tg.HapticFeedback.impactOccurred(type);
-  }
-}
-
-async function apiCall(endpoint, options = {}) {
-  try {
-    const res = await fetch(endpoint, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
-    });
-    return await res.json();
-  } catch (e) {
-    console.error('API Error:', e);
-    return { success: false, error: 'Network error' };
-  }
-}
-
 // ============================================================
 // 🚀 INIT
 // ============================================================
-window.addEventListener('DOMContentLoaded', async () => {
-  // Wait for app.js init
-  setTimeout(initAdminPanel, 500);
-});
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!adminUserId) {
+    document.body.innerHTML = `
+      <div style="padding:50px;text-align:center;color:#00ff88;">
+        <h2>⚠️ Open from Telegram</h2>
+      </div>
+    `;
+    return;
+  }
 
-async function initAdminPanel() {
+  const loadingEl = document.getElementById('adminLoading');
+  const notAdminEl = document.getElementById('notAdminMsg');
+  const contentEl = document.getElementById('adminContent');
+
   try {
-    const tg = window.Telegram?.WebApp;
-    adminUserId = (typeof currentUserId !== 'undefined' && currentUserId)
-      || tg?.initDataUnsafe?.user?.id
-      || localStorage.getItem('miniapp_test_id');
+    const res = await fetch(`/miniapp/api/is-admin/${adminUserId}`);
+    const data = await res.json();
 
-    if (!adminUserId) {
-      document.getElementById('adminLoading').innerHTML = '❌ User ID not found';
-      return;
-    }
-
-    console.log("👑 Admin check for:", adminUserId);
-
-    // Admin check
-    const adminData = await apiCall(`/miniapp/api/is-admin/${adminUserId}`);
-    console.log("Admin response:", adminData);
-
-    if (!adminData.success || !adminData.isAdmin) {
-      document.getElementById('adminLoading').style.display = 'none';
-      document.getElementById('notAdminMsg').style.display = 'block';
+    if (!data.success || !data.isAdmin) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (notAdminEl) notAdminEl.style.display = 'block';
       return;
     }
 
     isAdminUser = true;
-    isOwnerUser = adminData.isOwner || false;
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = 'block';
 
-    // Show content
-    document.getElementById('adminLoading').style.display = 'none';
-    document.getElementById('adminContent').style.display = 'block';
-
-    // Load admin info
-    const userData = await apiCall(`/miniapp/api/user/${adminUserId}`);
-    if (userData.success) {
-      document.getElementById('adminName').textContent = userData.user.firstName || "Admin";
-      document.getElementById('adminId').textContent = 'ID: ' + userData.user.userId;
-    }
-
-    // Load config
-    await loadConfig();
-
-    // Load all data
+    await loadAdminInfo();
     await loadStats();
+    await loadSettings();
     await loadWithdrawals();
     await loadAddFunds();
     await loadSubmissions();
     await loadUsers();
-    await loadCustomize();
-
-    // Load admins if owner
-    if (isOwnerUser) {
-      await loadAdmins();
-    }
 
   } catch (e) {
-    console.error("Admin init error:", e);
-    document.getElementById('adminLoading').innerHTML = '❌ Error: ' + e.message;
+    console.error('Admin check:', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (notAdminEl) notAdminEl.style.display = 'block';
   }
+});
+
+// ============================================================
+// 👤 ADMIN INFO
+// ============================================================
+async function loadAdminInfo() {
+  try {
+    const res = await fetch(`/miniapp/api/user/${adminUserId}`);
+    const data = await res.json();
+    if (data.success) {
+      const nameEl = document.getElementById('adminName');
+      const idEl = document.getElementById('adminId');
+      if (nameEl) nameEl.textContent = data.user.firstName || 'Admin';
+      if (idEl) idEl.textContent = 'ID: ' + data.user.userId;
+    }
+  } catch (e) {}
 }
 
 // ============================================================
-// 🎨 LOAD CONFIG
-// ============================================================
-async function loadConfig() {
-  const res = await apiCall('/miniapp/api/config');
-  if (res.success && res.config) {
-    appConfig = res.config;
-    const logo = document.getElementById('appLogo');
-    if (logo && appConfig.appLogo) logo.textContent = 'ADMIN — ' + appConfig.appLogo;
-  }
-}
-
-// ============================================================
-// 📊 LOAD STATS
+// 📊 STATS
 // ============================================================
 async function loadStats() {
-  const totalData = await apiCall('/miniapp/api/total-balance');
-  if (totalData.success) {
-    document.getElementById('statUsers').textContent = totalData.totalUsers || 0;
-    document.getElementById('statBalance').textContent = '₹' + (totalData.totalBalance || 0).toFixed(0);
-  }
+  try {
+    const [totRes, taskRes, wdRes, afRes, subRes] = await Promise.all([
+      fetch('/miniapp/api/total-balance'),
+      fetch('/miniapp/api/tasks'),
+      fetch('/miniapp/api/admin/pending-withdrawals'),
+      fetch('/miniapp/api/admin/pending-addfunds'),
+      fetch('/miniapp/api/admin/pending-submissions')
+    ]);
 
-  const tasksData = await apiCall('/miniapp/api/tasks');
-  if (tasksData.success) {
-    document.getElementById('statTasks').textContent = tasksData.tasks?.length || 0;
-  }
+    const [tot, task, wd, af, sub] = await Promise.all([
+      totRes.json(), taskRes.json(), wdRes.json(), afRes.json(), subRes.json()
+    ]);
 
-  const wdData = await apiCall('/miniapp/api/admin/pending-withdrawals');
-  if (wdData.success) {
-    document.getElementById('statWd').textContent = wdData.withdrawals?.length || 0;
-  }
-
-  const afData = await apiCall('/miniapp/api/admin/pending-addfunds');
-  if (afData.success) {
-    document.getElementById('statAf').textContent = afData.addFunds?.length || 0;
-  }
-
-  const subData = await apiCall('/miniapp/api/admin/pending-submissions');
-  if (subData.success) {
-    document.getElementById('statSub').textContent = subData.submissions?.length || 0;
+    if (tot.success) {
+      const u = document.getElementById('statUsers');
+      const b = document.getElementById('statBalance');
+      if (u) u.textContent = tot.totalUsers || 0;
+      if (b) b.textContent = '₹' + (tot.totalBalance || 0).toFixed(0);
+    }
+    if (task.success) {
+      const t = document.getElementById('statTasks');
+      if (t) t.textContent = task.tasks?.length || 0;
+    }
+    if (wd.success) {
+      const w = document.getElementById('statWd');
+      if (w) w.textContent = wd.withdrawals?.length || 0;
+    }
+    if (af.success) {
+      const a = document.getElementById('statAf');
+      if (a) a.textContent = af.addFunds?.length || 0;
+    }
+    if (sub.success) {
+      const s = document.getElementById('statSub');
+      if (s) s.textContent = sub.submissions?.length || 0;
+    }
+  } catch (e) {
+    console.error('Stats error:', e);
   }
 }
 
 // ============================================================
-// 🔀 SWITCH TAB
+// ⚙️ SETTINGS
+// ============================================================
+async function loadSettings() {
+  try {
+    const res = await fetch('/miniapp/api/admin/settings');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const s = data.settings;
+
+    const minEl = document.getElementById('setMinWithdraw');
+    const maxEl = document.getElementById('setMaxWithdraw');
+    const taxEl = document.getElementById('setTaxPercent');
+    const chanEl = document.getElementById('setPayoutChannel');
+    const supEl = document.getElementById('setSupport');
+    const botToggle = document.getElementById('setBotToggle');
+
+    if (minEl) minEl.textContent = '₹' + s.min_withdraw;
+    if (maxEl) maxEl.textContent = '₹' + s.max_withdraw;
+    if (taxEl) taxEl.textContent = s.tax_percent + '%';
+    if (chanEl) chanEl.textContent = s.payout_channel || 'Not Set';
+    if (supEl) supEl.textContent = s.support_username || 'Not Set';
+
+    if (botToggle) {
+      if (s.bot_active) {
+        botToggle.textContent = '🟢 ON';
+        botToggle.className = 'toggle-btn on';
+      } else {
+        botToggle.textContent = '🔴 OFF';
+        botToggle.className = 'toggle-btn off';
+      }
+    }
+  } catch (e) {
+    console.error('Settings error:', e);
+  }
+}
+
+async function editSetting(key) {
+  let current = document.getElementById(key === 'min_withdraw' ? 'setMinWithdraw' : key === 'max_withdraw' ? 'setMaxWithdraw' : 'setTaxPercent');
+  let curVal = current ? current.textContent : '';
+
+  let newVal = prompt(`Enter new value for ${key}:\nCurrent: ${curVal}`);
+  if (!newVal) return;
+
+  let value = parseFloat(newVal);
+  if (isNaN(value) || value < 0) {
+    showToast('❌ Invalid value');
+    return;
+  }
+
+  try {
+    const res = await fetch('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Updated!');
+      await loadSettings();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+async function editTextSetting(key) {
+  let current = document.getElementById(key === 'payout_channel' ? 'setPayoutChannel' : 'setSupport');
+  let curVal = current ? current.textContent : '';
+
+  let newVal = prompt(`Enter new value for ${key}:\nCurrent: ${curVal}`);
+  if (newVal === null) return;
+
+  try {
+    const res = await fetch('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value: newVal.trim() })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Updated!');
+      await loadSettings();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+async function toggleBotStatus() {
+  try {
+    const res = await fetch('/miniapp/api/admin/settings');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const newVal = !data.settings.bot_active;
+
+    const upd = await fetch('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'bot_active', value: newVal })
+    });
+
+    const result = await upd.json();
+    if (result.success) {
+      showToast(newVal ? '✅ Bot ON' : '❌ Bot OFF');
+      await loadSettings();
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+// ============================================================
+// 💸 WITHDRAWALS
+// ============================================================
+async function loadWithdrawals() {
+  const listEl = document.getElementById('withdrawalList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+
+  try {
+    const res = await fetch('/miniapp/api/admin/pending-withdrawals');
+    const data = await res.json();
+
+    if (!data.success || !data.withdrawals || data.withdrawals.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="icon">📭</div><div>No pending withdrawals</div></div>`;
+      return;
+    }
+
+    let html = '';
+    data.withdrawals.forEach(wd => {
+      html += `
+        <div class="admin-item" id="wd-${wd.withdrawalId}">
+          <div class="admin-item-header">
+            <div class="admin-item-id">#${wd.withdrawalId}</div>
+            <div class="admin-item-amount">₹${wd.amount.toFixed(2)}</div>
+          </div>
+          <div class="admin-item-row"><b>User:</b> <code>${wd.userId}</code></div>
+          <div class="admin-item-row"><b>Method:</b> ${escapeHtml(wd.method)}</div>
+          <div class="admin-item-row"><b>To:</b> <code>${escapeHtml(wd.details)}</code></div>
+          <div class="admin-item-row"><b>Date:</b> ${formatDate(wd.createdAt)}</div>
+          <div class="admin-item-actions">
+            <button class="btn-approve" onclick="approveWd('${wd.withdrawalId}')">✅ Approve</button>
+            <button class="btn-reject" onclick="rejectWd('${wd.withdrawalId}')">❌ Reject</button>
+          </div>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  }
+}
+
+async function approveWd(id) {
+  if (!confirm(`Approve withdrawal #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/approve-wd/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Approved!');
+      document.getElementById('wd-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+async function rejectWd(id) {
+  if (!confirm(`Reject withdrawal #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/reject-wd/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('❌ Rejected & Refunded');
+      document.getElementById('wd-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+// ============================================================
+// 💰 ADD FUNDS
+// ============================================================
+async function loadAddFunds() {
+  const listEl = document.getElementById('addFundList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+
+  try {
+    const res = await fetch('/miniapp/api/admin/pending-addfunds');
+    const data = await res.json();
+
+    if (!data.success || !data.addFunds || data.addFunds.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="icon">📭</div><div>No pending add funds</div></div>`;
+      return;
+    }
+
+    let html = '';
+    data.addFunds.forEach(af => {
+      html += `
+        <div class="admin-item" id="af-${af.requestId}">
+          <div class="admin-item-header">
+            <div class="admin-item-id">#${af.requestId}</div>
+            <div class="admin-item-amount">₹${af.amount.toFixed(2)}</div>
+          </div>
+          <div class="admin-item-row"><b>User:</b> ${escapeHtml(af.userName)}</div>
+          <div class="admin-item-row"><b>ID:</b> <code>${af.userId}</code></div>
+          <div class="admin-item-row"><b>Method:</b> ${escapeHtml(af.method)}</div>
+          <div class="admin-item-row"><b>Date:</b> ${formatDate(af.createdAt)}</div>
+          <div class="admin-item-actions">
+            <button class="btn-approve" onclick="approveAf('${af.requestId}')">✅ Approve</button>
+            <button class="btn-reject" onclick="rejectAf('${af.requestId}')">❌ Reject</button>
+          </div>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  }
+}
+
+async function approveAf(id) {
+  if (!confirm(`Approve add fund #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/approve-af/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Approved!');
+      document.getElementById('af-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
+}
+
+async function rejectAf(id) {
+  if (!confirm(`Reject add fund #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/reject-af/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('❌ Rejected');
+      document.getElementById('af-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
+}
+
+// ============================================================
+// 📸 SUBMISSIONS
+// ============================================================
+async function loadSubmissions() {
+  const listEl = document.getElementById('submissionList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+
+  try {
+    const res = await fetch('/miniapp/api/admin/pending-submissions');
+    const data = await res.json();
+
+    if (!data.success || !data.submissions || data.submissions.length === 0) {
+      listEl.innerHTML = `<div class="empty-state"><div class="icon">📭</div><div>No pending submissions</div></div>`;
+      return;
+    }
+
+    let html = '';
+    data.submissions.forEach(sub => {
+      html += `
+        <div class="admin-item" id="sub-${sub.submissionId}">
+          <div class="admin-item-header">
+            <div class="admin-item-id">#${sub.submissionId}</div>
+            <div class="admin-item-amount">₹${sub.reward.toFixed(2)}</div>
+          </div>
+          <div class="admin-item-row"><b>User:</b> ${escapeHtml(sub.userName)}</div>
+          <div class="admin-item-row"><b>ID:</b> <code>${sub.userId}</code></div>
+          <div class="admin-item-row"><b>Task:</b> ${escapeHtml(sub.taskTitle)}</div>
+          <div class="admin-item-row"><b>Date:</b> ${formatDate(sub.createdAt)}</div>
+          <div class="admin-item-actions">
+            <button class="btn-approve" onclick="approveSub('${sub.submissionId}')">✅ Approve</button>
+            <button class="btn-reject" onclick="rejectSub('${sub.submissionId}')">❌ Reject</button>
+          </div>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  }
+}
+
+async function approveSub(id) {
+  if (!confirm(`Approve submission #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/approve-sub/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Approved!');
+      document.getElementById('sub-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
+}
+
+async function rejectSub(id) {
+  if (!confirm(`Reject submission #${id}?`)) return;
+  try {
+    const res = await fetch(`/miniapp/api/admin/reject-sub/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('❌ Rejected');
+      document.getElementById('sub-' + id)?.remove();
+      loadStats();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
+}
+
+// ============================================================
+// 👥 USERS
+// ============================================================
+async function loadUsers() {
+  const listEl = document.getElementById('userList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+
+  try {
+    const res = await fetch('/miniapp/api/admin/all-users');
+    const data = await res.json();
+
+    if (!data.success || !data.users || data.users.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No users</div>';
+      return;
+    }
+
+    let html = '';
+    data.users.forEach((u, i) => {
+      html += `
+        <div class="admin-item">
+          <div class="admin-item-header">
+            <div class="admin-item-id">#${i + 1}</div>
+            <div class="admin-item-amount">₹${(u.balance || 0).toFixed(2)}</div>
+          </div>
+          <div class="admin-item-row"><b>Name:</b> ${escapeHtml(u.firstName || 'User')}</div>
+          <div class="admin-item-row"><b>ID:</b> <code>${u.userId}</code></div>
+          <div class="admin-item-row"><b>Username:</b> ${u.username ? '@' + escapeHtml(u.username) : '-'}</div>
+          <div class="admin-item-row"><b>Withdrawn:</b> ₹${(u.withdrawnTotal || 0).toFixed(2)}</div>
+        </div>
+      `;
+    });
+    listEl.innerHTML = html;
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-state">Failed to load</div>';
+  }
+}
+
+// ============================================================
+// 🔀 TABS
 // ============================================================
 function switchTab(tab) {
-  haptic('light');
-
   document.querySelectorAll('.admin-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
@@ -193,425 +536,69 @@ function switchTab(tab) {
   document.querySelectorAll('.admin-tab-content').forEach(el => {
     el.style.display = 'none';
   });
-  document.getElementById('tab-' + tab).style.display = 'block';
 
-  // Reload data
+  const activeTab = document.getElementById('tab-' + tab);
+  if (activeTab) activeTab.style.display = 'block';
+
   if (tab === 'withdrawals') loadWithdrawals();
   else if (tab === 'addfunds') loadAddFunds();
   else if (tab === 'submissions') loadSubmissions();
   else if (tab === 'users') loadUsers();
-  else if (tab === 'customize') loadCustomize();
-  else if (tab === 'admins' && isOwnerUser) loadAdmins();
+  else if (tab === 'settings') loadSettings();
 }
 
 // ============================================================
-// 💸 LOAD WITHDRAWALS
+// 📋 TASK MANAGEMENT
 // ============================================================
-async function loadWithdrawals() {
-  const res = await apiCall('/miniapp/api/admin/pending-withdrawals');
-  const list = document.getElementById('withdrawalList');
+async function addNewTask() {
+  const taskId = prompt('Task ID (unique):');
+  if (!taskId) return;
+  const title = prompt('Task Title:');
+  if (!title) return;
+  const reward = prompt('Reward (₹):');
+  if (!reward) return;
+  const link = prompt('Task Link:');
+  if (!link) return;
+  const taskType = prompt('Task Type (photo / refer / affiliate):', 'photo') || 'photo';
 
-  if (!res.success || !res.withdrawals || res.withdrawals.length === 0) {
-    list.innerHTML = `
-      <div class="empty-admin">
-        <div class="icon">📭</div>
-        <div>No pending withdrawals</div>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-  res.withdrawals.forEach(w => {
-    html += `
-      <div class="admin-item" id="wd-${w.withdrawalId}">
-        <div class="admin-item-header">
-          <div class="admin-item-id">#${w.userWithdrawalCount || w.withdrawalId}</div>
-          <div class="admin-item-amount">₹${w.amount.toFixed(2)}</div>
-        </div>
-        <div class="admin-item-row"><b>User:</b> ${w.userId}</div>
-        <div class="admin-item-row"><b>Method:</b> ${escapeHtml(w.method)}</div>
-        <div class="admin-item-row"><b>Details:</b> <code>${escapeHtml(w.details)}</code></div>
-        <div class="admin-item-row"><b>Date:</b> ${formatDate(w.createdAt)}</div>
-        <div class="admin-item-actions">
-          <button class="btn-approve" onclick="approveWd('${w.withdrawalId}')">✅ Approve</button>
-          <button class="btn-reject" onclick="rejectWd('${w.withdrawalId}')">❌ Reject</button>
-        </div>
-      </div>
-    `;
-  });
-  list.innerHTML = html;
-}
-
-// ============================================================
-// 💰 LOAD ADD FUNDS
-// ============================================================
-async function loadAddFunds() {
-  const res = await apiCall('/miniapp/api/admin/pending-addfunds');
-  const list = document.getElementById('addFundList');
-
-  if (!res.success || !res.addFunds || res.addFunds.length === 0) {
-    list.innerHTML = `
-      <div class="empty-admin">
-        <div class="icon">📭</div>
-        <div>No pending add funds</div>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-  res.addFunds.forEach(a => {
-    html += `
-      <div class="admin-item" id="af-${a.requestId}">
-        <div class="admin-item-header">
-          <div class="admin-item-id">#${a.requestId}</div>
-          <div class="admin-item-amount">₹${a.amount.toFixed(2)}</div>
-        </div>
-        <div class="admin-item-row"><b>User:</b> ${escapeHtml(a.userName || 'User')} (${a.userId})</div>
-        <div class="admin-item-row"><b>Method:</b> ${escapeHtml(a.method)}</div>
-        <div class="admin-item-row"><b>UTR:</b> <code>${escapeHtml(a.utr || '-')}</code></div>
-        <div class="admin-item-row"><b>Date:</b> ${formatDate(a.createdAt)}</div>
-        <div class="admin-item-actions">
-          <button class="btn-approve" onclick="approveAf('${a.requestId}')">✅ Approve</button>
-          <button class="btn-reject" onclick="rejectAf('${a.requestId}')">❌ Reject</button>
-        </div>
-      </div>
-    `;
-  });
-  list.innerHTML = html;
-}
-
-// ============================================================
-// 📸 LOAD SUBMISSIONS
-// ============================================================
-async function loadSubmissions() {
-  const res = await apiCall('/miniapp/api/admin/pending-submissions');
-  const list = document.getElementById('submissionList');
-
-  if (!res.success || !res.submissions || res.submissions.length === 0) {
-    list.innerHTML = `
-      <div class="empty-admin">
-        <div class="icon">📭</div>
-        <div>No pending submissions</div>
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-  res.submissions.forEach(s => {
-    const isRefer = s.photoFileId && s.photoFileId.startsWith('REFER:');
-    const referValue = isRefer ? s.photoFileId.replace('REFER:', '') : '';
-
-    html += `
-      <div class="admin-item" id="sub-${s.submissionId}">
-        <div class="admin-item-header">
-          <div class="admin-item-id">#${s.submissionId}</div>
-          <div class="admin-item-amount">₹${s.reward.toFixed(2)}</div>
-        </div>
-        <div class="admin-item-row"><b>User:</b> ${escapeHtml(s.userName)} (${s.userId})</div>
-        <div class="admin-item-row"><b>Task:</b> ${escapeHtml(s.taskTitle)}</div>
-        ${isRefer ? `<div class="admin-item-row"><b>Refer:</b> <code>${escapeHtml(referValue)}</code></div>` : ''}
-        <div class="admin-item-row"><b>Type:</b> ${isRefer ? '🔗 Refer' : '📸 Photo'}</div>
-        <div class="admin-item-row"><b>Date:</b> ${formatDate(s.createdAt)}</div>
-        <div class="admin-item-actions">
-          <button class="btn-approve" onclick="approveSub('${s.submissionId}')">✅ Approve</button>
-          <button class="btn-reject" onclick="rejectSub('${s.submissionId}')">❌ Reject</button>
-        </div>
-      </div>
-    `;
-  });
-  list.innerHTML = html;
-}
-
-// ============================================================
-// 👥 LOAD USERS
-// ============================================================
-async function loadUsers() {
-  const res = await apiCall('/miniapp/api/admin/all-users');
-  const list = document.getElementById('userList');
-
-  if (!res.success || !res.users || res.users.length === 0) {
-    list.innerHTML = '<div class="empty-admin">No users</div>';
-    return;
-  }
-
-  let html = '';
-  res.users.slice(0, 50).forEach((u, i) => {
-    html += `
-      <div class="admin-item">
-        <div class="admin-item-header">
-          <div class="admin-item-id">#${i + 1}</div>
-          <div class="admin-item-amount">₹${(u.balance || 0).toFixed(2)}</div>
-        </div>
-        <div class="admin-item-row"><b>Name:</b> ${escapeHtml(u.firstName || 'User')}</div>
-        <div class="admin-item-row"><b>ID:</b> <code>${u.userId}</code></div>
-        <div class="admin-item-row"><b>Username:</b> ${u.username ? '@' + escapeHtml(u.username) : '-'}</div>
-        <div class="admin-item-row"><b>Withdrawn:</b> ₹${(u.withdrawnTotal || 0).toFixed(2)}</div>
-      </div>
-    `;
-  });
-  list.innerHTML = html;
-}
-
-// ============================================================
-// 🎨 CUSTOMIZE
-// ============================================================
-async function loadCustomize() {
-  const res = await apiCall('/miniapp/api/config');
-  if (res.success && res.config) {
-    appConfig = res.config;
-
-    const el_logo = document.getElementById('cust_logo');
-    const el_home = document.getElementById('cust_home');
-    const el_task = document.getElementById('cust_task');
-    const el_pay = document.getElementById('cust_pay');
-    const el_profile = document.getElementById('cust_profile');
-
-    if (el_logo) el_logo.value = appConfig.appLogo || DEFAULTS.app_logo;
-    if (el_home) el_home.value = appConfig.btn_home || DEFAULTS.btn_home;
-    if (el_task) el_task.value = appConfig.btn_task || DEFAULTS.btn_task;
-    if (el_pay) el_pay.value = appConfig.btn_pay || DEFAULTS.btn_pay;
-    if (el_profile) el_profile.value = appConfig.btn_profile || DEFAULTS.btn_profile;
-  }
-}
-
-async function saveCustomize(key, inputId) {
-  const input = document.getElementById(inputId);
-  const value = input.value.trim();
-
-  if (!value) {
-    showToast('❌ Enter a value');
-    haptic('error');
-    return;
-  }
-
-  const data = await apiCall('/miniapp/api/admin/save-config', {
-    method: 'POST',
-    body: JSON.stringify({ userId: adminUserId, key, value })
-  });
-
-  if (data.success) {
-    showToast('✅ Saved!');
-    haptic('success');
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
-  }
-}
-
-async function resetCustomize(key, inputId) {
-  if (!confirm(`Reset ${key} to default?`)) return;
-
-  const defaultValue = DEFAULTS[key] || '';
-  const input = document.getElementById(inputId);
-  if (input) input.value = defaultValue;
-
-  const data = await apiCall('/miniapp/api/admin/save-config', {
-    method: 'POST',
-    body: JSON.stringify({ userId: adminUserId, key, value: defaultValue })
-  });
-
-  if (data.success) {
-    showToast('🔄 Reset to default!');
-    haptic('success');
-  }
-}
-
-async function resetAllCustomize() {
-  if (!confirm('Reset ALL customization to default?')) return;
-
-  for (const [key, value] of Object.entries(DEFAULTS)) {
-    await apiCall('/miniapp/api/admin/save-config', {
+  try {
+    const res = await fetch('/miniapp/api/admin/task/create', {
       method: 'POST',
-      body: JSON.stringify({ userId: adminUserId, key, value })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, title, reward, link, taskType })
     });
-  }
-
-  showToast('🔄 All reset!');
-  haptic('success');
-  await loadCustomize();
-  await loadConfig();
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Task created!');
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
 }
 
 // ============================================================
-// 👑 ADMINS
+// 📢 BROADCAST
 // ============================================================
-async function loadAdmins() {
-  const listEl = document.getElementById('adminsList');
-  if (!listEl) return;
+async function sendBroadcast() {
+  const msg = prompt('Broadcast message:');
+  if (!msg) return;
+  if (!confirm(`Send to ALL users?`)) return;
 
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  showToast('⏳ Broadcasting...');
 
-  const data = await apiCall('/miniapp/api/admin/list');
-  if (!data.success || !data.admins) {
-    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
-    return;
-  }
-
-  let html = '';
-  data.admins.forEach(a => {
-    const isOwnerRow = a.role === 'owner';
-    html += `
-      <div class="admin-user-row">
-        <div class="admin-user-avatar">${isOwnerRow ? '👑' : '👤'}</div>
-        <div class="admin-user-info">
-          <div class="admin-user-name">${escapeHtml(a.name || 'Admin')}${isOwnerRow ? ' (Owner)' : ''}</div>
-          <div class="admin-user-id">${a.userId}</div>
-        </div>
-        <div class="admin-user-actions">
-          ${!isOwnerRow ? `<button class="btn-remove" onclick="removeAdmin(${a.userId})">🗑️</button>` : ''}
-        </div>
-      </div>
-    `;
-  });
-  listEl.innerHTML = html;
+  try {
+    const res = await fetch('/miniapp/api/admin/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✅ Sent: ${data.sent} | Failed: ${data.failed}`);
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) { showToast('❌ Network error'); }
 }
 
-async function addAdmin() {
-  const input = document.getElementById('newAdminId');
-  const newId = input.value.trim();
-
-  if (!newId || isNaN(newId)) {
-    showToast('❌ Enter valid User ID');
-    haptic('error');
-    return;
-  }
-
-  const data = await apiCall('/miniapp/api/admin/add', {
-    method: 'POST',
-    body: JSON.stringify({ userId: newId, requesterId: adminUserId })
-  });
-
-  if (data.success) {
-    showToast('✅ Admin added!');
-    haptic('success');
-    input.value = '';
-    await loadAdmins();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
-  }
-}
-
-async function removeAdmin(adminId) {
-  if (!confirm(`Remove admin ${adminId}?`)) return;
-
-  const data = await apiCall(`/miniapp/api/admin/remove/${adminId}`, {
-    method: 'POST',
-    body: JSON.stringify({ requesterId: adminUserId })
-  });
-
-  if (data.success) {
-    showToast('🗑️ Removed');
-    haptic('success');
-    await loadAdmins();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-// ============================================================
-// ✅ APPROVE / REJECT ACTIONS
-// ============================================================
-async function approveWd(id) {
-  if (!confirm('✅ Approve this withdrawal?')) return;
-  const data = await apiCall(`/miniapp/api/admin/approve-wd/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('✅ Approved!');
-    haptic('success');
-    document.getElementById('wd-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
-  }
-}
-
-async function rejectWd(id) {
-  if (!confirm('❌ Reject this withdrawal?')) return;
-  const data = await apiCall(`/miniapp/api/admin/reject-wd/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('❌ Rejected!');
-    haptic('success');
-    document.getElementById('wd-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-async function approveAf(id) {
-  if (!confirm('✅ Approve this add fund?')) return;
-  const data = await apiCall(`/miniapp/api/admin/approve-af/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('✅ Approved!');
-    haptic('success');
-    document.getElementById('af-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-async function rejectAf(id) {
-  if (!confirm('❌ Reject this add fund?')) return;
-  const data = await apiCall(`/miniapp/api/admin/reject-af/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('❌ Rejected!');
-    document.getElementById('af-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-async function approveSub(id) {
-  if (!confirm('✅ Approve this submission?')) return;
-  const data = await apiCall(`/miniapp/api/admin/approve-sub/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('✅ Approved!');
-    haptic('success');
-    document.getElementById('sub-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-async function rejectSub(id) {
-  if (!confirm('❌ Reject this submission?')) return;
-  const data = await apiCall(`/miniapp/api/admin/reject-sub/${id}`, { method: 'POST' });
-  if (data.success) {
-    showToast('❌ Rejected!');
-    document.getElementById('sub-' + id)?.remove();
-    loadStats();
-  } else {
-    showToast('❌ ' + (data.error || 'Failed'));
-  }
-}
-
-// ============================================================
-// 🎯 QUICK ACTIONS
-// ============================================================
-function adminAction(name) {
-  showToast(`ℹ️ ${name} — Bot-ൽ /admin use ചെയ്യൂ`);
-}
-
-// ============================================================
-// EXPOSE GLOBALLY
-// ============================================================
-window.switchTab = switchTab;
-window.approveWd = approveWd;
-window.rejectWd = rejectWd;
-window.approveAf = approveAf;
-window.rejectAf = rejectAf;
-window.approveSub = approveSub;
-window.rejectSub = rejectSub;
-window.saveCustomize = saveCustomize;
-window.resetCustomize = resetCustomize;
-window.resetAllCustomize = resetAllCustomize;
-window.addAdmin = addAdmin;
-window.removeAdmin = removeAdmin;
-window.adminAction = adminAction;
+document.addEventListener('gesturestart', e => e.preventDefault());
