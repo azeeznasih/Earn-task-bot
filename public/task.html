@@ -4,290 +4,728 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Tasks</title>
-<link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  /* ✅ Task card - premium glow on click */
-  .task-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    border-radius: 16px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(0, 20, 10, 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    animation: cardSlideIn 0.4s ease backwards;
-    margin-bottom: 12px;
-    position: relative;
-    overflow: hidden;
-  }
+/* ═══════════════════════════════════════════════════════
+   TASK PAGE — Green Glassmorphism Premium
+   ═══════════════════════════════════════════════════════ */
 
-  .task-card:active,
-  .task-card.selected {
-    border-color: #00ff88;
-    background: rgba(0, 255, 136, 0.06);
-    box-shadow:
-      0 0 25px rgba(0, 255, 136, 0.4),
-      0 0 50px rgba(0, 255, 136, 0.15),
-      inset 0 0 20px rgba(0, 255, 136, 0.08);
-    transform: scale(0.98);
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  .task-card.completed {
-    opacity: 0.5;
-    border-color: rgba(0, 255, 136, 0.3);
-    cursor: default;
-  }
+/* ───── 🔓 SCROLL FIX ───── */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 180px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0e0a;
+  color: #ffffff;
+}
 
-  .task-info {
-    flex: 1;
-    min-width: 0;
-  }
+/* ───── GREEN GLASS BACKGROUND ───── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(0, 255, 100, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 90% 90%, rgba(0, 200, 80, 0.10) 0%, transparent 50%),
+    linear-gradient(135deg, #0a0e0a 0%, #0d140d 100%);
+  z-index: -2;
+}
 
-  .task-title {
-    font-weight: 800;
-    font-size: 15px;
-    color: #00ff88;
-    margin-bottom: 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
-  }
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0, 255, 100, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0, 200, 80, 0.06) 0%, transparent 40%);
+  animation: bgFloat 20s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
 
-  .task-reward {
-    color: #00ff88;
-    font-size: 13px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-  }
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(20px, -20px) rotate(5deg); }
+  66% { transform: translate(-20px, 20px) rotate(-5deg); }
+}
 
-  .task-type-badge {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 6px;
-    background: rgba(0, 255, 136, 0.12);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    color: #00ff88;
-    margin-left: 8px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
+/* ───── CONTAINER ───── */
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 14px 40px;
+  position: relative;
+  z-index: 1;
+}
 
-  .task-btn {
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 800;
-    font-size: 12px;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-    white-space: nowrap;
-    flex-shrink: 0;
-    margin-left: 12px;
-    font-family: inherit;
-    letter-spacing: 0.5px;
-  }
+/* ───── PAGE HEADER ───── */
+.page-header {
+  margin-bottom: 22px;
+  padding: 4px 0;
+}
 
-  .task-btn.completed-btn {
-    background: rgba(0, 255, 136, 0.15);
-    color: #00ff88;
-    border: 1px solid rgba(0, 255, 136, 0.4);
-    box-shadow: none;
-    cursor: default;
-  }
+.page-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-  /* ✅ Task Detail Modal */
-  #taskDetail {
-    text-align: center;
-    margin-bottom: 16px;
-  }
+.page-title svg {
+  width: 28px;
+  height: 28px;
+  fill: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
+}
 
-  .task-detail-icon {
-    font-size: 52px;
-    margin-bottom: 14px;
-  }
+.page-sub {
+  font-size: 13px;
+  color: #00ff88;
+  opacity: 0.65;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
 
-  .task-detail-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: #00ff88;
-    margin-bottom: 10px;
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-  }
+/* ───── TASK LIST ───── */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  .task-detail-reward {
-    font-size: 28px;
-    font-weight: 800;
-    color: #00ff88;
-    margin-bottom: 18px;
-    text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
-  }
+/* ───── TASK CARD ───── */
+.task-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(0, 255, 100, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: cardSlideIn 0.4s ease backwards;
+  position: relative;
+  overflow: hidden;
+}
 
-  .task-detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.08);
-  }
+.task-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
 
-  .task-detail-row:last-child { border-bottom: none; }
-  .task-detail-label { color: #00ff88; opacity: 0.65; font-weight: 700; }
-  .task-detail-value { color: #00ff88; font-weight: 800; max-width: 60%; text-align: right; word-break: break-all; }
+.task-card:active {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.12);
+  box-shadow:
+    0 0 25px rgba(0, 255, 136, 0.4),
+    0 0 50px rgba(0, 255, 136, 0.15);
+  transform: scale(0.98);
+}
 
-  .task-open-btn {
-    display: block;
-    width: 100%;
-    background: linear-gradient(135deg, #00aaff, #0088cc);
-    color: #ffffff;
-    text-decoration: none;
-    padding: 14px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 14px;
-    margin: 16px 0 10px;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
-  }
+.task-card:active::before {
+  opacity: 1;
+}
 
-  .task-open-btn:active { transform: scale(0.97); }
+.task-card.completed {
+  opacity: 0.55;
+  border-color: rgba(0, 255, 136, 0.3);
+  cursor: default;
+}
 
-  .task-submit-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 15px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 8px;
-    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4);
-    font-family: inherit;
-    letter-spacing: 0.5px;
-  }
+.task-card.completed:active {
+  transform: none;
+}
 
-  .task-submit-btn:active { transform: scale(0.97); }
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  /* ✅ Refer input */
-  .refer-input {
-    width: 100%;
-    padding: 14px;
-    background: rgba(0, 20, 10, 0.6);
-    border: 1px solid rgba(0, 255, 136, 0.25);
-    border-radius: 12px;
-    color: #00ff88;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    outline: none;
-    font-family: inherit;
-  }
+.task-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 12px;
+}
 
-  .refer-input:focus {
-    border-color: #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-  }
+.task-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: #e0ffe0;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-  .refer-input::placeholder {
-    color: #00ff88;
-    opacity: 0.4;
-  }
+.task-reward {
+  color: #00ff88;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
+.task-type-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.task-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s;
+}
+
+.task-btn:active {
+  transform: scale(0.94);
+}
+
+.task-btn.completed-btn {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* ───── LOADING / EMPTY ───── */
+.loading {
+  text-align: center;
+  color: #00ff88;
+  opacity: 0.7;
+  padding: 40px 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(0, 255, 136, 0.15);
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: #00ff88;
+  opacity: 0.75;
+}
+
+.empty-state .icon {
+  font-size: 52px;
+  margin-bottom: 14px;
+  opacity: 0.5;
+}
+
+.empty-state .title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 8px;
+}
+
+.empty-state .sub {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* ───── BOTTOM NAV ───── */
+.bottom-nav {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  justify-content: space-around;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #00ff88;
+  opacity: 0.55;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.nav-item.active,
+.nav-item:active {
+  opacity: 1;
+  background: rgba(0, 255, 136, 0.12);
+}
+
+.nav-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nav-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+/* ───── MODAL ───── */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100000;
+  align-items: flex-end;
+  justify-content: center;
+  animation: modalFadeIn 0.25s ease;
+}
+
+.modal.active {
+  display: flex;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(160deg, rgba(10, 25, 15, 0.98) 0%, rgba(5, 15, 8, 0.99) 100%);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-bottom: none;
+  padding: 24px 20px 30px;
+  box-shadow: 0 -10px 60px rgba(0, 255, 136, 0.15), 0 -20px 80px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.modal-content::before {
+  content: '';
+  display: block;
+  width: 45px;
+  height: 4px;
+  background: rgba(0, 255, 136, 0.4);
+  border-radius: 4px;
+  margin: 0 auto 20px;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Modal content h3, p (for refer/upload modals) */
+.modal-content h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 8px;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.modal-content p {
+  font-size: 12.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  text-align: center;
+  margin-bottom: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* ───── BUTTONS ───── */
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13.5px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 20px rgba(0, 255, 136, 0.35);
+  transition: transform 0.15s;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.cancel-btn {
+  width: 100%;
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff6464;
+  border: 1.5px solid rgba(255, 100, 100, 0.35);
+  padding: 13px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s;
+}
+
+.cancel-btn:active {
+  transform: scale(0.97);
+  background: rgba(255, 100, 100, 0.20);
+}
+
+/* ───── TASK DETAIL (in modal) ───── */
+.task-detail-icon {
+  font-size: 54px;
+  margin-bottom: 14px;
+  text-align: center;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.4));
+}
+
+.task-detail-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 10px;
+  text-align: center;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  letter-spacing: 0.3px;
+}
+
+.task-detail-reward {
+  font-size: 32px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 20px;
+  text-align: center;
+  text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+  letter-spacing: -1px;
+}
+
+.task-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  gap: 10px;
+}
+
+.task-detail-row:last-child {
+  border-bottom: none;
+}
+
+.task-detail-label {
+  color: #00ff88;
+  opacity: 0.65;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.task-detail-value {
+  color: #00ff88;
+  font-weight: 800;
+  max-width: 60%;
+  text-align: right;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.task-open-btn {
+  display: block;
+  width: 100%;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #ffffff;
+  text-decoration: none;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  margin: 18px 0 10px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
+  letter-spacing: 0.5px;
+  transition: transform 0.15s;
+}
+
+.task-open-btn:active {
+  transform: scale(0.97);
+}
+
+.task-submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4);
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s;
+}
+
+.task-submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* ───── REFER INPUT ───── */
+.refer-input {
+  width: 100%;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 12px;
+  color: #00ff88;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.refer-input:focus {
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
+}
+
+.refer-input::placeholder {
+  color: #00ff88;
+  opacity: 0.4;
+}
+
+/* ───── TOAST ───── */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  z-index: 100000;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
+  animation: toastUp 0.3s ease;
+  pointer-events: none;
+}
+
+@keyframes toastUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .page-title { font-size: 22px; }
+  .task-title { font-size: 14px; }
+  .task-btn { padding: 9px 16px; font-size: 11px; }
+  .task-detail-title { font-size: 19px; }
+  .task-detail-reward { font-size: 28px; }
+  .app { padding: 16px 10px 40px; }
+}
 </style>
 </head>
 <body>
 
-<div class="iphone-frame">
-  <div class="app">
+<div class="app">
 
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="page-title">📋 Tasks</div>
-      <p class="page-sub">Complete tasks & earn rewards</p>
+  <!-- ═══════════════════════════════════════════════════════
+       PAGE HEADER
+       ═══════════════════════════════════════════════════════ -->
+  <div class="page-header">
+    <div class="page-title">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+      Tasks
     </div>
-
-    <!-- Tasks List -->
-    <div id="taskList" class="task-list">
-      <div class="loading">⏳ Loading tasks...</div>
-    </div>
-
-    <!-- 🎯 BOTTOM NAV — Floating Pill -->
-    <nav class="bottom-nav glass-nav">
-      <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
-      </a>
-      <a href="/miniapp/task" class="nav-item active">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
-      </a>
-      <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
-      </a>
-      <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
-      </a>
-    </nav>
-
+    <p class="page-sub">Complete tasks & earn rewards</p>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TASK LIST
+       ═══════════════════════════════════════════════════════ -->
+  <div id="taskList" class="task-list">
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading tasks...
+    </div>
+  </div>
+
 </div>
 
-<!-- TASK DETAIL MODAL -->
+<!-- ═══════════════════════════════════════════════════════
+     BOTTOM NAV
+     ═══════════════════════════════════════════════════════ -->
+<nav class="bottom-nav">
+  <a href="/miniapp" class="nav-item">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label" id="nav-home">HOME</span>
+  </a>
+  <a href="/miniapp/task" class="nav-item active">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label" id="nav-task">TASK</span>
+  </a>
+  <a href="/miniapp/pay" class="nav-item">
+    <span class="nav-icon">💸</span>
+    <span class="nav-label" id="nav-pay">PAY</span>
+  </a>
+  <a href="/miniapp/profile" class="nav-item">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label" id="nav-profile">PROFILE</span>
+  </a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     TASK DETAIL MODAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="modal" id="taskModal">
-  <div class="modal-content glass">
+  <div class="modal-content">
     <div id="taskDetail"></div>
     <button onclick="closeTaskModal()" class="cancel-btn">Close</button>
   </div>
 </div>
 
-<!-- UPLOAD MODAL -->
+<!-- ═══════════════════════════════════════════════════════
+     UPLOAD MODAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="modal" id="uploadModal">
-  <div class="modal-content glass">
+  <div class="modal-content">
     <h3>📸 Upload Screenshot</h3>
-    <p>Choose your proof</p>
+    <p>Choose your proof from gallery</p>
     <input type="file" id="screenshotInput" accept="image/*" style="display:none;" onchange="handleScreenshot(event)">
-    <button class="btn-primary" onclick="document.getElementById('screenshotInput').click()">📁 Choose from Gallery</button>
+    <button class="btn-primary" onclick="document.getElementById('screenshotInput').click()">
+      📁 Choose from Gallery
+    </button>
     <button class="cancel-btn" onclick="closeUploadModal()">❌ Cancel</button>
   </div>
 </div>
 
-<!-- REFER MODAL -->
+<!-- ═══════════════════════════════════════════════════════
+     REFER MODAL
+     ═══════════════════════════════════════════════════════ -->
 <div class="modal" id="referModal">
-  <div class="modal-content glass">
+  <div class="modal-content">
     <h3>🔗 Send Refer Link / ID</h3>
     <p>⚠️ Full Referral Link or Bot ID only</p>
-    <input type="text" id="referInput" class="refer-input" placeholder="Link or ID" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input type="text" id="referInput" class="refer-input" placeholder="Paste link or ID here" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <button class="btn-primary" onclick="submitRefer()">✅ Submit</button>
     <button class="cancel-btn" onclick="closeReferModal()">❌ Cancel</button>
   </div>
 </div>
 
-<script>
+  <script>
 // ============================================================
-// 📋 TASK PAGE
+// 📋 TASK PAGE — Complete Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
+
 if (tg) {
   tg.ready();
   tg.expand();
-  tg.setHeaderColor('#000000');
-  tg.setBackgroundColor('#000000');
+  tg.setHeaderColor('#0a0e0a');
+  tg.setBackgroundColor('#0a0e0a');
+  try {
+    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
+  } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -295,21 +733,57 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let allTasks = [];
 let currentTask = null;
 let currentTaskType = 'photo';
+let appConfig = {};
 
 // ============================================================
-// 🔔 TOAST
+// 🔓 FORCE SCROLL
 // ============================================================
-function showToast(msg) {
+function forceScrollEnable() {
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '180px';
+
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+  }
+}
+
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
+
+// ============================================================
+// 🎨 UTILITIES
+// ============================================================
+function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
+
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
+
   setTimeout(() => {
     toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, duration);
 }
 
 function escapeHtml(str) {
@@ -317,22 +791,70 @@ function escapeHtml(str) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG (Nav labels)
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    const el1 = document.getElementById('nav-home');
+    const el2 = document.getElementById('nav-task');
+    const el3 = document.getElementById('nav-pay');
+    const el4 = document.getElementById('nav-profile');
+
+    if (el1 && appConfig.btn_home) el1.textContent = appConfig.btn_home;
+    if (el2 && appConfig.btn_task) el2.textContent = appConfig.btn_task;
+    if (el3 && appConfig.btn_pay) el3.textContent = appConfig.btn_pay;
+    if (el4 && appConfig.btn_profile) el4.textContent = appConfig.btn_profile;
+  }
+}
+
 // ============================================================
 // 📋 LOAD TASKS
 // ============================================================
 async function loadTasks() {
   const listEl = document.getElementById('taskList');
+  if (!listEl) return;
+
+  listEl.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading tasks...
+    </div>
+  `;
 
   try {
-    const res = await fetch('/miniapp/api/tasks');
-    const data = await res.json();
+    const data = await apiCall('/miniapp/api/tasks');
 
     if (!data.success || !data.tasks || data.tasks.length === 0) {
       listEl.innerHTML = `
         <div class="empty-state">
           <div class="icon">📭</div>
-          <div style="font-size:16px;font-weight:800;color:#00ff88;margin-bottom:8px;">No Tasks Available</div>
-          <div style="font-size:13px;">Check back later!</div>
+          <div class="title">No Tasks Available</div>
+          <div class="sub">Check back later!</div>
         </div>
       `;
       return;
@@ -348,40 +870,61 @@ async function loadTasks() {
       let btnText = isCompleted ? '✅ Done' : 'START';
 
       let typeBadge = '';
-      if (task.taskType === 'refer') typeBadge = '<span class="task-type-badge">REFER</span>';
-      else if (task.taskType === 'affiliate') typeBadge = '<span class="task-type-badge">LINK</span>';
-      else typeBadge = '<span class="task-type-badge">PHOTO</span>';
+      if (task.taskType === 'refer') {
+        typeBadge = '<span class="task-type-badge">REFER</span>';
+      } else if (task.taskType === 'affiliate') {
+        typeBadge = '<span class="task-type-badge">LINK</span>';
+      } else {
+        typeBadge = '<span class="task-type-badge">PHOTO</span>';
+      }
 
       html += `
-        <div class="task-card ${completedClass}" style="animation-delay:${idx * 0.05}s" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
+        <div class="task-card ${completedClass}" style="animation-delay:${idx * 0.05}s"
+             onclick="${isCompleted ? '' : `openTask('${escapeHtml(task.taskId)}')`}">
           <div class="task-info">
-            <div class="task-title">${escapeHtml(task.title)}${typeBadge}</div>
+            <div class="task-title">
+              ${escapeHtml(task.title)}
+              ${typeBadge}
+            </div>
             <div class="task-reward">
               <span>💰</span>
               ₹${task.reward}
             </div>
           </div>
-          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
+          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>
+            ${btnText}
+          </button>
         </div>
       `;
     });
 
     listEl.innerHTML = html;
+
+    // Update tab badges
+    updateTaskBadge(allTasks.filter(t => !(t.completedUsers || []).includes(userId)).length);
+
   } catch (e) {
     console.error('Load tasks error:', e);
     listEl.innerHTML = `
       <div class="empty-state">
         <div class="icon">⚠️</div>
-        <div>Failed to load tasks</div>
+        <div class="title">Failed to load</div>
+        <div class="sub">Please try again</div>
       </div>
     `;
   }
+}
+
+function updateTaskBadge(count) {
+  // Optional — no tab badge needed
 }
 
 // ============================================================
 // 📋 OPEN TASK
 // ============================================================
 function openTask(taskId) {
+  haptic('light');
+
   const task = allTasks.find(t => t.taskId === taskId);
   if (!task) return;
 
@@ -392,11 +935,11 @@ function openTask(taskId) {
   else currentTaskType = 'photo';
 
   const detailEl = document.getElementById('taskDetail');
+  if (!detailEl) return;
 
-  let icon = '📋';
+  let icon = '📸';
   if (currentTaskType === 'refer') icon = '🔗';
   else if (currentTaskType === 'affiliate') icon = '🌐';
-  else icon = '📸';
 
   let btnLabel = '📸 Submit Screenshot';
   if (currentTaskType === 'refer') btnLabel = '🔗 Submit Refer ID';
@@ -406,27 +949,39 @@ function openTask(taskId) {
     <div class="task-detail-icon">${icon}</div>
     <div class="task-detail-title">${escapeHtml(task.title)}</div>
     <div class="task-detail-reward">₹${task.reward}</div>
+
     <div class="task-detail-row">
       <span class="task-detail-label">Task ID</span>
       <span class="task-detail-value">${escapeHtml(task.taskId)}</span>
     </div>
+
     <div class="task-detail-row">
       <span class="task-detail-label">Type</span>
       <span class="task-detail-value">${currentTaskType.toUpperCase()}</span>
     </div>
-    <a href="${escapeHtml(task.link)}" target="_blank" class="task-open-btn">
+
+    <div class="task-detail-row">
+      <span class="task-detail-label">Reward</span>
+      <span class="task-detail-value">₹${task.reward}</span>
+    </div>
+
+    <a href="${escapeHtml(task.link)}" target="_blank" rel="noopener" class="task-open-btn">
       🔗 Open Task Link
     </a>
+
     <button class="task-submit-btn" onclick="startSubmit()">
       ${btnLabel}
     </button>
   `;
 
   document.getElementById('taskModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeTaskModal() {
+  haptic('light');
   document.getElementById('taskModal').classList.remove('active');
+  forceScrollEnable();
 }
 
 // ============================================================
@@ -436,24 +991,34 @@ function startSubmit() {
   closeTaskModal();
 
   if (currentTaskType === 'refer') {
-    document.getElementById('referModal').classList.add('active');
-    setTimeout(() => document.getElementById('referInput').focus(), 300);
+    const referModal = document.getElementById('referModal');
+    referModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+      const input = document.getElementById('referInput');
+      if (input) input.focus();
+    }, 400);
   } else if (currentTaskType === 'affiliate') {
-    // Affiliate — direct submit (user confirms completed)
     submitAffiliate();
   } else {
-    document.getElementById('uploadModal').classList.add('active');
+    const uploadModal = document.getElementById('uploadModal');
+    uploadModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
   }
 }
 
 function closeUploadModal() {
+  haptic('light');
   document.getElementById('uploadModal').classList.remove('active');
   document.getElementById('screenshotInput').value = '';
+  forceScrollEnable();
 }
 
 function closeReferModal() {
+  haptic('light');
   document.getElementById('referModal').classList.remove('active');
   document.getElementById('referInput').value = '';
+  forceScrollEnable();
 }
 
 // ============================================================
@@ -462,31 +1027,47 @@ function closeReferModal() {
 async function handleScreenshot(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (!currentTask) { showToast('❌ No task selected'); return; }
+  if (!currentTask) {
+    showToast('❌ No task selected');
+    return;
+  }
+
+  // Size check — max 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('❌ Image too large (max 5MB)');
+    closeUploadModal();
+    return;
+  }
 
   closeUploadModal();
   showToast('⏳ Uploading...');
+  haptic('light');
 
   try {
     const base64 = await fileToBase64(file);
-    const res = await fetch('/miniapp/api/submit-task', {
+
+    const data = await apiCall('/miniapp/api/submit-task', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, taskId: currentTask.taskId, photoBase64: base64 })
+      body: JSON.stringify({
+        userId: userId,
+        taskId: currentTask.taskId,
+        photoBase64: base64
+      })
     });
-    const data = await res.json();
 
     if (data.success) {
       showToast('✅ Submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      haptic('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
       showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
     }
   } catch (e) {
     console.error(e);
     showToast('❌ Network error');
+    haptic('error');
   }
 }
 
@@ -506,28 +1087,31 @@ async function submitAffiliate() {
   if (!currentTask) return;
   if (!confirm('Have you completed this task?')) return;
 
+  haptic('light');
+  showToast('⏳ Submitting...');
+
   try {
-    const res = await fetch('/miniapp/api/submit-refer', {
+    const data = await apiCall('/miniapp/api/submit-refer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
+        userId: userId,
         taskId: currentTask.taskId,
         referValue: `AFFILIATE_CLICKED: ${currentTask.link}`
       })
     });
-    const data = await res.json();
 
     if (data.success) {
       showToast('✅ Submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      haptic('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
       showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
     }
   } catch (e) {
     showToast('❌ Network error');
+    haptic('error');
   }
 }
 
@@ -536,32 +1120,52 @@ async function submitAffiliate() {
 // ============================================================
 async function submitRefer() {
   const input = document.getElementById('referInput');
-  const value = input.value.trim();
+  const value = input ? input.value.trim() : '';
 
-  if (!value) { showToast('❌ Enter refer link or ID'); return; }
-  if (!currentTask) { showToast('❌ No task selected'); return; }
+  if (!value) {
+    showToast('❌ Enter refer link or ID');
+    haptic('error');
+    return;
+  }
+
+  if (value.length < 3) {
+    showToast('❌ Too short');
+    haptic('error');
+    return;
+  }
+
+  if (!currentTask) {
+    showToast('❌ No task selected');
+    haptic('error');
+    return;
+  }
 
   closeReferModal();
   showToast('⏳ Submitting...');
+  haptic('light');
 
   try {
-    const res = await fetch('/miniapp/api/submit-refer', {
+    const data = await apiCall('/miniapp/api/submit-refer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, taskId: currentTask.taskId, referValue: value })
+      body: JSON.stringify({
+        userId: userId,
+        taskId: currentTask.taskId,
+        referValue: value
+      })
     });
-    const data = await res.json();
 
     if (data.success) {
       showToast('✅ Refer submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      haptic('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
       showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
     }
   } catch (e) {
     showToast('❌ Network error');
+    haptic('error');
   }
 }
 
@@ -569,33 +1173,71 @@ async function submitRefer() {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  forceScrollEnable();
+
   if (!userId) {
-    document.getElementById('taskList').innerHTML = `
-      <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div>Open from Telegram</div>
-      </div>
-    `;
+    const listEl = document.getElementById('taskList');
+    if (listEl) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">⚠️</div>
+          <div class="title">Open from Telegram</div>
+          <div class="sub">This Mini App works only inside Telegram.</div>
+        </div>
+      `;
+    }
     return;
   }
+
+  await loadConfig();
   await loadTasks();
 
-  document.getElementById('referInput')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') submitRefer();
-  });
+  // Refer input Enter key
+  const refInput = document.getElementById('referInput');
+  if (refInput) {
+    refInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitRefer();
+      }
+    });
+  }
+
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
+
+  console.log('✅ Task page ready');
 });
 
+// ============================================================
+// 🚪 MODAL CLOSE ON OUTSIDE CLICK
+// ============================================================
 document.getElementById('taskModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'taskModal') closeTaskModal();
 });
+
 document.getElementById('uploadModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'uploadModal') closeUploadModal();
 });
+
 document.getElementById('referModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'referModal') closeReferModal();
 });
 
+// Prevent zoom
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ============================================================
+// 🌐 EXPOSE GLOBALS
+// ============================================================
+window.openTask = openTask;
+window.closeTaskModal = closeTaskModal;
+window.startSubmit = startSubmit;
+window.closeUploadModal = closeUploadModal;
+window.closeReferModal = closeReferModal;
+window.handleScreenshot = handleScreenshot;
+window.submitRefer = submitRefer;
+window.loadTasks = loadTasks;
 </script>
 
 </body>
