@@ -8,8 +8,46 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   WITHDRAW PAGE — Premium Styles (Green Glow)
+   WITHDRAW PAGE — Premium Styles
    ═══════════════════════════════════════════════════════ */
+
+/* ───── 🔓 SCROLL FIX ───── */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 200px !important;
+}
+
+.app {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 220px !important;
+  position: relative !important;
+}
+
+.app::after {
+  content: '';
+  display: block;
+  height: 120px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.iphone-frame {
+  min-height: 100vh !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
 
 /* ───── PAGE HEADER ───── */
 .page-header {
@@ -49,22 +87,6 @@
   animation: cardSlideIn 0.4s ease backwards;
 }
 
-.balance-info-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #00ff88, transparent);
-  animation: cardShine 3s infinite;
-}
-
-@keyframes cardShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
-
 .balance-info-label {
   font-size: 10.5px;
   color: #00ff88;
@@ -101,7 +123,7 @@
   text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
 }
 
-/* ───── MINIMUM WARNING BANNER ───── */
+/* ───── MIN WARNING BANNER ───── */
 .min-warning {
   display: flex;
   align-items: center;
@@ -116,7 +138,6 @@
   color: #ffa500;
   font-weight: 700;
   line-height: 1.5;
-  animation: cardSlideIn 0.4s ease 0.05s backwards;
 }
 
 .min-warning .icon {
@@ -130,7 +151,6 @@
   background: rgba(255, 165, 0, 0.15);
   padding: 2px 8px;
   border-radius: 6px;
-  font-family: 'SF Mono', monospace;
 }
 
 /* ───── MAIN CARD ───── */
@@ -143,7 +163,7 @@
   padding: 20px;
   margin-bottom: 14px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  animation: cardSlideIn 0.4s ease 0.1s backwards;
+  animation: cardSlideIn 0.4s ease backwards;
   position: relative;
   overflow: hidden;
 }
@@ -167,13 +187,6 @@
   font-weight: 800;
   text-transform: uppercase;
   margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.card-title i {
-  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 /* ───── AMOUNT INPUT ───── */
@@ -213,6 +226,7 @@
   outline: none;
   font-family: inherit;
   letter-spacing: -0.5px;
+  min-width: 0;
 }
 
 .amount-input-wrap input::placeholder {
@@ -235,7 +249,7 @@
   color: #00ff88;
   opacity: 0.6;
   font-size: 11px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   font-weight: 600;
 }
 
@@ -270,7 +284,6 @@
 .max-btn:active {
   background: rgba(0, 255, 136, 0.25);
   transform: scale(0.94);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 /* ───── QUICK AMOUNTS ───── */
@@ -292,7 +305,6 @@
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
-  letter-spacing: 0.3px;
 }
 
 .quick-amounts button:active,
@@ -300,13 +312,11 @@
   background: linear-gradient(135deg, #00ff88, #00cc6a);
   color: #000;
   transform: scale(0.94);
-  box-shadow:
-    0 0 25px rgba(0, 255, 136, 0.55),
-    0 0 50px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.55);
   border-color: #00ff88;
 }
 
-/* ───── PAYMENT METHOD ───── */
+/* ───── METHOD LABEL ───── */
 .method-label {
   font-size: 10.5px;
   color: #00ff88;
@@ -317,6 +327,7 @@
   text-transform: uppercase;
 }
 
+/* ───── METHOD GRID ───── */
 .method-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -328,7 +339,7 @@
   background: rgba(0, 0, 0, 0.35);
   border: 1.5px solid rgba(0, 255, 136, 0.15);
   border-radius: 12px;
-  padding: 12px 8px;
+  padding: 14px 8px;
   color: #00ff88;
   font-size: 12px;
   font-weight: 800;
@@ -336,10 +347,12 @@
   transition: all 0.2s;
   font-family: inherit;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  letter-spacing: 0.3px;
+  position: relative;
+  min-height: 76px;
 }
 
 .method-btn:active {
@@ -354,14 +367,81 @@
   box-shadow:
     0 0 20px rgba(0, 255, 136, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
 
 .method-btn .mi {
-  font-size: 15px;
+  font-size: 22px;
 }
 
-/* ───── ACCOUNT DETAILS INPUT ───── */
+.method-btn .mname {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Linked badge */
+.method-btn .linked-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  font-size: 8px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.method-btn.linked {
+  border-color: rgba(0, 255, 136, 0.5);
+}
+
+.method-btn.not-linked {
+  opacity: 0.7;
+}
+
+.method-btn.not-linked::before {
+  content: '⚠️';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 11px;
+}
+
+/* ───── LINK INPUT SECTION ───── */
+.link-section {
+  display: none;
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  animation: cardSlideIn 0.3s ease;
+}
+
+.link-section.active {
+  display: block;
+}
+
+.link-section-title {
+  font-size: 11px;
+  color: #ffa500;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-section-title b {
+  color: #ffa500;
+  background: rgba(255, 165, 0, 0.15);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
 .account-detail-label {
   font-size: 10.5px;
   color: #00ff88;
@@ -383,22 +463,37 @@
   font-weight: 700;
   outline: none;
   font-family: inherit;
-  letter-spacing: 0.5px;
   transition: all 0.25s;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .account-detail-input:focus {
   border-color: #00ff88;
-  box-shadow:
-    0 0 24px rgba(0, 255, 136, 0.3),
-    inset 0 0 20px rgba(0, 255, 136, 0.05);
+  box-shadow: 0 0 24px rgba(0, 255, 136, 0.3);
 }
 
 .account-detail-input::placeholder {
   color: #00ff88;
   opacity: 0.35;
-  font-weight: 600;
+}
+
+.link-save-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ffa500, #ff8c00);
+  color: #000;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s;
+}
+
+.link-save-btn:active {
+  transform: scale(0.97);
 }
 
 /* ───── SUBMIT BUTTON ───── */
@@ -421,25 +516,7 @@
   position: relative;
   overflow: hidden;
   text-transform: uppercase;
-}
-
-.submit-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent);
-  animation: btnShine 3s ease-in-out infinite;
-}
-
-@keyframes btnShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  margin-top: 8px;
 }
 
 .submit-btn:active {
@@ -449,7 +526,6 @@
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 /* ───── LOADING SPINNER ───── */
@@ -587,7 +663,6 @@
   max-width: 60%;
 }
 
-/* ───── BACK HOME BUTTON ───── */
 .back-home-btn {
   width: 100%;
   background: rgba(0, 255, 136, 0.08);
@@ -607,21 +682,22 @@
 .back-home-btn:active {
   background: rgba(0, 255, 136, 0.2);
   transform: scale(0.97);
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
-}
-
-/* ───── BOTTOM SPACING ───── */
-.app {
-  padding-bottom: 130px !important;
 }
 
 /* ───── BOTTOM NAV FIX ───── */
-.bottom-nav {
+.bottom-nav,
+.glass-nav {
   position: fixed !important;
   bottom: 18px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  z-index: 9999 !important;
+  z-index: 99999 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  pointer-events: auto !important;
+  max-width: 448px !important;
+  width: calc(100% - 32px) !important;
 }
 
 /* ───── RESPONSIVE ───── */
@@ -630,20 +706,9 @@
   .amount-input-wrap input { font-size: 20px; }
   .amount-input-wrap .rupee { font-size: 24px; }
   .quick-amounts button { font-size: 11.5px; padding: 10px 3px; }
-  .method-btn { font-size: 11px; padding: 10px 6px; }
+  .method-btn { font-size: 11px; padding: 12px 6px; min-height: 72px; }
   .submit-btn { font-size: 14px; padding: 15px; }
   .success-amount-value { font-size: 30px; }
-}
-
-/* ───── SCROLL FIX ───── */
-html, body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 </style>
 </head>
@@ -674,21 +739,21 @@ html, body {
         <div class="balance-info-label">Available Balance</div>
         <div class="balance-info-value" id="balanceValue">₹0.00</div>
         <div class="balance-info-sub">
-          Minimum withdrawal: <b>₹<span id="minWithdrawLabel">50</span></b>
+          Minimum withdrawal: <b>₹<span id="minWithdrawLabel">10</span></b>
         </div>
       </div>
 
       <!-- Min Warning Banner -->
       <div class="min-warning" id="minWarning">
         <span class="icon">⚠️</span>
-        <span>Minimum withdrawal amount is <b>₹<span id="minWithdrawLabel2">50</span></b></span>
+        <span>Minimum: <b>₹<span id="minWithdrawLabel2">10</span></b> • Maximum: <b>₹<span id="maxWithdrawLabel2">10000</span></b></span>
       </div>
 
       <!-- Withdraw Card -->
       <div class="withdraw-card">
 
         <div class="card-title">
-          <i>💰</i> Enter Withdrawal Amount
+          💰 Enter Withdrawal Amount
         </div>
 
         <div class="amount-input-wrap">
@@ -696,7 +761,7 @@ html, body {
           <input type="number" id="amountInput" placeholder="0" inputmode="decimal">
         </div>
         <div class="amount-range">
-          Min: <b>₹<span id="minLabel">50</span></b> • Max: <b>₹<span id="maxLabel">5000</span></b>
+          Min: <b>₹<span id="minLabel">10</span></b> • Max: <b>₹<span id="maxLabel">10000</span></b>
         </div>
 
         <div class="max-btn-row">
@@ -713,31 +778,28 @@ html, body {
         <!-- Payment Method -->
         <div class="method-label">💳 Select Payment Method</div>
         <div class="method-grid" id="methodGrid">
-          <button class="method-btn selected" data-method="upi" onclick="selectMethod('upi', this)">
-            <span class="mi">⚡</span> UPI
-          </button>
-          <button class="method-btn" data-method="bank" onclick="selectMethod('bank', this)">
-            <span class="mi">🏦</span> Bank
-          </button>
-          <button class="method-btn" data-method="wallet" onclick="selectMethod('wallet', this)">
-            <span class="mi">🌐</span> Wallet
-          </button>
-          <button class="method-btn" data-method="amazon" onclick="selectMethod('amazon', this)">
-            <span class="mi">📧</span> Amazon
-          </button>
+          <!-- Dynamic from JS -->
         </div>
 
-        <!-- Account Details -->
-        <div class="account-detail-label" id="accountDetailLabel">
-          ⚡ Enter your UPI ID
+        <!-- Link Section (shown when method not linked) -->
+        <div class="link-section" id="linkSection">
+          <div class="link-section-title">
+            ⚠️ <b id="linkMethodName">Method</b> Not Linked
+          </div>
+          <div class="account-detail-label" id="linkInputLabel">
+            Enter your UPI ID
+          </div>
+          <input
+            type="text"
+            id="linkInput"
+            class="account-detail-input"
+            placeholder="Enter details"
+            autocomplete="off"
+          >
+          <button class="link-save-btn" onclick="linkMethodNow()">
+            🔗 Link Now
+          </button>
         </div>
-        <input
-          type="text"
-          id="accountDetailInput"
-          class="account-detail-input"
-          placeholder="yourname@upi"
-          autocomplete="off"
-        >
 
         <!-- Submit -->
         <button class="submit-btn" id="submitBtn" onclick="submitWithdraw()">
@@ -824,19 +886,65 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
+
+  try {
+    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
+  } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
 
 let userBalance = 0;
-let minWithdraw = 50;
-let maxWithdraw = 5000;
-let selectedMethod = 'upi';
-let selectedMethodLabel = 'UPI';
+let minWithdraw = 10;
+let maxWithdraw = 10000;
+let selectedMethod = null;
+let selectedMethodLabel = '';
 let userSavedDetails = {};
+let appConfig = {};
 
 // ============================================================
-// 🔔 TOAST
+// 🔓 FORCE SCROLL ENABLE
+// ============================================================
+function forceScrollEnable() {
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '200px';
+
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+  document.documentElement.style.maxHeight = 'none';
+
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+    app.style.paddingBottom = '220px';
+  }
+
+  const frame = document.querySelector('.iphone-frame');
+  if (frame) {
+    frame.style.overflow = 'visible';
+    frame.style.height = 'auto';
+    frame.style.maxHeight = 'none';
+  }
+}
+
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
+
+// ============================================================
+// 🎨 UTILITIES
 // ============================================================
 function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
@@ -862,64 +970,231 @@ function haptic(type = 'light') {
   }
 }
 
-// ============================================================
-// ⚙️ LOAD CONFIG + USER BALANCE
-// ============================================================
-async function loadConfig() {
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function apiCall(endpoint, options = {}) {
   try {
-    const res = await fetch('/miniapp/api/config');
-    const data = await res.json();
-
-    if (data.success && data.config) {
-      const cfg = data.config;
-
-      if (cfg.minWithdraw) minWithdraw = parseFloat(cfg.minWithdraw);
-      if (cfg.maxWithdraw) maxWithdraw = parseFloat(cfg.maxWithdraw);
-
-      document.getElementById('minWithdrawLabel').textContent = minWithdraw;
-      document.getElementById('minWithdrawLabel2').textContent = minWithdraw;
-      document.getElementById('minLabel').textContent = minWithdraw;
-      document.getElementById('maxLabel').textContent = maxWithdraw;
-
-      // Nav button names
-      if (cfg.btn_home) document.getElementById('nav-home').textContent = cfg.btn_home;
-      if (cfg.btn_task) document.getElementById('nav-task').textContent = cfg.btn_task;
-      if (cfg.btn_pay) document.getElementById('nav-pay').textContent = cfg.btn_pay;
-      if (cfg.btn_profile) document.getElementById('nav-profile').textContent = cfg.btn_profile;
-    }
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
   } catch (e) {
-    console.log('Using defaults for withdraw config');
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
   }
 }
 
+// ============================================================
+// ⚙️ LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    if (appConfig.minWithdraw) minWithdraw = parseFloat(appConfig.minWithdraw);
+    if (appConfig.maxWithdraw) maxWithdraw = parseFloat(appConfig.maxWithdraw);
+
+    // Also check settings API
+    const sres = await apiCall('/miniapp/api/admin/settings');
+    if (sres.success && sres.settings) {
+      if (sres.settings.min_withdraw) minWithdraw = parseFloat(sres.settings.min_withdraw);
+      if (sres.settings.max_withdraw) maxWithdraw = parseFloat(sres.settings.max_withdraw);
+    }
+
+    document.getElementById('minWithdrawLabel').textContent = minWithdraw;
+    document.getElementById('minWithdrawLabel2').textContent = minWithdraw;
+    document.getElementById('maxWithdrawLabel2').textContent = maxWithdraw;
+    document.getElementById('minLabel').textContent = minWithdraw;
+    document.getElementById('maxLabel').textContent = maxWithdraw;
+
+    // Nav names
+    if (appConfig.btn_home) document.getElementById('nav-home').textContent = appConfig.btn_home;
+    if (appConfig.btn_task) document.getElementById('nav-task').textContent = appConfig.btn_task;
+    if (appConfig.btn_pay) document.getElementById('nav-pay').textContent = appConfig.btn_pay;
+    if (appConfig.btn_profile) document.getElementById('nav-profile').textContent = appConfig.btn_profile;
+  }
+}
+
+// ============================================================
+// 👤 LOAD BALANCE + USER DETAILS
+// ============================================================
 async function loadBalance() {
   if (!userId) return;
 
+  const res = await apiCall(`/miniapp/api/user/${userId}`);
+
+  if (res.success && res.user) {
+    userBalance = parseFloat(res.user.balance) || 0;
+    document.getElementById('balanceValue').textContent = '₹' + userBalance.toFixed(2);
+
+    // Save user details for method check
+    userSavedDetails = {
+      upi: res.user.upiId && res.user.upiId !== 'Not Set' ? res.user.upiId : '',
+      bank: res.user.bankAccNo && res.user.bankAccNo !== 'Not Set' ? res.user.bankAccNo : '',
+      wallet: res.user.walletAccount && res.user.walletAccount !== 'Not Set' ? res.user.walletAccount : '',
+      amazon: res.user.amazonEmail && res.user.amazonEmail !== 'Not Set' ? res.user.amazonEmail : '',
+      redeem: res.user.redeemCodeAddr && res.user.redeemCodeAddr !== 'Not Set' ? res.user.redeemCodeAddr : ''
+    };
+
+    console.log('User details:', userSavedDetails);
+  }
+
+  renderMethodGrid();
+}
+
+// ============================================================
+// 🎨 RENDER PAYMENT METHOD GRID
+// ============================================================
+function renderMethodGrid() {
+  const grid = document.getElementById('methodGrid');
+
+  const methods = [
+    { key: 'upi', name: 'UPI', icon: '⚡', details: userSavedDetails.upi, label: 'UPI ID' },
+    { key: 'bank', name: 'Bank', icon: '🏦', details: userSavedDetails.bank, label: 'Account Number' },
+    { key: 'wallet', name: 'Wallet', icon: '🌐', details: userSavedDetails.wallet, label: 'Wallet ID' },
+    { key: 'redeem', name: 'Redeem', icon: '🎁', details: userSavedDetails.redeem, label: 'Redeem Code' }
+  ];
+
+  let html = '';
+  methods.forEach(m => {
+    const isLinked = !!m.details;
+    html += `
+      <button class="method-btn ${isLinked ? 'linked' : 'not-linked'}"
+              data-method="${m.key}"
+              onclick="selectMethod('${m.key}')">
+        ${isLinked ? '<span class="linked-badge">✓ LINKED</span>' : ''}
+        <span class="mi">${m.icon}</span>
+        <span class="mname">${m.name}</span>
+      </button>
+    `;
+  });
+
+  grid.innerHTML = html;
+
+  // Auto-select first linked method
+  const firstLinked = methods.find(m => m.details);
+  if (firstLinked) {
+    selectMethod(firstLinked.key);
+  }
+}
+
+// ============================================================
+// 💳 SELECT METHOD
+// ============================================================
+function selectMethod(methodKey) {
+  selectedMethod = methodKey;
+
+  const methodData = {
+    upi: { label: 'UPI', inputLabel: '⚡ Enter your UPI ID', placeholder: 'yourname@upi' },
+    bank: { label: 'Bank', inputLabel: '🏦 Enter Bank Account Number', placeholder: 'Enter account number' },
+    wallet: { label: 'Wallet', inputLabel: '🌐 Enter Wallet ID', placeholder: 'Enter wallet ID' },
+    redeem: { label: 'Redeem', inputLabel: '🎁 Enter Redeem Code', placeholder: 'Enter redeem code' }
+  };
+
+  const m = methodData[methodKey];
+  if (!m) return;
+
+  selectedMethodLabel = m.label;
+
+  // Update UI
+  document.querySelectorAll('.method-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.method === methodKey);
+  });
+
+  // Check if linked
+  const isLinked = !!userSavedDetails[methodKey];
+
+  if (isLinked) {
+    // Hide link section
+    document.getElementById('linkSection').classList.remove('active');
+  } else {
+    // Show link section
+    document.getElementById('linkSection').classList.add('active');
+    document.getElementById('linkMethodName').textContent = m.label;
+    document.getElementById('linkInputLabel').textContent = m.inputLabel;
+    document.getElementById('linkInput').placeholder = m.placeholder;
+    document.getElementById('linkInput').value = '';
+  }
+
+  haptic('light');
+}
+
+// ============================================================
+// 🔗 LINK METHOD NOW
+// ============================================================
+async function linkMethodNow() {
+  if (!selectedMethod) {
+    showToast('❌ Select a method first');
+    return;
+  }
+
+  const input = document.getElementById('linkInput');
+  const value = input.value.trim();
+
+  if (!value || value.length < 3) {
+    showToast('❌ Enter valid details');
+    haptic('error');
+    return;
+  }
+
+  // Map to backend field
+  const fieldMap = {
+    upi: 'upiId',
+    bank: 'bankAccNo',
+    wallet: 'walletAccount',
+    redeem: 'redeemCodeAddr'
+  };
+
+  const field = fieldMap[selectedMethod];
+  if (!field) return;
+
+  const btn = event?.target;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Linking...';
+  }
+
   try {
-    const res = await fetch(`/miniapp/api/user/${userId}`);
-    const data = await res.json();
+    const data = await apiCall('/miniapp/api/update-payment', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: userId,
+        field: field,
+        value: value
+      })
+    });
 
-    if (data.success && data.user) {
-      userBalance = parseFloat(data.user.balance) || 0;
-      document.getElementById('balanceValue').textContent =
-        '₹' + userBalance.toFixed(2);
+    if (data.success) {
+      showToast('✅ Linked successfully!');
+      haptic('success');
 
-      // Pre-fill saved details
-      userSavedDetails = {
-        upi: data.user.upiId || '',
-        bank: data.user.bankAccNo || '',
-        wallet: data.user.walletAccount || '',
-        amazon: data.user.amazonEmail || ''
-      };
+      // Update local details
+      userSavedDetails[selectedMethod] = value;
 
-      // Auto-fill for default UPI method
-      const input = document.getElementById('accountDetailInput');
-      if (userSavedDetails[selectedMethod]) {
-        input.value = userSavedDetails[selectedMethod];
-      }
+      // Hide link section
+      document.getElementById('linkSection').classList.remove('active');
+
+      // Re-render grid
+      renderMethodGrid();
+
+      // Re-select this method
+      selectMethod(selectedMethod);
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
     }
   } catch (e) {
-    console.error('Balance load failed');
+    showToast('❌ Network error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔗 Link Now';
+    }
   }
 }
 
@@ -945,52 +1220,10 @@ function setMaxAmount() {
 }
 
 // ============================================================
-// 💳 SELECT METHOD
-// ============================================================
-function selectMethod(method, btn) {
-  selectedMethod = method;
-
-  const labels = {
-    upi: 'UPI',
-    bank: 'Bank Transfer',
-    wallet: 'Wallet',
-    amazon: 'Amazon Gift Card'
-  };
-
-  selectedMethodLabel = labels[method] || 'UPI';
-
-  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-
-  // Update input label + placeholder + value
-  const labels2 = {
-    upi: '⚡ Enter your UPI ID',
-    bank: '🏦 Enter Bank Account Number',
-    wallet: '🌐 Enter Wallet ID',
-    amazon: '📧 Enter Amazon Email'
-  };
-
-  const placeholders = {
-    upi: 'yourname@upi',
-    bank: 'Enter account number',
-    wallet: 'Enter wallet ID / UPI',
-    amazon: 'your@email.com'
-  };
-
-  document.getElementById('accountDetailLabel').textContent = labels2[method];
-  const input = document.getElementById('accountDetailInput');
-  input.placeholder = placeholders[method];
-  input.value = userSavedDetails[method] || '';
-
-  haptic('light');
-}
-
-// ============================================================
 // ✅ SUBMIT WITHDRAWAL
 // ============================================================
 async function submitWithdraw() {
   const amountStr = document.getElementById('amountInput').value.trim();
-  const detail = document.getElementById('accountDetailInput').value.trim();
   const btn = document.getElementById('submitBtn');
 
   // Validations
@@ -1020,8 +1253,15 @@ async function submitWithdraw() {
     return;
   }
 
-  if (!detail || detail.length < 3) {
-    showToast('❌ Enter valid account details');
+  if (!selectedMethod) {
+    showToast('❌ Select payment method');
+    haptic('error');
+    return;
+  }
+
+  const details = userSavedDetails[selectedMethod];
+  if (!details) {
+    showToast('❌ Please link this method first');
     haptic('error');
     return;
   }
@@ -1030,26 +1270,22 @@ async function submitWithdraw() {
   btn.innerHTML = '<span class="loading-spinner"></span> SUBMITTING...';
 
   try {
-    const res = await fetch('/miniapp/api/withdraw/request', {
+    const res = await apiCall('/miniapp/api/withdraw', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: userId,
         amount: amount,
-        method: selectedMethodLabel,
-        details: detail
+        method: selectedMethodLabel
       })
     });
 
-    const data = await res.json();
-
-    if (data.success) {
+    if (res.success) {
       haptic('success');
-      const newBalance = (userBalance - amount);
-      showSuccessScreen(amount, detail, newBalance);
+      const newBalance = userBalance - amount;
+      showSuccessScreen(amount, details, newBalance);
     } else {
       haptic('error');
-      showToast(`❌ ${data.error || 'Request failed'}`);
+      showToast(`❌ ${res.error || 'Request failed'}`);
       btn.disabled = false;
       btn.innerHTML = '💸 Request Withdrawal';
     }
@@ -1065,20 +1301,19 @@ async function submitWithdraw() {
 // ============================================================
 // 🎉 SUCCESS SCREEN
 // ============================================================
-function showSuccessScreen(amount, detail, newBalance) {
+function showSuccessScreen(amount, details, newBalance) {
   document.getElementById('mainForm').style.display = 'none';
   document.getElementById('successScreen').classList.add('active');
 
   document.getElementById('successAmount').textContent = '₹' + amount.toFixed(2);
   document.getElementById('successMethod').textContent = selectedMethodLabel;
-  document.getElementById('successTo').textContent = detail;
+  document.getElementById('successTo').textContent = details;
   document.getElementById('successNewBalance').textContent = '₹' + newBalance.toFixed(2);
   document.getElementById('successDate').textContent = new Date().toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true
   });
 
-  // Auto-scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1086,22 +1321,22 @@ function showSuccessScreen(amount, detail, newBalance) {
 // 🏠 GO HOME
 // ============================================================
 function goHome() {
-  if (tg) {
-    tg.close();
-  } else {
-    window.location.href = '/miniapp';
-  }
+  haptic('light');
+  // ✅ Navigate to home, NOT close Mini App
+  window.location.href = '/miniapp';
 }
 
 // ============================================================
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  forceScrollEnable();
+
   if (!userId) {
     document.body.innerHTML = `
       <div style="padding:50px;text-align:center;color:#00ff88;">
         <h2>⚠️ Open from Telegram</h2>
-        <p style="color:#00ff88;opacity:0.7;margin-top:20px;">This page works only inside Telegram Mini App.</p>
+        <p style="opacity:0.7;margin-top:20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
@@ -1110,16 +1345,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadConfig();
   await loadBalance();
 
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
+
   console.log('✅ Withdraw page ready');
 });
 
-// Prevent zoom
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 // Expose globals
 window.setAmount = setAmount;
 window.setMaxAmount = setMaxAmount;
 window.selectMethod = selectMethod;
+window.linkMethodNow = linkMethodNow;
 window.submitWithdraw = submitWithdraw;
 window.goHome = goHome;
 </script>
