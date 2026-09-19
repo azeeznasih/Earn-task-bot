@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>History</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   HISTORY PAGE — Complete Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ───── HISTORY PAGE WRAPPER ───── */
+.history-page {
+  padding: 20px 16px 130px;
+  min-height: 100vh;
+}
+
+.history-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-top: 8px;
+}
+
+.history-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 1px;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.history-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #00ff88;
+  font-size: 20px;
+  font-weight: 800;
+  transition: all 0.2s;
+}
+
+.history-close:active {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: rgba(255, 100, 100, 0.3);
+  color: #ff6464;
+  transform: scale(0.92);
+}
+
+/* ───── FILTER TABS ───── */
+.history-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.history-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-btn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: rgba(0, 20, 10, 0.5);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+  white-space: nowrap;
+  opacity: 0.6;
+}
+
+.filter-btn.active {
+  background: rgba(0, 255, 136, 0.15);
+  border-color: rgba(0, 255, 136, 0.5);
+  opacity: 1;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+}
+
+.filter-btn:active {
+  transform: scale(0.95);
+}
+
+/* ───── STATS SUMMARY BAR ───── */
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.summary-card {
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  animation: cardSlideIn 0.4s ease backwards;
+}
+
+.summary-label {
+  font-size: 9.5px;
+  color: #00ff88;
+  opacity: 0.6;
+  letter-spacing: 1px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+}
+
+.summary-value.in {
+  color: #00ff88;
+}
+
+.summary-value.out {
+  color: #ff6464;
+  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+}
+
+/* ───── HISTORY LIST ───── */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  position: relative;
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 16px;
+  padding: 16px 18px;
+  border-left: 3px solid #00ff88;
+  animation: cardSlideIn 0.4s ease backwards;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.history-item:active {
+  transform: scale(0.98);
+}
+
+.history-item.pending {
+  border-left-color: #ffa500;
+}
+
+.history-item.failed,
+.history-item.rejected {
+  border-left-color: #ff6464;
+}
+
+.history-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.history-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.3px;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.history-amount {
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+  letter-spacing: -0.3px;
+}
+
+.history-amount.positive {
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+.history-amount.negative {
+  color: #ff6464;
+  text-shadow: 0 0 15px rgba(255, 100, 100, 0.4);
+}
+
+.history-amount.pending {
+  color: #ffa500;
+  text-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
+}
+
+.history-detail {
+  font-size: 11.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  line-height: 1.5;
+  word-break: break-all;
+  font-weight: 600;
+}
+
+.history-detail b {
+  color: #00ff88;
+  opacity: 0.5;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.history-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 255, 136, 0.08);
+  gap: 10px;
+}
+
+.history-date {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.55;
+  font-weight: 600;
+}
+
+.history-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: rgba(0, 255, 136, 0.12);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  flex-shrink: 0;
+}
+
+.history-status-badge.pending {
+  background: rgba(255, 165, 0, 0.12);
+  color: #ffa500;
+  border-color: rgba(255, 165, 0, 0.3);
+}
+
+.history-status-badge.failed,
+.history-status-badge.rejected {
+  background: rgba(255, 100, 100, 0.12);
+  color: #ff6464;
+  border-color: rgba(255, 100, 100, 0.3);
+}
+
+/* ───── EMPTY STATE ───── */
+.history-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #00ff88;
+  opacity: 0.7;
+}
+
+.history-empty .icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.history-empty .title {
+  font-size: 17px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: #00ff88;
+  opacity: 1;
+}
+
+.history-empty .subtitle {
+  font-size: 12.5px;
+  opacity: 0.6;
+  line-height: 1.5;
+}
+
+/* ───── LOADING STATE ───── */
+.history-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.history-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(0, 255, 136, 0.15);
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: histSpin 0.9s linear infinite;
+}
+
+@keyframes histSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ───── BOTTOM NAV FIX ───── */
+.bottom-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+}
+
+/* ───── APP PADDING ───── */
+.app {
+  padding-bottom: 130px !important;
+}
+
+/* ───── SCROLL FIX ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .history-title { font-size: 22px; }
+  .history-amount { font-size: 16px; }
+  .summary-value { font-size: 13px; }
+  .history-name { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+</div>
+
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
+
+  <div class="app">
+
+    <div class="history-page">
+
+      <!-- ═══ HEADER ═══ -->
+      <div class="history-top">
+        <div class="history-title">📜 History</div>
+        <div class="history-close" onclick="goBack()">✕</div>
+      </div>
+
+      <!-- ═══ SUMMARY BAR ═══ -->
+      <div class="history-summary">
+        <div class="summary-card">
+          <div class="summary-label">Total In</div>
+          <div class="summary-value in" id="sumIn">₹0.00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total Out</div>
+          <div class="summary-value out" id="sumOut">₹0.00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Count</div>
+          <div class="summary-value" id="sumCount">0</div>
+        </div>
+      </div>
+
+      <!-- ═══ FILTER TABS ═══ -->
+      <div class="history-filters">
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">
+          All
+        </button>
+        <button class="filter-btn" data-filter="in" onclick="setFilter('in', this)">
+          ⬇ Earned
+        </button>
+        <button class="filter-btn" data-filter="out" onclick="setFilter('out', this)">
+          ⬆ Spent
+        </button>
+        <button class="filter-btn" data-filter="pending" onclick="setFilter('pending', this)">
+          ⏳ Pending
+        </button>
+      </div>
+
+      <!-- ═══ HISTORY LIST ═══ -->
+      <div class="history-list" id="historyList">
+        <div class="history-loading">
+          <div class="history-spinner"></div>
+          Loading transactions...
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ BOTTOM NAV ═══ -->
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label" id="nav-home">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label" id="nav-task">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
+      </a>
+    </nav>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 📜 HISTORY PAGE — Complete Logic
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+
+let allHistory = [];
+let currentFilter = 'all';
+let appConfig = {};
+
+// ============================================================
+// 🎨 UTILITIES
+// ============================================================
+function showToast(msg, duration = 2000) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 LOAD CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    const navHome = document.getElementById('nav-home');
+    const navTask = document.getElementById('nav-task');
+    const navPay = document.getElementById('nav-pay');
+    const navProfile = document.getElementById('nav-profile');
+
+    if (navHome && appConfig.btn_home) navHome.textContent = appConfig.btn_home;
+    if (navTask && appConfig.btn_task) navTask.textContent = appConfig.btn_task;
+    if (navPay && appConfig.btn_pay) navPay.textContent = appConfig.btn_pay;
+    if (navProfile && appConfig.btn_profile) navProfile.textContent = appConfig.btn_profile;
+  }
+}
+
+// ============================================================
+// 📜 LOAD HISTORY
+// ============================================================
+async function loadHistory() {
+  const listEl = document.getElementById('historyList');
+
+  if (!userId) {
+    listEl.innerHTML = `
+      <div class="history-empty">
+        <div class="icon">⚠️</div>
+        <div class="title">Open from Telegram</div>
+        <div class="subtitle">This page works only inside Telegram Mini App.</div>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = `
+    <div class="history-loading">
+      <div class="history-spinner"></div>
+      Loading transactions...
+    </div>
+  `;
+
+  const data = await apiCall(`/miniapp/api/user/${userId}/history?limit=200`);
+
+  if (!data.success) {
+    listEl.innerHTML = `
+      <div class="history-empty">
+        <div class="icon">⚠️</div>
+        <div class="title">Failed to load</div>
+        <div class="subtitle">${escapeHtml(data.error || 'Please try again later.')}</div>
+      </div>
+    `;
+    return;
+  }
+
+  allHistory = Array.isArray(data.history) ? data.history : [];
+
+  // Sort newest first
+  allHistory.sort((a, b) => {
+    const ta = new Date(a.createdAt || 0).getTime();
+    const tb = new Date(b.createdAt || 0).getTime();
+    return tb - ta;
+  });
+
+  // Summary
+  updateSummary();
+  renderHistory();
+}
+
+// ============================================================
+// 📊 UPDATE SUMMARY
+// ============================================================
+function updateSummary() {
+  let totalIn = 0;
+  let totalOut = 0;
+
+  allHistory.forEach(h => {
+    const amt = parseFloat(h.amount) || 0;
+    const status = (h.status || 'success').toLowerCase();
+
+    if (status === 'pending' || status === 'failed' || status === 'rejected') {
+      return;
+    }
+
+    if (amt >= 0) totalIn += amt;
+    else totalOut += Math.abs(amt);
+  });
+
+  document.getElementById('sumIn').textContent = '₹' + totalIn.toFixed(2);
+  document.getElementById('sumOut').textContent = '₹' + totalOut.toFixed(2);
+  document.getElementById('sumCount').textContent = allHistory.length;
+}
+
+// ============================================================
+// 🎯 SET FILTER
+// ============================================================
+function setFilter(filter, btn) {
+  currentFilter = filter;
+
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  haptic('light');
+  renderHistory();
+}
+
+// ============================================================
+// 🖼️ RENDER HISTORY
+// ============================================================
+function renderHistory() {
+  const listEl = document.getElementById('historyList');
+
+  let filtered = allHistory;
+
+  if (currentFilter === 'in') {
+    filtered = allHistory.filter(h => {
+      const s = (h.status || 'success').toLowerCase();
+      return (parseFloat(h.amount) || 0) >= 0 && s !== 'pending' && s !== 'failed' && s !== 'rejected';
+    });
+  } else if (currentFilter === 'out') {
+    filtered = allHistory.filter(h => {
+      const s = (h.status || 'success').toLowerCase();
+      return (parseFloat(h.amount) || 0) < 0 && s !== 'pending' && s !== 'failed' && s !== 'rejected';
+    });
+  } else if (currentFilter === 'pending') {
+    filtered = allHistory.filter(h => {
+      const s = (h.status || 'success').toLowerCase();
+      return s === 'pending';
+    });
+  }
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div class="history-empty">
+        <div class="icon">📭</div>
+        <div class="title">No transactions yet</div>
+        <div class="subtitle">Your transactions will appear here once you earn or spend.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+
+  filtered.forEach((h, idx) => {
+    const amt = parseFloat(h.amount) || 0;
+    const status = (h.status || 'success').toLowerCase();
+    const isPending = status === 'pending';
+    const isFailed = status === 'failed' || status === 'rejected';
+    const isPositive = amt >= 0 && !isFailed;
+
+    const sign = amt >= 0 ? '+' : '−';
+    const absAmt = Math.abs(amt).toFixed(2);
+
+    let amountClass = 'positive';
+    if (isPending) amountClass = 'pending';
+    else if (isFailed || amt < 0) amountClass = 'negative';
+
+    let itemClass = '';
+    if (isPending) itemClass = 'pending';
+    else if (isFailed) itemClass = 'failed';
+
+    let statusBadge = '';
+    if (isPending) {
+      statusBadge = '<span class="history-status-badge pending">⏳ Pending</span>';
+    } else if (isFailed) {
+      statusBadge = `<span class="history-status-badge failed">✕ ${status === 'rejected' ? 'Rejected' : 'Failed'}</span>`;
+    } else {
+      statusBadge = '<span class="history-status-badge">✓ Success</span>';
+    }
+
+    const date = h.createdAt
+      ? new Date(h.createdAt).toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        })
+      : '—';
+
+    const detailParts = [];
+    if (h.detail) detailParts.push(escapeHtml(h.detail));
+    if (h.txnId) detailParts.push(`<b>ID:</b> ${escapeHtml(h.txnId)}`);
+    const detailHtml = detailParts.length
+      ? `<div class="history-detail">${detailParts.join('<br>')}</div>`
+      : '';
+
+    html += `
+      <div class="history-item ${itemClass}" style="animation-delay:${Math.min(idx * 0.03, 0.4)}s">
+        <div class="history-header-row">
+          <div class="history-name">${escapeHtml(h.action || 'Transaction')}</div>
+          <div class="history-amount ${amountClass}">${sign}₹${absAmt}</div>
+        </div>
+        ${detailHtml}
+        <div class="history-bottom-row">
+          <div class="history-date">${date}</div>
+          ${statusBadge}
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// ============================================================
+// ◀ GO BACK
+// ============================================================
+function goBack() {
+  haptic('light');
+
+  if (tg?.BackButton) {
+    tg.close();
+    return;
+  }
+
+  if (document.referrer) {
+    window.history.back();
+  } else {
+    window.location.href = '/miniapp/profile';
+  }
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  await loadHistory();
+});
+
+// Handle Telegram BackButton
+if (tg?.BackButton) {
+  tg.BackButton.show();
+  tg.BackButton.onClick(() => {
+    tg.close();
+  });
+}
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.setFilter = setFilter;
+window.goBack = goBack;
+</script>
+
+</body>
+</html>
