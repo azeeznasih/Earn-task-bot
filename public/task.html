@@ -7,328 +7,248 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* ═══════════════════════════════════════════════════════
-   TASK PAGE — Complete Styles
-   ═══════════════════════════════════════════════════════ */
+  /* ✅ Task card - premium glow on click */
+  .task-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(0, 20, 10, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: cardSlideIn 0.4s ease backwards;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
 
-/* Task List Card */
-.task-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 16px;
-  padding: 16px;
-  cursor: pointer;
-  transition: all 0.25s;
-  background: rgba(17, 26, 17, 0.55);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  animation: cardSlideIn 0.4s ease backwards;
-  margin-bottom: 10px;
-}
+  .task-card:active,
+  .task-card.selected {
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.06);
+    box-shadow:
+      0 0 25px rgba(0, 255, 136, 0.4),
+      0 0 50px rgba(0, 255, 136, 0.15),
+      inset 0 0 20px rgba(0, 255, 136, 0.08);
+    transform: scale(0.98);
+  }
 
-.task-card:active {
-  border-color: rgba(0, 255, 136, 0.5);
-  transform: scale(0.98);
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
-}
+  .task-card.completed {
+    opacity: 0.5;
+    border-color: rgba(0, 255, 136, 0.3);
+    cursor: default;
+  }
 
-.task-card.completed {
-  opacity: 0.6;
-  border-color: rgba(0, 255, 136, 0.4);
-  background: rgba(0, 255, 136, 0.05);
-}
+  .task-info {
+    flex: 1;
+    min-width: 0;
+  }
 
-.task-info { flex: 1; min-width: 0; }
+  .task-title {
+    font-weight: 800;
+    font-size: 15px;
+    color: #00ff88;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+  }
 
-.task-title {
-  font-weight: 700;
-  font-size: 15px;
-  color: #fff;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .task-reward {
+    color: #00ff88;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+  }
 
-.task-reward {
-  color: #00ff88;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+  .task-type-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    color: #00ff88;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
 
-.task-reward-icon { font-size: 12px; }
+  .task-btn {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 12px;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+  }
 
-.task-btn {
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-weight: 800;
-  font-size: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: 10px;
-  font-family: inherit;
-}
+  .task-btn.completed-btn {
+    background: rgba(0, 255, 136, 0.15);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    box-shadow: none;
+    cursor: default;
+  }
 
-.task-btn.completed-btn {
-  background: rgba(0, 255, 136, 0.15);
-  color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  box-shadow: none;
-  cursor: default;
-}
+  /* ✅ Task Detail Modal */
+  #taskDetail {
+    text-align: center;
+    margin-bottom: 16px;
+  }
 
-/* Task Detail Modal */
-#taskDetail { text-align: center; margin-bottom: 16px; }
+  .task-detail-icon {
+    font-size: 52px;
+    margin-bottom: 14px;
+  }
 
-.task-detail-icon { font-size: 48px; margin-bottom: 12px; }
+  .task-detail-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #00ff88;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  }
 
-.task-detail-title {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: #fff;
-}
+  .task-detail-reward {
+    font-size: 28px;
+    font-weight: 800;
+    color: #00ff88;
+    margin-bottom: 18px;
+    text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+  }
 
-.task-detail-reward {
-  font-size: 24px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 16px;
-}
+  .task-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  }
 
-.task-detail-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+  .task-detail-row:last-child { border-bottom: none; }
+  .task-detail-label { color: #00ff88; opacity: 0.65; font-weight: 700; }
+  .task-detail-value { color: #00ff88; font-weight: 800; max-width: 60%; text-align: right; word-break: break-all; }
 
-.task-detail-row:last-child { border-bottom: none; }
-.task-detail-label { color: #7a9a7a; font-weight: 600; }
-.task-detail-value { color: #fff; font-weight: 700; max-width: 55%; text-align: right; word-break: break-all; }
+  .task-open-btn {
+    display: block;
+    width: 100%;
+    background: linear-gradient(135deg, #00aaff, #0088cc);
+    color: #ffffff;
+    text-decoration: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 14px;
+    margin: 16px 0 10px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
+  }
 
-/* Steps in task detail */
-.task-steps {
-  text-align: left;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin: 12px 0;
-}
+  .task-open-btn:active { transform: scale(0.97); }
 
-.task-step-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+  .task-submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #000000;
+    border: none;
+    padding: 15px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4);
+    font-family: inherit;
+    letter-spacing: 0.5px;
+  }
 
-.task-step-item:last-child { border-bottom: none; }
+  .task-submit-btn:active { transform: scale(0.97); }
 
-.task-step-num {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(0, 255, 136, 0.15);
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  color: #00ff88;
-  flex-shrink: 0;
-}
+  /* ✅ Refer input */
+  .refer-input {
+    width: 100%;
+    padding: 14px;
+    background: rgba(0, 20, 10, 0.6);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 12px;
+    color: #00ff88;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    outline: none;
+    font-family: inherit;
+  }
 
-.task-step-text {
-  flex: 1;
-  font-size: 13px;
-  color: #fff;
-  line-height: 1.4;
-}
+  .refer-input:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  }
 
-/* Open Task Button */
-.task-open-btn {
-  display: block;
-  width: 100%;
-  background: linear-gradient(135deg, #00aaff, #0088cc);
-  color: #fff;
-  text-decoration: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 14px;
-  margin: 14px 0 8px;
-  text-align: center;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.task-open-btn:active { transform: scale(0.97); }
-
-/* Submit Button */
-.task-submit-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  margin-top: 8px;
-  font-family: inherit;
-}
-
-.task-submit-btn:active { transform: scale(0.97); }
-
-/* Upload / Refer referal button */
-.refer-send-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #ff9500, #ff6b00);
-  color: #fff;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  margin-top: 8px;
-  font-family: inherit;
-}
-
-.refer-send-btn:active { transform: scale(0.97); }
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #7a9a7a;
-}
-
-.empty-state .icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-state .title {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #fff;
-}
-
-.empty-state .sub { font-size: 13px; line-height: 1.5; }
-
-/* Upload preview */
-.upload-preview {
-  margin: 12px 0;
-  text-align: center;
-}
-
-.upload-preview img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 12px;
-  border: 2px solid rgba(0, 255, 136, 0.3);
-}
-
-/* Extra buttons row */
-.task-extra-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.task-extra-row button {
-  flex: 1;
-}
-
-/* Refer status inside modal */
-.refer-status-box {
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin-top: 10px;
-  color: #00ff88;
-  font-size: 12px;
-  font-weight: 600;
-  word-break: break-all;
-  display: none;
-}
-
-.refer-status-box.show { display: block; }
+  .refer-input::placeholder {
+    color: #00ff88;
+    opacity: 0.4;
+  }
 </style>
 </head>
 <body>
 
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
-
 <div class="iphone-frame">
-  <div class="iphone-notch"></div>
-
   <div class="app">
 
-    <header class="topbar">
-      <div class="logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text" id="appLogo">TASK EARN BOT</span>
-      </div>
-    </header>
-
+    <!-- Page Header -->
     <div class="page-header">
       <div class="page-title">📋 Tasks</div>
-      <p class="page-sub">Complete tasks & earn money</p>
+      <p class="page-sub">Complete tasks & earn rewards</p>
     </div>
 
+    <!-- Tasks List -->
     <div id="taskList" class="task-list">
       <div class="loading">⏳ Loading tasks...</div>
     </div>
 
+    <!-- 🎯 BOTTOM NAV — Floating Pill -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label" id="nav-home">HOME</span>
+        <span class="nav-label">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item active">
         <span class="nav-icon">📋</span>
-        <span class="nav-label" id="nav-task">TASK</span>
+        <span class="nav-label">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
         <span class="nav-icon">💸</span>
-        <span class="nav-label" id="nav-pay">PAY</span>
+        <span class="nav-label">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
         <span class="nav-icon">👤</span>
-        <span class="nav-label" id="nav-profile">PROFILE</span>
+        <span class="nav-label">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<!-- ═══ TASK DETAIL MODAL ═══ -->
+<!-- TASK DETAIL MODAL -->
 <div class="modal" id="taskModal">
   <div class="modal-content glass">
     <div id="taskDetail"></div>
@@ -336,43 +256,33 @@
   </div>
 </div>
 
-<!-- ═══ UPLOAD MODAL ═══ -->
+<!-- UPLOAD MODAL -->
 <div class="modal" id="uploadModal">
   <div class="modal-content glass">
     <h3>📸 Upload Screenshot</h3>
     <p>Choose your proof</p>
     <input type="file" id="screenshotInput" accept="image/*" style="display:none;" onchange="handleScreenshot(event)">
-    <button class="upload-btn" onclick="document.getElementById('screenshotInput').click()">📁 Choose from Gallery</button>
+    <button class="btn-primary" onclick="document.getElementById('screenshotInput').click()">📁 Choose from Gallery</button>
     <button class="cancel-btn" onclick="closeUploadModal()">❌ Cancel</button>
   </div>
 </div>
 
-<!-- ═══ REFER MODAL ═══ -->
+<!-- REFER MODAL -->
 <div class="modal" id="referModal">
   <div class="modal-content glass">
-    <h3>🔗 Send Refer Link / Bot ID</h3>
-    <p>⚠️ Full Referral Link or Bot ID only sent</p>
-    <input 
-      type="text" 
-      id="referInput" 
-      placeholder="Link or 10-digit Bot ID" 
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      spellcheck="false"
-      style="width:100%; padding:14px; background:rgba(0,0,0,0.4); border:1px solid rgba(0,255,136,0.3); border-radius:12px; color:#fff; font-size:14px; margin-bottom:12px; outline:none; backdrop-filter:blur(10px);"
-    />
-    <button class="upload-btn" onclick="submitRefer()">✅ Submit</button>
+    <h3>🔗 Send Refer Link / ID</h3>
+    <p>⚠️ Full Referral Link or Bot ID only</p>
+    <input type="text" id="referInput" class="refer-input" placeholder="Link or ID" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button class="btn-primary" onclick="submitRefer()">✅ Submit</button>
     <button class="cancel-btn" onclick="closeReferModal()">❌ Cancel</button>
   </div>
 </div>
 
 <script>
 // ============================================================
-// 📱 TASK PAGE — Complete Logic
+// 📋 TASK PAGE
 // ============================================================
 const tg = window.Telegram?.WebApp;
-
 if (tg) {
   tg.ready();
   tg.expand();
@@ -385,72 +295,26 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let allTasks = [];
 let currentTask = null;
 let currentTaskType = 'photo';
-let selectedScreenshot = null;
 
 // ============================================================
-// 🎨 UTILITIES
+// 🔔 TOAST
 // ============================================================
-function showToast(msg, duration = 2500) {
+function showToast(msg) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
-
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
-
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, duration);
+  }, 2500);
 }
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function haptic(type = 'light') {
-  if (tg?.HapticFeedback) {
-    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
-    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
-    else tg.HapticFeedback.impactOccurred(type);
-  }
-}
-
-async function apiCall(endpoint, options = {}) {
-  try {
-    const res = await fetch(endpoint, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
-    });
-    return await res.json();
-  } catch (e) {
-    console.error('API Error:', e);
-    return { success: false, error: 'Network error' };
-  }
-}
-
-// ============================================================
-// 🎨 LOAD CONFIG
-// ============================================================
-async function loadConfig() {
-  const res = await apiCall('/miniapp/api/config');
-  if (res.success && res.config) {
-    const logoText = document.getElementById('appLogo');
-    if (logoText && res.config.appLogo) logoText.textContent = res.config.appLogo;
-
-    const navHome = document.getElementById('nav-home');
-    const navTask = document.getElementById('nav-task');
-    const navPay = document.getElementById('nav-pay');
-    const navProfile = document.getElementById('nav-profile');
-
-    if (navHome && res.config.btn_home) navHome.textContent = res.config.btn_home;
-    if (navTask && res.config.btn_task) navTask.textContent = res.config.btn_task;
-    if (navPay && res.config.btn_pay) navPay.textContent = res.config.btn_pay;
-    if (navProfile && res.config.btn_profile) navProfile.textContent = res.config.btn_profile;
-  }
 }
 
 // ============================================================
@@ -459,47 +323,63 @@ async function loadConfig() {
 async function loadTasks() {
   const listEl = document.getElementById('taskList');
 
-  const data = await apiCall('/miniapp/api/tasks');
+  try {
+    const res = await fetch('/miniapp/api/tasks');
+    const data = await res.json();
 
-  if (!data.success || !data.tasks || data.tasks.length === 0) {
+    if (!data.success || !data.tasks || data.tasks.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <div style="font-size:16px;font-weight:800;color:#00ff88;margin-bottom:8px;">No Tasks Available</div>
+          <div style="font-size:13px;">Check back later!</div>
+        </div>
+      `;
+      return;
+    }
+
+    allTasks = data.tasks;
+
+    let html = '';
+    allTasks.forEach((task, idx) => {
+      let isCompleted = task.completedUsers && task.completedUsers.includes(userId);
+      let completedClass = isCompleted ? 'completed' : '';
+      let btnClass = isCompleted ? 'completed-btn' : '';
+      let btnText = isCompleted ? '✅ Done' : 'START';
+
+      let typeBadge = '';
+      if (task.taskType === 'refer') typeBadge = '<span class="task-type-badge">REFER</span>';
+      else if (task.taskType === 'affiliate') typeBadge = '<span class="task-type-badge">LINK</span>';
+      else typeBadge = '<span class="task-type-badge">PHOTO</span>';
+
+      html += `
+        <div class="task-card ${completedClass}" style="animation-delay:${idx * 0.05}s" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
+          <div class="task-info">
+            <div class="task-title">${escapeHtml(task.title)}${typeBadge}</div>
+            <div class="task-reward">
+              <span>💰</span>
+              ₹${task.reward}
+            </div>
+          </div>
+          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+  } catch (e) {
+    console.error('Load tasks error:', e);
     listEl.innerHTML = `
       <div class="empty-state">
-        <div class="icon">📭</div>
-        <div class="title">No Tasks Available</div>
-        <div class="sub">Check back later for new tasks!</div>
+        <div class="icon">⚠️</div>
+        <div>Failed to load tasks</div>
       </div>
     `;
-    return;
   }
-
-  allTasks = data.tasks;
-
-  let html = '';
-  allTasks.forEach(task => {
-    const isCompleted = task.completedUsers && task.completedUsers.includes(userId);
-    const completedClass = isCompleted ? 'completed' : '';
-    const btnClass = isCompleted ? 'completed-btn' : '';
-    const btnText = isCompleted ? '✅ Done' : 'VIEW';
-
-    html += `
-      <div class="task-card ${completedClass}" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
-        <div class="task-info">
-          <div class="task-title">${escapeHtml(task.title)}</div>
-          <div class="task-reward">
-            <span class="task-reward-icon">💰</span>
-            ₹${task.reward}
-          </div>
-        </div>
-        <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
-      </div>
-    `;
-  });
-
-  listEl.innerHTML = html;
 }
 
 // ============================================================
-// 📋 OPEN TASK DETAILS
+// 📋 OPEN TASK
 // ============================================================
 function openTask(taskId) {
   const task = allTasks.find(t => t.taskId === taskId);
@@ -507,66 +387,42 @@ function openTask(taskId) {
 
   currentTask = task;
 
-  // ✅ Determine task type
-  currentTaskType = task.taskType || 'photo';
-  if (!task.taskType) {
-    if (task.link && (task.link.toLowerCase().includes('refer') || task.title.toLowerCase().includes('refer'))) {
-      currentTaskType = 'refer';
-    }
-  }
+  if (task.taskType === 'refer') currentTaskType = 'refer';
+  else if (task.taskType === 'affiliate') currentTaskType = 'affiliate';
+  else currentTaskType = 'photo';
 
-  // Build steps
-  const steps = task.steps || [
-    "Click the link below",
-    "Complete the task",
-    "Take screenshot & submit"
-  ];
-
-  let stepsHtml = '';
-  steps.forEach((s, i) => {
-    stepsHtml += `
-      <div class="task-step-item">
-        <div class="task-step-num">${i + 1}</div>
-        <div class="task-step-text">${escapeHtml(s)}</div>
-      </div>
-    `;
-  });
-
-  // ✅ Build submit buttons — BOTH options available
   const detailEl = document.getElementById('taskDetail');
+
+  let icon = '📋';
+  if (currentTaskType === 'refer') icon = '🔗';
+  else if (currentTaskType === 'affiliate') icon = '🌐';
+  else icon = '📸';
+
+  let btnLabel = '📸 Submit Screenshot';
+  if (currentTaskType === 'refer') btnLabel = '🔗 Submit Refer ID';
+  else if (currentTaskType === 'affiliate') btnLabel = '✅ I Completed This Task';
+
   detailEl.innerHTML = `
-    <div class="task-detail-icon">📋</div>
+    <div class="task-detail-icon">${icon}</div>
     <div class="task-detail-title">${escapeHtml(task.title)}</div>
     <div class="task-detail-reward">₹${task.reward}</div>
-
-    <div class="task-steps">${stepsHtml}</div>
-
-    <div class="task-detail-row">
-      <span class="task-detail-label">Reward</span>
-      <span class="task-detail-value">₹${task.reward}</span>
-    </div>
     <div class="task-detail-row">
       <span class="task-detail-label">Task ID</span>
       <span class="task-detail-value">${escapeHtml(task.taskId)}</span>
     </div>
-
+    <div class="task-detail-row">
+      <span class="task-detail-label">Type</span>
+      <span class="task-detail-value">${currentTaskType.toUpperCase()}</span>
+    </div>
     <a href="${escapeHtml(task.link)}" target="_blank" class="task-open-btn">
       🔗 Open Task Link
     </a>
-
-    <!-- ✅ Both options: Screenshot + Refer -->
-    <div class="task-extra-row">
-      <button class="task-submit-btn" onclick="startPhotoSubmit()">
-        📸 Submit Screenshot
-      </button>
-      <button class="refer-send-btn" onclick="startReferSubmit()">
-        🔗 Send Refer
-      </button>
-    </div>
+    <button class="task-submit-btn" onclick="startSubmit()">
+      ${btnLabel}
+    </button>
   `;
 
   document.getElementById('taskModal').classList.add('active');
-  haptic('light');
 }
 
 function closeTaskModal() {
@@ -574,25 +430,25 @@ function closeTaskModal() {
 }
 
 // ============================================================
-// 📸 START PHOTO SUBMIT
+// 📸 START SUBMIT
 // ============================================================
-function startPhotoSubmit() {
+function startSubmit() {
   closeTaskModal();
-  document.getElementById('uploadModal').classList.add('active');
+
+  if (currentTaskType === 'refer') {
+    document.getElementById('referModal').classList.add('active');
+    setTimeout(() => document.getElementById('referInput').focus(), 300);
+  } else if (currentTaskType === 'affiliate') {
+    // Affiliate — direct submit (user confirms completed)
+    submitAffiliate();
+  } else {
+    document.getElementById('uploadModal').classList.add('active');
+  }
 }
 
 function closeUploadModal() {
   document.getElementById('uploadModal').classList.remove('active');
   document.getElementById('screenshotInput').value = '';
-}
-
-// ============================================================
-// 🔗 START REFER SUBMIT
-// ============================================================
-function startReferSubmit() {
-  closeTaskModal();
-  document.getElementById('referModal').classList.add('active');
-  setTimeout(() => document.getElementById('referInput').focus(), 300);
 }
 
 function closeReferModal() {
@@ -601,61 +457,77 @@ function closeReferModal() {
 }
 
 // ============================================================
-// 📸 HANDLE SCREENSHOT
+// 📸 SCREENSHOT UPLOAD
 // ============================================================
 async function handleScreenshot(event) {
   const file = event.target.files[0];
   if (!file) return;
-
-  if (!currentTask) {
-    showToast('❌ No task selected');
-    haptic('error');
-    return;
-  }
-
-  // Size check
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('❌ File too large (max 5MB)');
-    haptic('error');
-    return;
-  }
-
-  if (!file.type.startsWith('image/')) {
-    showToast('❌ Please select an image');
-    haptic('error');
-    return;
-  }
+  if (!currentTask) { showToast('❌ No task selected'); return; }
 
   closeUploadModal();
   showToast('⏳ Uploading...');
-  haptic('light');
-
-  const formData = new FormData();
-  formData.append('photo', file);
-  formData.append('userId', userId);
-  formData.append('taskId', currentTask.taskId);
 
   try {
-    const res = await fetch('/miniapp/api/task/submit', {
+    const base64 = await fileToBase64(file);
+    const res = await fetch('/miniapp/api/submit-task', {
       method: 'POST',
-      body: formData
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, taskId: currentTask.taskId, photoBase64: base64 })
     });
-
     const data = await res.json();
 
     if (data.success) {
-      showToast('✅ Screenshot submitted!');
-      haptic('success');
+      showToast('✅ Submitted!');
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
-      showToast(`❌ ${data.error || 'Submit failed'}`);
-      haptic('error');
+      showToast('❌ ' + (data.error || 'Failed'));
     }
   } catch (e) {
-    console.error('Submit error:', e);
-    showToast('❌ Network error. Try again.');
-    haptic('error');
+    console.error(e);
+    showToast('❌ Network error');
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================
+// 🌐 SUBMIT AFFILIATE
+// ============================================================
+async function submitAffiliate() {
+  if (!currentTask) return;
+  if (!confirm('Have you completed this task?')) return;
+
+  try {
+    const res = await fetch('/miniapp/api/submit-refer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        taskId: currentTask.taskId,
+        referValue: `AFFILIATE_CLICKED: ${currentTask.link}`
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('✅ Submitted!');
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      currentTask = null;
+      setTimeout(() => loadTasks(), 500);
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
   }
 }
 
@@ -666,49 +538,30 @@ async function submitRefer() {
   const input = document.getElementById('referInput');
   const value = input.value.trim();
 
-  if (!value) {
-    showToast('❌ Enter refer link or ID');
-    haptic('error');
-    return;
-  }
-
-  // Validate: URL or 10-digit bot ID
-  const isUrl = /^https?:\/\/.+/.test(value) || /^t\.me\/.+/.test(value);
-  const isBotId = /^\d{10}$/.test(value);
-
-  if (!isUrl && !isBotId) {
-    showToast('❌ Invalid format. URL or 10-digit ID');
-    haptic('error');
-    return;
-  }
-
-  if (!currentTask) {
-    showToast('❌ No task selected');
-    haptic('error');
-    return;
-  }
+  if (!value) { showToast('❌ Enter refer link or ID'); return; }
+  if (!currentTask) { showToast('❌ No task selected'); return; }
 
   closeReferModal();
   showToast('⏳ Submitting...');
-  haptic('light');
 
-  const res = await apiCall('/miniapp/api/submit-refer', {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: userId,
-      taskId: currentTask.taskId,
-      referValue: value
-    })
-  });
+  try {
+    const res = await fetch('/miniapp/api/submit-refer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, taskId: currentTask.taskId, referValue: value })
+    });
+    const data = await res.json();
 
-  if (res.success) {
-    showToast('✅ Refer submitted!');
-    haptic('success');
-    currentTask = null;
-    setTimeout(() => loadTasks(), 500);
-  } else {
-    showToast(`❌ ${res.error || 'Submit failed'}`);
-    haptic('error');
+    if (data.success) {
+      showToast('✅ Refer submitted!');
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      currentTask = null;
+      setTimeout(() => loadTasks(), 500);
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
   }
 }
 
@@ -720,23 +573,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('taskList').innerHTML = `
       <div class="empty-state">
         <div class="icon">⚠️</div>
-        <div class="title">Open from Telegram</div>
-        <div class="sub">This page works inside Telegram Mini App.</div>
+        <div>Open from Telegram</div>
       </div>
     `;
     return;
   }
-
-  await loadConfig();
   await loadTasks();
 
-  // Enter key for refer
   document.getElementById('referInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') submitRefer();
   });
 });
 
-// Backdrop close
 document.getElementById('taskModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'taskModal') closeTaskModal();
 });
@@ -748,16 +596,6 @@ document.getElementById('referModal')?.addEventListener('click', (e) => {
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
-
-// Expose globals
-window.openTask = openTask;
-window.closeTaskModal = closeTaskModal;
-window.startPhotoSubmit = startPhotoSubmit;
-window.startReferSubmit = startReferSubmit;
-window.closeUploadModal = closeUploadModal;
-window.closeReferModal = closeReferModal;
-window.handleScreenshot = handleScreenshot;
-window.submitRefer = submitRefer;
 </script>
 
 </body>
