@@ -3,130 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Task Earn Bot</title>
+<title>TASK EARN BOT</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  /* ✅ Activity items (Recent Activity) */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0 14px;
+  }
+
+  .section-title-big {
+    font-size: 17px;
+    font-weight: 800;
+    color: #00ff88;
+    letter-spacing: 0.5px;
+  }
+
+  .view-all {
+    color: #00ff88;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+
+  .view-all:active {
+    opacity: 0.5;
+  }
+
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: rgba(0, 20, 10, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+    border-radius: 16px;
+    animation: cardSlideIn 0.4s ease backwards;
+  }
+
+  .activity-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .activity-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #00ff88;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-meta {
+    font-size: 11px;
+    color: #00ff88;
+    opacity: 0.6;
+    font-weight: 600;
+  }
+
+  .activity-amount {
+    font-size: 15px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .activity-amount.positive {
+    color: #00ff88;
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+  }
+
+  .activity-amount.negative {
+    color: #ff6464;
+    text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+  }
+</style>
 </head>
 <body>
 
-<!-- ═══ BACKGROUND ANIMATION ═══ -->
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
+<div class="iphone-frame">
+  <div class="app">
 
-<!-- ═══ APP CONTAINER ═══ -->
-<div class="app-container">
-
-  <!-- ═══ HEADER (Fixed Top) ═══ -->
-  <header class="topbar">
-    <div class="logo">
-      <span class="logo-icon">⚡</span>
-      <span class="logo-text" id="appLogo">TASK EARN BOT</span>
+    <!-- 👤 USER CARD -->
+    <div class="user-card glass">
+      <div class="user-info">
+        <div class="avatar">
+          <span id="avatarFallback">👤</span>
+          <img id="avatarImg" src="" alt="" style="display:none;">
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="username" id="username">Loading...</div>
+          <div class="userid" id="userid">ID: -</div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <!-- ═══ MAIN CONTENT (Scrollable) ═══ -->
-  <main class="main-content" id="mainContent">
-
-    <!-- ═══ HOME BLOCKS — Dynamic (Rendered by JS) ═══ -->
-    <div id="homeBlocks">
-      <!-- Default blocks — fallback -->
-      
-      <!-- User Card -->
-      <div class="user-card glass" id="defaultUserCard">
-        <div class="user-info">
-          <div class="avatar" id="avatar">
-            <span id="avatarFallback">👤</span>
-            <img id="avatarImg" src="" alt="" style="display:none;">
-          </div>
-          <div>
-            <div class="username" id="username">Loading...</div>
-            <div class="userid" id="userid">ID: -</div>
-          </div>
-        </div>
+    <!-- 💰 BALANCE CARD -->
+    <div class="balance-card glass">
+      <div class="balance-header">
+        <div class="label">AVAILABLE BALANCE</div>
+        <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
+          <span class="refresh-icon">🔄</span>
+        </button>
       </div>
-
-      <!-- Balance Card -->
-      <div class="balance-card glass" id="defaultBalanceCard">
-        <div class="balance-header">
-          <div class="label">AVAILABLE BALANCE</div>
-          <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
-            <span class="refresh-icon">🔄</span>
-          </button>
-        </div>
-        <div class="balance" id="balance">₹0.00</div>
-        <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
-        <button class="withdraw-btn" onclick="openWithdraw()">WITHDRAW NOW ↗</button>
-      </div>
-
-      <!-- Linked Account -->
-      <div class="linked-card glass" id="defaultLinkedCard">
-        <div class="linked-left">
-          <div class="linked-icon">🔗</div>
-          <div>
-            <div class="linked-label">LINKED ACCOUNT</div>
-            <div class="linked-status" id="linkedStatus">Not Linked</div>
-          </div>
-        </div>
-        <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
-      </div>
-
-      <!-- Payment Methods -->
-      <div class="payment-card glass" id="defaultPaymentCard">
-        <div class="section-title">💳 PAYMENT METHODS</div>
-        <div id="paymentList" class="payment-list">Loading...</div>
-      </div>
-
+      <div class="balance" id="balance">₹0.00</div>
+      <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
+      <button class="withdraw-btn" onclick="openWithdraw()">🚀 WITHDRAW NOW</button>
     </div>
-    <!-- END: homeBlocks -->
 
-  </main>
+    <!-- 🔗 LINKED ACCOUNT -->
+    <div class="linked-card glass">
+      <div class="linked-left">
+        <div class="linked-icon">🔗</div>
+        <div>
+          <div class="linked-label">LINKED ACCOUNT</div>
+          <div class="linked-status" id="linkedStatus">Not Linked</div>
+        </div>
+      </div>
+      <button class="change-btn" onclick="openPaymentMethods()">CHANGE</button>
+    </div>
 
-  <!-- ═══ BOTTOM NAV (Fixed Bottom - Always Visible) ═══ -->
-  <nav class="bottom-nav">
-    <a href="/miniapp" class="nav-item active">
-      <span class="nav-icon">🏠</span>
-      <span class="nav-label" id="nav-home">HOME</span>
-    </a>
-    <a href="/miniapp/task" class="nav-item">
-      <span class="nav-icon">📋</span>
-      <span class="nav-label" id="nav-task">TASK</span>
-    </a>
-    <a href="/miniapp/pay" class="nav-item">
-      <span class="nav-icon">💸</span>
-      <span class="nav-label" id="nav-pay">PAY</span>
-    </a>
-    <a href="/miniapp/profile" class="nav-item">
-      <span class="nav-icon">👤</span>
-      <span class="nav-label" id="nav-profile">PROFILE</span>
-    </a>
-  </nav>
+    <!-- 💳 PAYMENT METHODS -->
+    <div class="payment-card glass">
+      <div class="section-title">💳 PAYMENT METHODS</div>
+      <div id="paymentList" class="payment-list">
+        <div class="loading">⏳ Loading...</div>
+      </div>
+    </div>
 
-</div>
-<!-- END: app-container -->
+    <!-- 📜 RECENT ACTIVITY -->
+    <div class="section-header">
+      <div class="section-title-big">Recent Activity</div>
+      <div class="view-all" onclick="viewAllHistory()">View All →</div>
+    </div>
+    <div id="recentActivity">
+      <div class="loading">⏳ Loading...</div>
+    </div>
 
-<!-- ═══ WITHDRAW MODAL ═══ -->
-<div class="modal" id="withdrawModal">
-  <div class="modal-content glass">
-    <h3>💸 Withdraw Money</h3>
-    <p>Choose withdraw method:</p>
-    <div id="withdrawMethods"></div>
-    <button onclick="closeWithdraw()" class="cancel-btn">Cancel</button>
-  </div>
-</div>
+    <!-- 🎯 BOTTOM NAV — Floating Pill -->
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item active">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">PROFILE</span>
+      </a>
+    </nav>
 
-<!-- ═══ PAYMENT MODAL ═══ -->
-<div class="modal" id="paymentModal">
-  <div class="modal-content glass">
-    <h3>💳 Update Payment Method</h3>
-    <div id="paymentUpdateList"></div>
-    <button onclick="closePaymentModal()" class="cancel-btn">Close</button>
   </div>
 </div>
 
 <script src="app.js"></script>
-
 </body>
 </html>
