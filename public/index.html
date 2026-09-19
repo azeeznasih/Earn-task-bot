@@ -7,96 +7,821 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  /* ✅ Activity items (Recent Activity) */
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 24px 0 14px;
-  }
+/* ═══════════════════════════════════════════════════════
+   HOME PAGE + WITHDRAW MODAL — Complete
+   ═══════════════════════════════════════════════════════ */
 
-  .section-title-big {
-    font-size: 17px;
-    font-weight: 800;
-    color: #00ff88;
-    letter-spacing: 0.5px;
-  }
+/* ───── 🔓 SCROLL FIX ───── */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 200px !important;
+}
 
-  .view-all {
-    color: #00ff88;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    opacity: 0.8;
-  }
+.app {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 220px !important;
+  position: relative !important;
+}
 
-  .view-all:active {
-    opacity: 0.5;
-  }
+.app::after {
+  content: '';
+  display: block;
+  height: 120px;
+  width: 100%;
+  pointer-events: none;
+}
 
-  .activity-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    background: rgba(0, 20, 10, 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    border-radius: 16px;
-    animation: cardSlideIn 0.4s ease backwards;
-  }
+.iphone-frame {
+  min-height: 100vh !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
 
-  .activity-icon {
-    width: 44px;
-    height: 44px;
-    background: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.2);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-  }
+/* ───── SECTION HEADER ───── */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 0 14px;
+}
 
-  .activity-details {
-    flex: 1;
-    min-width: 0;
-  }
+.section-title-big {
+  font-size: 17px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
 
-  .activity-title {
-    font-size: 14px;
-    font-weight: 800;
-    color: #00ff88;
-    margin-bottom: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.view-all {
+  color: #00ff88;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0.8;
+}
 
-  .activity-meta {
-    font-size: 11px;
-    color: #00ff88;
-    opacity: 0.6;
-    font-weight: 600;
-  }
+.view-all:active {
+  opacity: 0.5;
+}
 
-  .activity-amount {
-    font-size: 15px;
-    font-weight: 800;
-    flex-shrink: 0;
-  }
+/* ───── ACTIVITY ITEMS ───── */
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 16px;
+  animation: cardSlideIn 0.4s ease backwards;
+}
 
-  .activity-amount.positive {
-    color: #00ff88;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-  }
+.activity-icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
 
-  .activity-amount.negative {
-    color: #ff6464;
-    text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+.activity-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-meta {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.activity-amount {
+  font-size: 15px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.activity-amount.positive {
+  color: #00ff88;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
+.activity-amount.negative {
+  color: #ff6464;
+  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+}
+
+/* ───── LOADING / EMPTY ───── */
+.loading {
+  text-align: center;
+  color: #00ff88;
+  opacity: 0.7;
+  padding: 30px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: #00ff88;
+  opacity: 0.7;
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   💸 WITHDRAW MODAL — Premium
+   ═══════════════════════════════════════════════════════ */
+
+.withdraw-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100000;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  animation: modalFadeIn 0.25s ease;
+}
+
+.withdraw-modal.active {
+  display: flex;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.withdraw-modal-content {
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(160deg,
+    rgba(10, 25, 15, 0.98) 0%,
+    rgba(5, 15, 8, 0.99) 100%);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-bottom: none;
+  padding: 20px 18px 30px;
+  box-shadow:
+    0 -10px 60px rgba(0, 255, 136, 0.15),
+    0 -20px 80px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Handle bar at top */
+.withdraw-modal-content::before {
+  content: '';
+  display: block;
+  width: 45px;
+  height: 4px;
+  background: rgba(0, 255, 136, 0.4);
+  border-radius: 4px;
+  margin: 0 auto 18px;
+}
+
+/* Modal Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.5px;
+  filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.4));
+}
+
+.modal-close-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 100, 100, 0.12);
+  border: 1.5px solid rgba(255, 100, 100, 0.35);
+  color: #ff6464;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: transform 0.2s;
+}
+
+.modal-close-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 100, 100, 0.25);
+}
+
+/* Balance mini display in modal */
+.modal-balance-mini {
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-balance-label {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.modal-balance-value {
+  font-size: 20px;
+  font-weight: 900;
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+/* Section headers in modal */
+.modal-section-title {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.75;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.3), transparent);
+}
+
+/* ───── METHOD GRID ───── */
+.modal-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.modal-method-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(0, 255, 136, 0.15);
+  border-radius: 12px;
+  padding: 14px 8px;
+  color: #00ff88;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  min-height: 78px;
+}
+
+.modal-method-btn:active {
+  transform: scale(0.96);
+}
+
+.modal-method-btn.selected {
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.2),
+    rgba(0, 255, 136, 0.08));
+  border-color: #00ff88;
+  box-shadow:
+    0 0 22px rgba(0, 255, 136, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.modal-method-btn .mi {
+  font-size: 22px;
+}
+
+.modal-method-btn .mname {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.modal-method-btn .linked-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  font-size: 7.5px;
+  font-weight: 900;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+
+.modal-method-btn.not-linked::before {
+  content: '⚠️';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 11px;
+}
+
+/* ───── LINK SECTION (in modal) ───── */
+.modal-link-section {
+  display: none;
+  background: rgba(255, 165, 0, 0.06);
+  border: 1.5px solid rgba(255, 165, 0, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-link-section.active {
+  display: block;
+}
+
+.modal-link-title {
+  font-size: 11px;
+  color: #ffa500;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+}
+
+.modal-link-title b {
+  background: rgba(255, 165, 0, 0.15);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.modal-link-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #00ff88;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 10px;
+}
+
+.modal-link-input:focus {
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.modal-link-input::placeholder {
+  color: #00ff88;
+  opacity: 0.35;
+}
+
+.modal-link-save {
+  width: 100%;
+  background: linear-gradient(135deg, #ffa500, #ff8c00);
+  color: #000;
+  border: none;
+  padding: 11px;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-link-save:active {
+  transform: scale(0.97);
+}
+
+/* ───── AMOUNT INPUT (in modal) ───── */
+.modal-amount-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  border-radius: 14px;
+  padding: 0 14px;
+  margin-bottom: 8px;
+  transition: all 0.25s;
+}
+
+.modal-amount-wrap:focus-within {
+  border-color: #00ff88;
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.35);
+}
+
+.modal-amount-wrap .rupee {
+  font-size: 26px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  flex-shrink: 0;
+}
+
+.modal-amount-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #00ff88;
+  padding: 15px 8px;
+  font-size: 22px;
+  font-weight: 800;
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.modal-amount-wrap input::placeholder {
+  color: #00ff88;
+  opacity: 0.25;
+}
+
+.modal-amount-wrap input::-webkit-outer-spin-button,
+.modal-amount-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.modal-amount-wrap input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.modal-max-btn {
+  padding: 7px 12px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.modal-max-btn:active {
+  transform: scale(0.94);
+}
+
+.modal-amount-info {
+  text-align: center;
+  color: #00ff88;
+  opacity: 0.6;
+  font-size: 10.5px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.modal-amount-info b {
+  color: #00ff88;
+  opacity: 1;
+  font-weight: 800;
+}
+
+/* ───── QUICK AMOUNTS ───── */
+.modal-quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.modal-quick-amounts button {
+  background: rgba(0, 255, 136, 0.06);
+  color: #00ff88;
+  border: 1.5px solid rgba(0, 255, 136, 0.22);
+  padding: 10px 2px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.modal-quick-amounts button:active,
+.modal-quick-amounts button.selected {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  transform: scale(0.94);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  border-color: #00ff88;
+}
+
+/* ───── SUBMIT BUTTON ───── */
+.modal-submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 8px 28px rgba(0, 255, 136, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s;
+  font-family: inherit;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent);
+  animation: btnShine 3s ease-in-out infinite;
+}
+
+@keyframes btnShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.modal-submit-btn:active {
+  transform: scale(0.97);
+}
+
+.modal-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ───── LOADING SPINNER ───── */
+.loading-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2.5px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ───── SUCCESS SCREEN (in modal) ───── */
+.modal-success {
+  display: none;
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.modal-success.active {
+  display: block;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-success-icon {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.12);
+  border: 3px solid #00ff88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  margin: 0 auto 18px;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
+  animation: bounceIn 0.6s ease;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-success-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #00ff88;
+  margin-bottom: 8px;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.modal-success-sub {
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.modal-success-amount-box {
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.08),
+    rgba(0, 255, 136, 0.04));
+  border: 1.5px solid rgba(0, 255, 136, 0.35);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 16px 0;
+}
+
+.modal-success-amount-label {
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.modal-success-amount-value {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1px;
+}
+
+.modal-success-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  font-size: 12px;
+  gap: 10px;
+}
+
+.modal-success-row:last-child {
+  border-bottom: none;
+}
+
+.modal-success-row span:first-child {
+  color: #00ff88;
+  opacity: 0.65;
+  font-weight: 700;
+}
+
+.modal-success-row span:last-child {
+  color: #00ff88;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 11.5px;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+.modal-success-close {
+  width: 100%;
+  background: rgba(0, 255, 136, 0.08);
+  color: #00ff88;
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 16px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.modal-success-close:active {
+  background: rgba(0, 255, 136, 0.2);
+  transform: scale(0.97);
+}
+
+/* ───── BOTTOM NAV FIX ───── */
+.bottom-nav,
+.glass-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 99999 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  pointer-events: auto !important;
+  max-width: 448px !important;
+  width: calc(100% - 32px) !important;
+}
+
+/* ───── ANIMATIONS ───── */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .modal-method-btn { min-height: 72px; padding: 12px 6px; }
+  .modal-quick-amounts button { font-size: 11px; padding: 9px 2px; }
+  .modal-amount-wrap input { font-size: 20px; }
+  .modal-amount-wrap .rupee { font-size: 22px; }
+}
+
+/* iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: auto !important;
+    min-height: -webkit-fill-available !important;
   }
+  .app {
+    min-height: -webkit-fill-available !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -128,7 +853,7 @@
       </div>
       <div class="balance" id="balance">₹0.00</div>
       <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
-      <button class="withdraw-btn" onclick="openWithdraw()">🚀 WITHDRAW NOW</button>
+      <button class="withdraw-btn" onclick="openWithdrawModal()">🚀 WITHDRAW NOW</button>
     </div>
 
     <!-- 🔗 LINKED ACCOUNT -->
@@ -160,29 +885,772 @@
       <div class="loading">⏳ Loading...</div>
     </div>
 
-    <!-- 🎯 BOTTOM NAV — Floating Pill -->
+    <!-- 🎯 BOTTOM NAV -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item active">
         <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
+        <span class="nav-label" id="nav-home">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
+        <span class="nav-label" id="nav-task">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
         <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
         <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<script src="app.js"></script>
+<!-- ═══════════════════════════════════════════════════
+     💸 WITHDRAW MODAL — Opens on button click
+     ═══════════════════════════════════════════════════ -->
+<div class="withdraw-modal" id="withdrawModal">
+  <div class="withdraw-modal-content">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-title">💸 Withdraw</div>
+      <button class="modal-close-btn" onclick="closeWithdrawModal()">✕</button>
+    </div>
+
+    <!-- FORM VIEW -->
+    <div id="withdrawFormView">
+
+      <!-- Balance Mini -->
+      <div class="modal-balance-mini">
+        <div class="modal-balance-label">Available</div>
+        <div class="modal-balance-value" id="modalBalance">₹0.00</div>
+      </div>
+
+      <!-- STEP 1: Method -->
+      <div class="modal-section-title">💳 Select Method</div>
+      <div class="modal-method-grid" id="modalMethodGrid">
+        <!-- Dynamic -->
+      </div>
+
+      <!-- Link Section -->
+      <div class="modal-link-section" id="modalLinkSection">
+        <div class="modal-link-title">
+          ⚠️ <b id="modalLinkMethodName">Method</b> Not Linked
+        </div>
+        <input
+          type="text"
+          id="modalLinkInput"
+          class="modal-link-input"
+          placeholder="Enter details"
+          autocomplete="off"
+        >
+        <button class="modal-link-save" onclick="modalLinkMethodNow()">
+          🔗 Link Now
+        </button>
+      </div>
+
+      <!-- STEP 2: Amount -->
+      <div class="modal-section-title">💰 Enter Amount</div>
+      <div class="modal-amount-wrap">
+        <span class="rupee">₹</span>
+        <input type="number" id="modalAmountInput" placeholder="0" inputmode="decimal">
+        <button class="modal-max-btn" onclick="modalSetMax()">MAX</button>
+      </div>
+      <div class="modal-amount-info">
+        Min: <b>₹<span id="modalMinLabel">10</span></b> • Max: <b>₹<span id="modalMaxLabel">10000</span></b>
+      </div>
+
+      <!-- Quick Amounts -->
+      <div class="modal-quick-amounts">
+        <button onclick="modalSetAmount(5, this)">₹5</button>
+        <button onclick="modalSetAmount(10, this)">₹10</button>
+        <button onclick="modalSetAmount(15, this)">₹15</button>
+        <button onclick="modalSetAmount(20, this)">₹20</button>
+        <button onclick="modalSetAmount(50, this)">₹50</button>
+        <button onclick="modalSetAmount(100, this)">₹100</button>
+        <button onclick="modalSetAmount(500, this)">₹500</button>
+        <button onclick="modalSetAmount(1000, this)">₹1000</button>
+      </div>
+
+      <!-- Submit -->
+      <button class="modal-submit-btn" id="modalSubmitBtn" onclick="modalSubmitWithdraw()">
+        💸 Confirm Withdrawal
+      </button>
+
+    </div>
+
+    <!-- SUCCESS VIEW -->
+    <div class="modal-success" id="withdrawSuccessView">
+      <div class="modal-success-icon">✅</div>
+      <div class="modal-success-title">REQUEST SUBMITTED!</div>
+      <div class="modal-success-sub">
+        Your withdrawal has been sent to admin.<br>
+        Processing within 24 hours.
+      </div>
+
+      <div class="modal-success-amount-box">
+        <div class="modal-success-amount-label">Withdrawal Amount</div>
+        <div class="modal-success-amount-value" id="modalSuccessAmount">₹0.00</div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.35);border-radius:12px;padding:12px;margin-top:10px;border:1px solid rgba(0,255,136,0.1);">
+        <div class="modal-success-row">
+          <span>METHOD</span>
+          <span id="modalSuccessMethod">UPI</span>
+        </div>
+        <div class="modal-success-row">
+          <span>STATUS</span>
+          <span style="color:#FFA500;">⏳ PENDING</span>
+        </div>
+        <div class="modal-success-row">
+          <span>NEW BALANCE</span>
+          <span id="modalSuccessNewBalance">₹0.00</span>
+        </div>
+      </div>
+
+      <button class="modal-success-close" onclick="closeWithdrawModal()">
+        ✓ Close
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 🏠 HOME PAGE + 💸 WITHDRAW MODAL — Complete Logic
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+
+  try {
+    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
+  } catch (e) {}
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+
+let userBalance = 0;
+let minWithdraw = 10;
+let maxWithdraw = 10000;
+let selectedMethod = null;
+let selectedMethodLabel = '';
+let userSavedDetails = {};
+let appConfig = {};
+
+// ============================================================
+// 🔓 FORCE SCROLL
+// ============================================================
+function forceScrollEnable() {
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '200px';
+
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+    app.style.paddingBottom = '220px';
+  }
+}
+
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
+
+// ============================================================
+// 🎨 UTILITIES
+// ============================================================
+function showToast(msg, duration = 2500) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+async function apiCall(endpoint, options = {}) {
+  try {
+    const res = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API Error:', e);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================================
+// 🎨 CONFIG
+// ============================================================
+async function loadConfig() {
+  const res = await apiCall('/miniapp/api/config');
+  if (res.success && res.config) {
+    appConfig = res.config;
+
+    if (appConfig.minWithdraw) minWithdraw = parseFloat(appConfig.minWithdraw);
+    if (appConfig.maxWithdraw) maxWithdraw = parseFloat(appConfig.maxWithdraw);
+
+    if (appConfig.btn_home) document.getElementById('nav-home').textContent = appConfig.btn_home;
+    if (appConfig.btn_task) document.getElementById('nav-task').textContent = appConfig.btn_task;
+    if (appConfig.btn_pay) document.getElementById('nav-pay').textContent = appConfig.btn_pay;
+    if (appConfig.btn_profile) document.getElementById('nav-profile').textContent = appConfig.btn_profile;
+  }
+
+  const sres = await apiCall('/miniapp/api/admin/settings');
+  if (sres.success && sres.settings) {
+    if (sres.settings.min_withdraw) minWithdraw = parseFloat(sres.settings.min_withdraw);
+    if (sres.settings.max_withdraw) maxWithdraw = parseFloat(sres.settings.max_withdraw);
+  }
+
+  document.getElementById('modalMinLabel').textContent = minWithdraw;
+  document.getElementById('modalMaxLabel').textContent = maxWithdraw;
+}
+
+// ============================================================
+// 👤 LOAD USER
+// ============================================================
+async function loadUser() {
+  if (!userId) return;
+
+  const data = await apiCall(`/miniapp/api/user/${userId}`);
+
+  if (!data.success) {
+    document.getElementById('username').textContent = 'Not Found';
+    return;
+  }
+
+  const user = data.user;
+  userBalance = parseFloat(user.balance) || 0;
+
+  document.getElementById('username').textContent = user.firstName || 'User';
+  document.getElementById('userid').textContent = 'ID: ' + user.userId;
+  document.getElementById('balance').textContent = '₹' + userBalance.toFixed(2);
+  document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
+
+  // Linked status
+  const linkedStatus = document.getElementById('linkedStatus');
+  if (user.walletAccount && user.walletAccount !== 'Not Set') {
+    linkedStatus.textContent = '👛 ' + user.walletAccount;
+  } else if (user.upiId && user.upiId !== 'Not Set') {
+    linkedStatus.textContent = '⚡ ' + user.upiId;
+  } else if (user.bankAccNo && user.bankAccNo !== 'Not Set') {
+    linkedStatus.textContent = '🏦 ' + user.bankAccNo;
+  } else {
+    linkedStatus.textContent = 'Not Linked';
+  }
+
+  // Save details for withdraw
+  userSavedDetails = {
+    upi: (user.upiId && user.upiId !== 'Not Set') ? user.upiId : '',
+    bank: (user.bankAccNo && user.bankAccNo !== 'Not Set') ? user.bankAccNo : '',
+    wallet: (user.walletAccount && user.walletAccount !== 'Not Set') ? user.walletAccount : '',
+    redeem: (user.redeemCodeAddr && user.redeemCodeAddr !== 'Not Set') ? user.redeemCodeAddr : ''
+  };
+
+  renderModalMethods();
+  await loadAvatar();
+}
+
+// ============================================================
+// 📸 AVATAR
+// ============================================================
+async function loadAvatar() {
+  if (!userId) return;
+
+  const data = await apiCall(`/miniapp/api/profile-photo/${userId}`);
+
+  if (data.success && data.photoUrl) {
+    const img = document.getElementById('avatarImg');
+    img.src = data.photoUrl;
+    img.style.display = 'block';
+    document.getElementById('avatarFallback').style.display = 'none';
+  }
+}
+
+// ============================================================
+// 💳 PAYMENT METHODS (Home)
+// ============================================================
+async function loadPaymentMethods() {
+  if (!userId) return;
+  const listEl = document.getElementById('paymentList');
+
+  const data = await apiCall(`/miniapp/api/payment-methods/${userId}`);
+
+  if (!data.success) {
+    listEl.innerHTML = '<div class="loading">Failed to load</div>';
+    return;
+  }
+
+  let html = '';
+  data.methods.forEach(m => {
+    let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
+    html += `<div class="payment-item">
+      <span>${m.icon} ${m.name}</span>
+      <span>${escapeHtml(display)}</span>
+    </div>`;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// ============================================================
+// 📜 RECENT ACTIVITY
+// ============================================================
+async function loadRecentActivity() {
+  if (!userId) return;
+  const actEl = document.getElementById('recentActivity');
+
+  const data = await apiCall(`/miniapp/api/user/${userId}/history?limit=5`);
+
+  if (!data.success || !data.history || data.history.length === 0) {
+    actEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div>No recent activity</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  data.history.forEach(h => {
+    const isPos = h.amount >= 0;
+    const sign = isPos ? '+' : '';
+    const cls = isPos ? 'positive' : 'negative';
+    const icon = isPos ? '💰' : '💸';
+    const date = new Date(h.createdAt).toLocaleString('en-IN', {
+      day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    html += `
+      <div class="activity-item">
+        <div class="activity-icon">${icon}</div>
+        <div class="activity-details">
+          <div class="activity-title">${escapeHtml(h.action)}</div>
+          <div class="activity-meta">${date}</div>
+        </div>
+        <div class="activity-amount ${cls}">${sign}₹${Math.abs(h.amount).toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  actEl.innerHTML = html;
+}
+
+// ============================================================
+// 🔄 REFRESH
+// ============================================================
+async function refreshBalance() {
+  const btn = document.getElementById('refreshBtn');
+  btn?.classList.add('spinning');
+  haptic('light');
+
+  await loadUser();
+  await loadPaymentMethods();
+  await loadRecentActivity();
+
+  showToast('✅ Refreshed!');
+
+  setTimeout(() => btn?.classList.remove('spinning'), 800);
+}
+
+// ============================================================
+// 💸 WITHDRAW MODAL — OPEN / CLOSE
+// ============================================================
+function openWithdrawModal() {
+  haptic('light');
+
+  // Reset views
+  document.getElementById('withdrawFormView').style.display = 'block';
+  document.getElementById('withdrawSuccessView').classList.remove('active');
+
+  // Reset form
+  document.getElementById('modalAmountInput').value = '';
+  document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
+
+  // Update balance display
+  document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
+
+  // Render methods
+  renderModalMethods();
+
+  // Show modal
+  document.getElementById('withdrawModal').classList.add('active');
+
+  // Prevent body scroll while modal open
+  document.body.style.overflow = 'hidden';
+}
+
+function closeWithdrawModal() {
+  haptic('light');
+  document.getElementById('withdrawModal').classList.remove('active');
+
+  // Restore scroll
+  forceScrollEnable();
+
+  // Refresh user data
+  setTimeout(() => loadUser(), 300);
+}
+
+// ============================================================
+// 🎨 RENDER MODAL METHOD GRID
+// ============================================================
+function renderModalMethods() {
+  const grid = document.getElementById('modalMethodGrid');
+
+  const methods = [
+    { key: 'upi', name: 'UPI', icon: '⚡', details: userSavedDetails.upi },
+    { key: 'bank', name: 'Bank', icon: '🏦', details: userSavedDetails.bank },
+    { key: 'wallet', name: 'Wallet', icon: '🌐', details: userSavedDetails.wallet },
+    { key: 'redeem', name: 'Redeem', icon: '🎁', details: userSavedDetails.redeem }
+  ];
+
+  let html = '';
+  methods.forEach(m => {
+    const isLinked = !!m.details;
+    html += `
+      <button class="modal-method-btn ${isLinked ? 'linked' : 'not-linked'}"
+              data-method="${m.key}"
+              onclick="modalSelectMethod('${m.key}')">
+        ${isLinked ? '<span class="linked-badge">✓ LINKED</span>' : ''}
+        <span class="mi">${m.icon}</span>
+        <span class="mname">${m.name}</span>
+      </button>
+    `;
+  });
+
+  grid.innerHTML = html;
+
+  // Auto-select first linked
+  const firstLinked = methods.find(m => m.details);
+  if (firstLinked) {
+    modalSelectMethod(firstLinked.key);
+  } else {
+    modalSelectMethod('upi');
+  }
+}
+
+// ============================================================
+// 💳 MODAL SELECT METHOD
+// ============================================================
+function modalSelectMethod(methodKey) {
+  selectedMethod = methodKey;
+
+  const methodData = {
+    upi: { label: 'UPI', inputLabel: '⚡ Enter your UPI ID', placeholder: 'yourname@upi' },
+    bank: { label: 'Bank', inputLabel: '🏦 Enter Bank Account Number', placeholder: 'Enter account number' },
+    wallet: { label: 'Wallet', inputLabel: '🌐 Enter Wallet ID', placeholder: 'Enter wallet ID' },
+    redeem: { label: 'Redeem', inputLabel: '🎁 Enter Redeem Code', placeholder: 'Enter redeem code' }
+  };
+
+  const m = methodData[methodKey];
+  if (!m) return;
+
+  selectedMethodLabel = m.label;
+
+  document.querySelectorAll('.modal-method-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.method === methodKey);
+  });
+
+  const isLinked = !!userSavedDetails[methodKey];
+
+  if (isLinked) {
+    document.getElementById('modalLinkSection').classList.remove('active');
+  } else {
+    document.getElementById('modalLinkSection').classList.add('active');
+    document.getElementById('modalLinkMethodName').textContent = m.label;
+    document.getElementById('modalLinkInput').placeholder = m.placeholder;
+    document.getElementById('modalLinkInput').value = '';
+  }
+
+  haptic('light');
+}
+
+// ============================================================
+// 🔗 MODAL LINK METHOD NOW
+// ============================================================
+async function modalLinkMethodNow() {
+  if (!selectedMethod) {
+    showToast('❌ Select a method first');
+    return;
+  }
+
+  const input = document.getElementById('modalLinkInput');
+  const value = input.value.trim();
+
+  if (!value || value.length < 3) {
+    showToast('❌ Enter valid details');
+    haptic('error');
+    return;
+  }
+
+  const fieldMap = {
+    upi: 'upiId',
+    bank: 'bankAccNo',
+    wallet: 'walletAccount',
+    redeem: 'redeemCodeAddr'
+  };
+
+  const field = fieldMap[selectedMethod];
+  if (!field) return;
+
+  const btn = event?.target;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Linking...';
+  }
+
+  try {
+    const data = await apiCall('/miniapp/api/update-payment', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: userId,
+        field: field,
+        value: value
+      })
+    });
+
+    if (data.success) {
+      showToast('✅ Linked successfully!');
+      haptic('success');
+
+      userSavedDetails[selectedMethod] = value;
+      document.getElementById('modalLinkSection').classList.remove('active');
+      renderModalMethods();
+      modalSelectMethod(selectedMethod);
+
+      // Refresh home payment methods too
+      await loadPaymentMethods();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔗 Link Now';
+    }
+  }
+}
+
+// ============================================================
+// 📌 MODAL AMOUNT HANDLERS
+// ============================================================
+function modalSetAmount(amt, btn) {
+  document.getElementById('modalAmountInput').value = amt;
+  document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
+  if (btn) btn.classList.add('selected');
+  haptic('light');
+}
+
+function modalSetMax() {
+  if (userBalance <= 0) {
+    showToast('❌ No balance available');
+    return;
+  }
+  const max = Math.min(userBalance, maxWithdraw);
+  document.getElementById('modalAmountInput').value = max.toFixed(2);
+  document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
+  haptic('light');
+}
+
+// ============================================================
+// ✅ MODAL SUBMIT WITHDRAWAL
+// ============================================================
+async function modalSubmitWithdraw() {
+  const amountStr = document.getElementById('modalAmountInput').value.trim();
+  const btn = document.getElementById('modalSubmitBtn');
+
+  const amount = parseFloat(amountStr);
+
+  if (isNaN(amount) || amount <= 0) {
+    showToast('❌ Enter a valid amount');
+    haptic('error');
+    return;
+  }
+
+  if (amount < minWithdraw) {
+    showToast(`❌ Minimum withdrawal is ₹${minWithdraw}`);
+    haptic('error');
+    return;
+  }
+
+  if (amount > maxWithdraw) {
+    showToast(`❌ Maximum withdrawal is ₹${maxWithdraw}`);
+    haptic('error');
+    return;
+  }
+
+  if (amount > userBalance) {
+    showToast(`❌ Insufficient balance. Available: ₹${userBalance.toFixed(2)}`);
+    haptic('error');
+    return;
+  }
+
+  if (!selectedMethod) {
+    showToast('❌ Select payment method');
+    haptic('error');
+    return;
+  }
+
+  const details = userSavedDetails[selectedMethod];
+  if (!details) {
+    showToast('❌ Please link this method first');
+    haptic('error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span> SUBMITTING...';
+
+  try {
+    const res = await apiCall('/miniapp/api/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: userId,
+        amount: amount,
+        method: selectedMethodLabel
+      })
+    });
+
+    if (res.success) {
+      haptic('success');
+      const newBalance = userBalance - amount;
+      showModalSuccess(amount, newBalance);
+    } else {
+      haptic('error');
+      showToast(`❌ ${res.error || 'Request failed'}`);
+      btn.disabled = false;
+      btn.innerHTML = '💸 Confirm Withdrawal';
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+    haptic('error');
+    btn.disabled = false;
+    btn.innerHTML = '💸 Confirm Withdrawal';
+  }
+}
+
+// ============================================================
+// 🎉 MODAL SUCCESS
+// ============================================================
+function showModalSuccess(amount, newBalance) {
+  document.getElementById('withdrawFormView').style.display = 'none';
+  document.getElementById('withdrawSuccessView').classList.add('active');
+
+  document.getElementById('modalSuccessAmount').textContent = '₹' + amount.toFixed(2);
+  document.getElementById('modalSuccessMethod').textContent = selectedMethodLabel;
+  document.getElementById('modalSuccessNewBalance').textContent = '₹' + newBalance.toFixed(2);
+}
+
+// ============================================================
+// 🏠 NAVIGATION
+// ============================================================
+function openAddFund() {
+  haptic('light');
+  window.location.href = '/miniapp/addfund';
+}
+
+function openPaymentMethods() {
+  haptic('light');
+  window.location.href = '/miniapp/profile';
+}
+
+function viewAllHistory() {
+  haptic('light');
+  window.location.href = '/miniapp/history';
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  forceScrollEnable();
+
+  if (!userId) {
+    document.body.innerHTML = `
+      <div style="padding:50px;text-align:center;color:#00ff88;">
+        <h2>⚠️ Open from Telegram</h2>
+        <p style="opacity:0.7;margin-top:20px;">This Mini App works only inside Telegram.</p>
+      </div>
+    `;
+    return;
+  }
+
+  await loadConfig();
+  await loadUser();
+  await loadPaymentMethods();
+  await loadRecentActivity();
+
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
+
+  console.log('✅ Home page ready');
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.refreshBalance = refreshBalance;
+window.openWithdrawModal = openWithdrawModal;
+window.closeWithdrawModal = closeWithdrawModal;
+window.modalSelectMethod = modalSelectMethod;
+window.modalLinkMethodNow = modalLinkMethodNow;
+window.modalSetAmount = modalSetAmount;
+window.modalSetMax = modalSetMax;
+window.modalSubmitWithdraw = modalSubmitWithdraw;
+window.openAddFund = openAddFund;
+window.openPaymentMethods = openPaymentMethods;
+window.viewAllHistory = viewAllHistory;
+</script>
+
 </body>
 </html>
