@@ -8,10 +8,48 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   ADMIN PANEL — Premium Styles (Green Glow)
+   ADMIN PANEL — Premium Styles + SCROLL FIX
    ═══════════════════════════════════════════════════════ */
 
-/* ───── PAGE HEADER ───── */
+/* ───── 🔓 SCROLL FIX (CRITICAL) ───── */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 200px !important;
+}
+
+.app {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 220px !important;
+  position: relative !important;
+}
+
+.app::after {
+  content: '';
+  display: block;
+  height: 120px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.iphone-frame {
+  min-height: 100vh !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ───── TOPBAR ───── */
 .topbar {
   display: flex;
   align-items: center;
@@ -42,7 +80,7 @@
   text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
-/* ───── LOADING ───── */
+/* ───── LOADING / NOT ADMIN ───── */
 .loading {
   text-align: center;
   color: #00ff88;
@@ -50,10 +88,8 @@
   padding: 40px 20px;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.5px;
 }
 
-/* ───── NOT ADMIN ───── */
 .empty-admin {
   text-align: center;
   padding: 60px 20px;
@@ -65,14 +101,6 @@
   font-size: 64px;
   margin-bottom: 16px;
   opacity: 0.5;
-  filter: drop-shadow(0 0 20px rgba(255, 100, 100, 0.4));
-}
-
-.empty-admin > div:first-of-type {
-  font-size: 17px;
-  font-weight: 800;
-  color: #ff6464;
-  margin-bottom: 8px;
 }
 
 /* ───── ADMIN STATS GRID ───── */
@@ -92,26 +120,18 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s ease;
   animation: cardSlideIn 0.4s ease backwards;
-}
-
-.admin-stats .stat-card:active {
-  transform: scale(0.96);
-  border-color: rgba(0, 255, 136, 0.4);
 }
 
 .admin-stats .stat-icon {
   font-size: 20px;
   margin-bottom: 5px;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .admin-stats .stat-value {
   font-size: 16px;
   font-weight: 800;
   color: #00ff88;
-  letter-spacing: -0.3px;
   text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
 }
 
@@ -159,7 +179,6 @@
   transition: all 0.25s;
   white-space: nowrap;
   font-family: inherit;
-  letter-spacing: 0.3px;
 }
 
 .admin-tab:active {
@@ -170,13 +189,11 @@
   background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.15));
   color: #00ff88;
   opacity: 1;
-  box-shadow: 
-    0 0 18px rgba(0, 255, 136, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.35);
   text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
 }
 
-/* ───── ADMIN TAB CONTENT ───── */
+/* ───── TAB CONTENT ───── */
 .admin-tab-content {
   animation: fadeIn 0.3s ease;
 }
@@ -186,7 +203,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ───── ADMIN MENU / CARD ───── */
+/* ───── ADMIN MENU ───── */
 .admin-menu {
   border-radius: 20px;
   padding: 16px;
@@ -227,13 +244,11 @@
   background: rgba(0, 255, 136, 0.12);
   border-color: rgba(0, 255, 136, 0.4);
   transform: scale(0.98) translateX(4px);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
 }
 
 .admin-menu-btn .menu-icon {
   font-size: 20px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.3));
 }
 
 .admin-menu-btn .menu-text {
@@ -246,12 +261,6 @@
   color: #00ff88;
   opacity: 0.5;
   font-size: 20px;
-  transition: transform 0.2s;
-}
-
-.admin-menu-btn:active .menu-arrow {
-  transform: translateX(4px);
-  opacity: 1;
 }
 
 /* ───── ADMIN NOTE ───── */
@@ -268,15 +277,6 @@
   background: rgba(0, 255, 136, 0.04);
 }
 
-.admin-note b {
-  color: #00ff88;
-  font-weight: 800;
-  background: rgba(0, 255, 136, 0.15);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-family: 'SF Mono', monospace;
-}
-
 /* ───── ADMIN LIST ───── */
 .admin-list {
   display: flex;
@@ -284,7 +284,7 @@
   gap: 10px;
 }
 
-/* ───── ADMIN ITEM (request cards) ───── */
+/* ───── ADMIN ITEM ───── */
 .admin-item {
   background: rgba(0, 20, 10, 0.55);
   backdrop-filter: blur(20px);
@@ -295,11 +295,6 @@
   margin-bottom: 10px;
   animation: cardSlideIn 0.3s ease backwards;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s, border-color 0.2s;
-}
-
-.admin-item:active {
-  transform: scale(0.99);
 }
 
 .admin-item-header {
@@ -318,7 +313,6 @@
   opacity: 0.7;
   font-weight: 700;
   font-family: 'SF Mono', 'Courier New', monospace;
-  letter-spacing: 0.5px;
 }
 
 .admin-item-amount {
@@ -326,7 +320,6 @@
   font-weight: 800;
   color: #00ff88;
   text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-  letter-spacing: -0.3px;
 }
 
 .admin-item-row {
@@ -343,10 +336,8 @@
   color: #00ff88;
   opacity: 0.55;
   margin-right: 5px;
-  font-weight: 700;
   text-transform: uppercase;
   font-size: 10px;
-  letter-spacing: 0.5px;
 }
 
 .admin-item-row code {
@@ -356,10 +347,8 @@
   color: #00ff88;
   font-size: 11px;
   font-family: 'SF Mono', 'Courier New', monospace;
-  border: 1px solid rgba(0, 255, 136, 0.15);
 }
 
-/* ───── ACTION BUTTONS ───── */
 .admin-item-actions {
   display: flex;
   gap: 8px;
@@ -377,9 +366,6 @@
   cursor: pointer;
   transition: transform 0.15s;
   font-family: inherit;
-  letter-spacing: 0.3px;
-  position: relative;
-  overflow: hidden;
 }
 
 .btn-approve {
@@ -399,13 +385,6 @@
   transform: scale(0.95);
 }
 
-.btn-approve:disabled,
-.btn-reject:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
 /* ───── CUSTOMIZE CARD ───── */
 .customize-card {
   background: rgba(0, 20, 10, 0.55);
@@ -416,7 +395,6 @@
   padding: 16px;
   margin-bottom: 14px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  animation: cardSlideIn 0.4s ease backwards;
 }
 
 .customize-title {
@@ -426,15 +404,7 @@
   font-weight: 800;
   letter-spacing: 1.5px;
   margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   text-transform: uppercase;
-}
-
-.customize-title i,
-.customize-title::before {
-  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .customize-row {
@@ -455,20 +425,11 @@
   font-weight: 700;
   outline: none;
   font-family: inherit;
-  transition: all 0.2s;
 }
 
 .customize-row input:focus {
   border-color: #00ff88;
-  background: rgba(0, 30, 15, 0.6);
-  box-shadow: 
-    0 0 0 3px rgba(0, 255, 136, 0.1),
-    0 0 20px rgba(0, 255, 136, 0.2);
-}
-
-.customize-row input::placeholder {
-  color: #00ff88;
-  opacity: 0.4;
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
 }
 
 .customize-row button {
@@ -479,15 +440,11 @@
   font-size: 11px;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
-  white-space: nowrap;
-  letter-spacing: 0.3px;
 }
 
 .btn-save {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
   color: #000000;
-  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
 }
 
 .btn-reset {
@@ -496,11 +453,7 @@
   border: 1.5px solid rgba(255, 100, 100, 0.35) !important;
 }
 
-.customize-row button:active {
-  transform: scale(0.94);
-}
-
-/* ───── SAVE ALL BUTTON ───── */
+/* ───── SAVE ALL ───── */
 .save-all-btn {
   width: 100%;
   padding: 14px;
@@ -514,15 +467,9 @@
   letter-spacing: 1px;
   cursor: pointer;
   font-family: inherit;
-  box-shadow: 0 6px 20px rgba(0, 170, 255, 0.35);
-  transition: transform 0.15s;
 }
 
-.save-all-btn:active {
-  transform: scale(0.97);
-}
-
-/* ───── ADMIN LIST SIMPLE ───── */
+/* ───── ADMIN USER ROW ───── */
 .admin-list-simple {
   display: flex;
   flex-direction: column;
@@ -537,14 +484,6 @@
   border: 1px solid rgba(0, 255, 136, 0.12);
   border-radius: 14px;
   padding: 12px 14px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  transition: transform 0.2s, border-color 0.2s;
-}
-
-.admin-user-row:active {
-  transform: scale(0.99);
-  border-color: rgba(0, 255, 136, 0.3);
 }
 
 .admin-user-avatar {
@@ -559,7 +498,6 @@
   font-weight: 800;
   color: #000000;
   flex-shrink: 0;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 .admin-user-info {
@@ -571,10 +509,6 @@
   font-size: 13.5px;
   font-weight: 800;
   color: #00ff88;
-  letter-spacing: 0.2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .admin-user-id {
@@ -583,13 +517,6 @@
   opacity: 0.6;
   margin-top: 3px;
   font-family: 'SF Mono', 'Courier New', monospace;
-  font-weight: 600;
-}
-
-.admin-user-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
 }
 
 .admin-user-actions button {
@@ -600,23 +527,9 @@
   font-weight: 800;
   cursor: pointer;
   font-family: inherit;
-  transition: transform 0.15s;
-}
-
-.admin-user-actions .btn-profile {
-  background: rgba(0, 170, 255, 0.15);
-  color: #00aaff;
-  border: 1px solid rgba(0, 170, 255, 0.3);
-}
-
-.admin-user-actions .btn-remove {
   background: rgba(255, 100, 100, 0.15);
   color: #ff6464;
   border: 1px solid rgba(255, 100, 100, 0.3);
-}
-
-.admin-user-actions button:active {
-  transform: scale(0.9);
 }
 
 /* ───── ADD ROW ───── */
@@ -638,18 +551,6 @@
   font-weight: 700;
   outline: none;
   font-family: inherit;
-  transition: all 0.2s;
-}
-
-.add-row input:focus {
-  border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
-}
-
-.add-row input::placeholder {
-  color: #00ff88;
-  opacity: 0.4;
-  font-weight: 600;
 }
 
 .add-row button {
@@ -662,14 +563,6 @@
   font-size: 12.5px;
   cursor: pointer;
   font-family: inherit;
-  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.35);
-  transition: transform 0.15s;
-  white-space: nowrap;
-  letter-spacing: 0.3px;
-}
-
-.add-row button:active {
-  transform: scale(0.95);
 }
 
 /* ───── SECTION DIVIDER ───── */
@@ -691,39 +584,45 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(0, 255, 136, 0.2),
-    transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.2), transparent);
 }
 
 /* ───── BOTTOM NAV FIX ───── */
-.bottom-nav {
+.bottom-nav,
+.glass-nav {
   position: fixed !important;
   bottom: 18px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  z-index: 9999 !important;
+  z-index: 99999 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  pointer-events: auto !important;
 }
 
-.app {
-  padding-bottom: 130px !important;
+/* ───── TOAST ───── */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  z-index: 100000;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
+  animation: toastUp 0.3s ease;
 }
 
-/* ───── SCROLL FIX ───── */
-html, body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
-}
-
-/* ───── RESPONSIVE ───── */
-@media (max-width: 380px) {
-  .admin-stats .stat-value { font-size: 14px; }
-  .admin-stats .stat-icon { font-size: 18px; }
-  .admin-tab { padding: 9px 11px; font-size: 11px; }
-  .admin-item-amount { font-size: 15px; }
-  .customize-row input { font-size: 12px; padding: 10px 12px; }
-  .customize-row button { padding: 10px 12px; font-size: 10px; }
+@keyframes toastUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 </style>
 </head>
@@ -740,7 +639,6 @@ html, body {
 
   <div class="app">
 
-    <!-- ═══ TOPBAR ═══ -->
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">👑</span>
@@ -748,20 +646,16 @@ html, body {
       </div>
     </header>
 
-    <!-- ═══ LOADING ═══ -->
     <div id="adminLoading" class="loading">⏳ Loading admin data...</div>
 
-    <!-- ═══ NOT ADMIN ═══ -->
     <div id="notAdminMsg" class="empty-admin" style="display:none;">
       <div class="icon">🚫</div>
-      <div>Access Denied</div>
+      <div style="font-size:16px;font-weight:700;color:#ff6464;margin-bottom:8px;">Access Denied</div>
       <div style="font-size:13px;opacity:0.7;">You are not an admin!</div>
     </div>
 
-    <!-- ═══ ADMIN CONTENT ═══ -->
     <div id="adminContent" style="display:none;">
 
-      <!-- Admin Info -->
       <div class="user-card glass">
         <div class="user-info">
           <div class="avatar" style="border-color:#00ff88;background:rgba(0,255,136,0.15);">
@@ -774,7 +668,6 @@ html, body {
         </div>
       </div>
 
-      <!-- Stats Grid -->
       <div class="admin-stats">
         <div class="stat-card glass">
           <div class="stat-icon">👥</div>
@@ -808,7 +701,6 @@ html, body {
         </div>
       </div>
 
-      <!-- Tabs -->
       <div class="admin-tabs glass">
         <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊</button>
         <button class="admin-tab" onclick="switchTab('withdrawals')" data-tab="withdrawals">💸 WD</button>
@@ -824,31 +716,31 @@ html, body {
         <div class="admin-menu glass">
           <div class="section-title">⚙️ QUICK ACTIONS</div>
 
-          <button class="admin-menu-btn" onclick="adminAction('Balance Management')">
+          <button class="admin-menu-btn" onclick="openBotPanel('balance')">
             <span class="menu-icon">💰</span>
             <span class="menu-text">Balance Management</span>
             <span class="menu-arrow">›</span>
           </button>
 
-          <button class="admin-menu-btn" onclick="adminAction('Tasks Manager')">
+          <button class="admin-menu-btn" onclick="openBotPanel('tasks')">
             <span class="menu-icon">📋</span>
             <span class="menu-text">Tasks Manager</span>
             <span class="menu-arrow">›</span>
           </button>
 
-          <button class="admin-menu-btn" onclick="adminAction('Gift Codes')">
+          <button class="admin-menu-btn" onclick="openBotPanel('gifts')">
             <span class="menu-icon">🎁</span>
             <span class="menu-text">Gift Codes</span>
             <span class="menu-arrow">›</span>
           </button>
 
-          <button class="admin-menu-btn" onclick="adminAction('Broadcast')">
+          <button class="admin-menu-btn" onclick="openBotPanel('broadcast')">
             <span class="menu-icon">📢</span>
             <span class="menu-text">Broadcast</span>
             <span class="menu-arrow">›</span>
           </button>
 
-          <button class="admin-menu-btn" onclick="adminAction('Settings')">
+          <button class="admin-menu-btn" onclick="openBotPanel('settings')">
             <span class="menu-icon">⚙️</span>
             <span class="menu-text">Settings</span>
             <span class="menu-arrow">›</span>
@@ -870,7 +762,7 @@ html, body {
         </div>
       </div>
 
-      <!-- ═══ TAB: ADD FUND ═══ -->
+      <!-- ═══ TAB: ADD FUNDS ═══ -->
       <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
         <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
           <div class="section-title" style="margin-bottom:0;">💰 PENDING ADD FUND</div>
@@ -968,7 +860,6 @@ html, body {
 
     </div>
 
-    <!-- ═══ BOTTOM NAV ═══ -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
@@ -993,7 +884,7 @@ html, body {
 
 <script>
 // ============================================================
-// 👑 ADMIN PANEL — Complete Logic (Working Condition)
+// 👑 ADMIN PANEL — Complete Logic + FIXES
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -1002,6 +893,10 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
+
+  try {
+    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
+  } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -1017,6 +912,47 @@ const DEFAULTS = {
   btn_pay: "PAY",
   btn_profile: "PROFILE"
 };
+
+// ============================================================
+// 🔓 FORCE SCROLL ENABLE
+// ============================================================
+function forceScrollEnable() {
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '200px';
+
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+  document.documentElement.style.maxHeight = 'none';
+
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+    app.style.paddingBottom = '220px';
+  }
+
+  const frame = document.querySelector('.iphone-frame');
+  if (frame) {
+    frame.style.overflow = 'visible';
+    frame.style.height = 'auto';
+    frame.style.maxHeight = 'none';
+  }
+}
+
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
 
 // ============================================================
 // 🎨 UTILITIES
@@ -1074,6 +1010,8 @@ async function apiCall(endpoint, options = {}) {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  forceScrollEnable();
+
   if (!userId) {
     document.getElementById('adminLoading').style.display = 'none';
     document.getElementById('notAdminMsg').style.display = 'block';
@@ -1106,10 +1044,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isOwner) {
     await loadAdmins();
   }
+
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
 });
 
 // ============================================================
-// 🎨 LOAD CONFIG
+// 🎨 CONFIG
 // ============================================================
 async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
@@ -1133,7 +1074,7 @@ async function loadAdminInfo() {
 }
 
 // ============================================================
-// 📊 LOAD STATS
+// 📊 STATS
 // ============================================================
 async function loadStats() {
   const d1 = await apiCall('/miniapp/api/total-balance');
@@ -1184,6 +1125,8 @@ function switchTab(tab) {
   else if (tab === 'users') loadUsers();
   else if (tab === 'customize') loadCustomize();
   else if (tab === 'admins' && isOwner) loadAdmins();
+
+  setTimeout(forceScrollEnable, 100);
 }
 
 // ============================================================
@@ -1251,7 +1194,6 @@ async function rejectWd(id) {
     loadStats();
   } else {
     showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
   }
 }
 
@@ -1461,7 +1403,6 @@ async function saveCustomize(key, inputId) {
     haptic('success');
   } else {
     showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
   }
 }
 
@@ -1500,7 +1441,7 @@ async function resetAllCustomize() {
 }
 
 // ============================================================
-// 👑 ADMINS MANAGEMENT
+// 👑 ADMINS
 // ============================================================
 async function loadAdmins() {
   const listEl = document.getElementById('adminsList');
@@ -1523,7 +1464,7 @@ async function loadAdmins() {
           <div class="admin-user-id">${a.userId}</div>
         </div>
         <div class="admin-user-actions">
-          ${!isOwnerRow ? `<button class="btn-remove" onclick="removeAdmin(${a.userId})">🗑️</button>` : ''}
+          ${!isOwnerRow ? `<button onclick="removeAdmin(${a.userId})">🗑️</button>` : ''}
         </div>
       </div>
     `;
@@ -1553,7 +1494,6 @@ async function addAdmin() {
     await loadAdmins();
   } else {
     showToast('❌ ' + (data.error || 'Failed'));
-    haptic('error');
   }
 }
 
@@ -1575,10 +1515,38 @@ async function removeAdmin(adminId) {
 }
 
 // ============================================================
-// 🎯 QUICK ACTIONS
+// 🎯 QUICK ACTIONS — Redirect to Bot with /admin
 // ============================================================
-function adminAction(name) {
-  showToast(`ℹ️ ${name} — Bot-ൽ /admin use ചെയ്യൂ`);
+function openBotPanel(action) {
+  haptic('light');
+
+  // Show toast
+  showToast(`📱 Opening Bot for ${action}...`);
+
+  // Try to open bot chat
+  setTimeout(() => {
+    try {
+      // Get bot username from config
+      const botUsername = appConfig.botUsername || 'TaskEarnBot';
+
+      // Try Telegram deep link
+      if (tg?.openTelegramLink) {
+        // Deep link to bot with /admin command
+        tg.openTelegramLink(`https://t.me/${botUsername}?start=admin_${action}`);
+      } else {
+        // Fallback
+        window.open(`https://t.me/${botUsername}`, '_blank');
+      }
+
+      // Optionally close mini app after opening bot
+      // (Comment this out if you want to keep mini app open)
+      // setTimeout(() => { if (tg?.close) tg.close(); }, 800);
+
+    } catch (e) {
+      console.error('Open bot error:', e);
+      showToast('❌ Could not open bot. Tap /admin in bot chat.');
+    }
+  }, 400);
 }
 
 // ============================================================
@@ -1596,10 +1564,199 @@ window.resetCustomize = resetCustomize;
 window.resetAllCustomize = resetAllCustomize;
 window.addAdmin = addAdmin;
 window.removeAdmin = removeAdmin;
-window.adminAction = adminAction;
+window.openBotPanel = openBotPanel;
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 </script>
 
 </body>
 </html>
+
+// ============================================================
+// 💰 MIN/MAX WITHDRAW SETTINGS — Logic
+// ============================================================
+
+// Load all settings when page loads
+async function loadAllLimits() {
+  try {
+    const res = await apiCall('/miniapp/api/admin/settings');
+    if (res.success && res.settings) {
+      const s = res.settings;
+
+      // Withdraw
+      document.getElementById('set_min_wd').value = s.min_withdraw || 10;
+      document.getElementById('curr_min_wd').textContent = s.min_withdraw || 10;
+
+      document.getElementById('set_max_wd').value = s.max_withdraw || 10000;
+      document.getElementById('curr_max_wd').textContent = s.max_withdraw || 10000;
+
+      document.getElementById('set_tax').value = s.tax_percent || 0;
+      document.getElementById('curr_tax').textContent = s.tax_percent || 0;
+
+      // Add Fund
+      document.getElementById('set_min_af').value = s.auto_upi_min || 5;
+      document.getElementById('curr_min_af').textContent = s.auto_upi_min || 5;
+
+      document.getElementById('set_max_af').value = s.auto_upi_max || 200;
+      document.getElementById('curr_max_af').textContent = s.auto_upi_max || 200;
+
+      console.log('✅ Limits loaded:', s);
+    }
+  } catch (e) {
+    console.error('Load limits error:', e);
+  }
+}
+
+// Save single setting
+async function saveSetting(key, inputId) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim();
+
+  if (!value || isNaN(value)) {
+    showToast('❌ Enter valid number');
+    haptic('error');
+    return;
+  }
+
+  const numValue = parseFloat(value);
+
+  // Validation
+  if (numValue < 0) {
+    showToast('❌ Value must be positive');
+    haptic('error');
+    return;
+  }
+
+  // Special validation
+  if (key === 'min_withdraw' && numValue < 1) {
+    showToast('❌ Min withdraw must be at least ₹1');
+    haptic('error');
+    return;
+  }
+
+  if (key === 'max_withdraw') {
+    const minW = parseFloat(document.getElementById('set_min_wd').value) || 10;
+    if (numValue <= minW) {
+      showToast('❌ Max must be greater than Min');
+      haptic('error');
+      return;
+    }
+  }
+
+  if (key === 'tax_percent' && (numValue < 0 || numValue > 50)) {
+    showToast('❌ Tax must be 0-50%');
+    haptic('error');
+    return;
+  }
+
+  try {
+    const data = await apiCall('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      body: JSON.stringify({ key, value: numValue })
+    });
+
+    if (data.success) {
+      // Update current display
+      const currMap = {
+        'min_withdraw': 'curr_min_wd',
+        'max_withdraw': 'curr_max_wd',
+        'tax_percent': 'curr_tax',
+        'auto_upi_min': 'curr_min_af',
+        'auto_upi_max': 'curr_max_af'
+      };
+
+      const currEl = document.getElementById(currMap[key]);
+      if (currEl) currEl.textContent = numValue;
+
+      // Visual feedback
+      const btn = event?.target?.closest('.settings-btn.save');
+      if (btn) {
+        btn.classList.add('saved');
+        btn.textContent = '✅ Saved';
+        setTimeout(() => {
+          btn.classList.remove('saved');
+          btn.innerHTML = '💾 Save';
+        }, 1500);
+      }
+
+      showToast(`✅ ${key} = ${numValue}`);
+      haptic('success');
+
+      // Reload all to ensure sync
+      await loadAllLimits();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
+    }
+  } catch (e) {
+    console.error('Save setting error:', e);
+    showToast('❌ Network error');
+    haptic('error');
+  }
+}
+
+// Reset setting to default
+async function resetSetting(key, inputId, defaultValue) {
+  if (!confirm(`Reset ${key} to ${defaultValue}?`)) return;
+
+  const input = document.getElementById(inputId);
+  input.value = defaultValue;
+
+  try {
+    const data = await apiCall('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      body: JSON.stringify({ key, value: defaultValue })
+    });
+
+    if (data.success) {
+      // Update current display
+      const currMap = {
+        'min_withdraw': 'curr_min_wd',
+        'max_withdraw': 'curr_max_wd',
+        'tax_percent': 'curr_tax',
+        'auto_upi_min': 'curr_min_af',
+        'auto_upi_max': 'curr_max_af'
+      };
+
+      const currEl = document.getElementById(currMap[key]);
+      if (currEl) currEl.textContent = defaultValue;
+
+      showToast(`🔄 Reset to ${defaultValue}`);
+      haptic('success');
+
+      await loadAllLimits();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+// Update switchTab to load limits when switched
+const originalSwitchTab = window.switchTab;
+window.switchTab = function(tab) {
+  originalSwitchTab(tab);
+
+  if (tab === 'limits') {
+    loadAllLimits();
+  }
+};
+
+// Load limits on page init
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    loadAllLimits();
+  }, 1000);
+});
+
+// Expose globals
+window.loadAllLimits = loadAllLimits;
+window.saveSetting = saveSetting;
+window.resetSetting = resetSetting;
+
+// ============================================================
+// 🔄 ALSO: Update switchTab in original to load limits
+// ============================================================
+// ഈ line കൂടി switchTab-ന്റെ അവസാനത്തിൽ add ചെയ്യൂ:
+// if (tab === 'limits') loadAllLimits();
