@@ -8,57 +8,95 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   PROFILE PAGE — Complete Styles
+   PROFILE PAGE — Additional Styles (style.css-ന് മുകളിൽ)
    ═══════════════════════════════════════════════════════ */
 
-.profile-avatar {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.profile-avatar:active {
-  transform: scale(0.95);
-  box-shadow: 0 0 50px rgba(0, 255, 136, 0.6);
-}
-
-.detail-value.clickable {
-  cursor: pointer;
-  color: #00ff88;
-}
-.detail-value.clickable:active {
-  opacity: 0.7;
-}
-
-/* History */
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-.history-item-left { flex: 1; min-width: 0; }
-.history-item-title { font-size: 13px; font-weight: 700; color: #fff; }
-.history-item-date { font-size: 11px; color: #7a9a7a; margin-top: 2px; }
-.history-item-amount { font-size: 14px; font-weight: 800; flex-shrink: 0; margin-left: 10px; }
-.history-item-amount.positive { color: #00ff88; }
-.history-item-amount.negative { color: #ff5555; }
-
-/* Empty state */
-.empty-state {
+/* ───── PROFILE CARD (Missing in style.css) ───── */
+.profile-card {
+  padding: 24px 20px 20px;
+  margin-bottom: 14px;
   text-align: center;
-  padding: 30px 20px;
-  color: #7a9a7a;
-}
-.empty-state .icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
+  position: relative;
+  animation: cardSlideIn 0.4s ease backwards;
 }
 
-/* Profile stats grid */
+/* ───── AVATAR (Single element) ───── */
+.profile-avatar {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 2.5px solid rgba(0, 255, 136, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    0 0 24px rgba(0, 255, 136, 0.35),
+    0 0 60px rgba(0, 255, 136, 0.12),
+    inset 0 0 20px rgba(0, 255, 136, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-avatar:active {
+  transform: scale(0.94);
+  box-shadow:
+    0 0 40px rgba(0, 255, 136, 0.6),
+    0 0 80px rgba(0, 255, 136, 0.2);
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Online green dot */
+.profile-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 15px;
+  height: 15px;
+  background: #00ff88;
+  border: 2.5px solid #000000;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #00ff88;
+  z-index: 3;
+}
+
+/* ───── PROFILE ID + USERNAME ───── */
+.profile-id,
+.profile-username {
+  display: inline-block;
+  padding: 5px 12px;
+  background: rgba(0, 255, 136, 0.07);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #00ff88;
+  margin: 4px 3px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'SF Mono', 'Courier New', monospace;
+}
+
+.profile-id:active,
+.profile-username:active {
+  background: rgba(0, 255, 136, 0.2);
+  transform: scale(0.96);
+}
+
+/* ───── PROFILE STATS (2x2 grid, dedicated class) ───── */
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -67,55 +105,93 @@
 }
 
 .profile-stat-card {
-  background: rgba(17, 26, 17, 0.55);
+  background: rgba(0, 20, 10, 0.5);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 16px;
-  padding: 14px;
+  padding: 16px 12px;
   text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s ease;
+  animation: cardSlideIn 0.4s ease backwards;
 }
 
-.profile-stat-icon { font-size: 22px; margin-bottom: 6px; }
+.profile-stat-card:active {
+  transform: scale(0.97);
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+.profile-stat-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
 .profile-stat-value {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #00ff88;
   text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-}
-.profile-stat-label {
-  font-size: 10px;
-  color: #7a9a7a;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  margin-top: 2px;
+  letter-spacing: -0.3px;
 }
 
-/* Referral section */
+.profile-stat-label {
+  font-size: 10px;
+  color: #00ff88;
+  opacity: 0.65;
+  letter-spacing: 1px;
+  font-weight: 700;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+/* ───── REFERRAL CARD ───── */
 .referral-card {
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.22);
   border-radius: 20px;
   padding: 18px;
   margin-bottom: 14px;
-  background: rgba(0, 255, 136, 0.05);
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  backdrop-filter: blur(20px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(0, 255, 136, 0.1);
+  animation: cardSlideIn 0.4s ease backwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.referral-card::before {
+  content: '🎁';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 80px;
+  opacity: 0.06;
+  transform: rotate(-15deg);
+  pointer-events: none;
 }
 
 .referral-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px dashed rgba(0, 255, 136, 0.35);
   border-radius: 12px;
   padding: 12px 14px;
   margin-top: 10px;
+  position: relative;
+  z-index: 2;
 }
 
 .referral-code {
   flex: 1;
   font-family: 'SF Mono', 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 12.5px;
   color: #00ff88;
-  font-weight: 700;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -123,7 +199,7 @@
 
 .referral-copy-btn {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
   border: none;
   padding: 8px 14px;
   border-radius: 10px;
@@ -132,61 +208,313 @@
   cursor: pointer;
   font-family: inherit;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.35);
+  transition: transform 0.15s;
 }
 
 .referral-copy-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.93);
 }
 
-/* Share link button */
+/* Share button */
 .share-btn {
   width: 100%;
   margin-top: 10px;
   background: linear-gradient(135deg, #00aaff, #0088cc);
-  color: #fff;
+  color: #ffffff;
   border: none;
-  padding: 12px;
+  padding: 13px;
   border-radius: 12px;
   font-weight: 800;
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
+  box-shadow: 0 6px 20px rgba(0, 170, 255, 0.35);
+  transition: transform 0.15s;
+  position: relative;
+  z-index: 2;
 }
 
 .share-btn:active {
   transform: scale(0.97);
 }
 
-/* Menu buttons */
-.menu-btn {
+/* ───── PAYMENT CARD ───── */
+.payment-card {
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 14px;
+  animation: cardSlideIn 0.4s ease backwards;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.payment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 255, 136, 0.04);
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+.payment-item span:first-child {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #00ff88;
+}
+
+.payment-item span:last-child {
+  color: #00ff88;
+  font-size: 11.5px;
+  max-width: 55%;
+  text-align: right;
+  word-break: break-all;
+  opacity: 0.85;
+}
+
+/* History / glass button */
+.history-btn,
+.glass-btn {
+  width: 100%;
+  background: rgba(0, 255, 136, 0.08);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  padding: 13px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.history-btn:active,
+.glass-btn:active {
+  background: rgba(0, 255, 136, 0.18);
+  transform: scale(0.97);
+}
+
+/* Upload button */
+.upload-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 6px 20px rgba(0, 255, 136, 0.35);
+  margin-bottom: 10px;
+}
+
+.upload-btn:active {
+  transform: scale(0.97);
+}
+
+/* ───── ADMIN PANEL SECTION ───── */
+.admin-panel-card {
+  margin-top: 6px;
+  margin-bottom: 14px;
+}
+
+.admin-panel-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: #ffffff;
+  border: none;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+  transition: transform 0.15s;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.admin-panel-btn:active {
+  transform: scale(0.97);
+}
+
+/* ───── ADMIN MENU BUTTON (inside modal) ───── */
+.admin-menu-btn {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: rgba(17, 26, 17, 0.55);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
-  padding: 16px;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 600;
+  background: rgba(0, 20, 10, 0.6);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  margin-bottom: 10px;
-  transition: all 0.2s;
+  margin-bottom: 8px;
   font-family: inherit;
+  text-align: left;
+  transition: all 0.2s;
 }
 
-.menu-btn:active {
-  background: rgba(0, 255, 136, 0.1);
-  border-color: rgba(0, 255, 136, 0.3);
-  transform: translateX(4px);
+.admin-menu-btn:active {
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.35);
+  transform: scale(0.98);
 }
 
-.menu-btn .menu-icon { font-size: 20px; }
-.menu-btn .menu-text { flex: 1; text-align: left; }
-.menu-btn .menu-arrow { color: #7a9a7a; font-size: 22px; }
+.admin-menu-btn .menu-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.admin-menu-btn .menu-text {
+  flex: 1;
+  color: #00ff88;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-menu-btn .menu-arrow {
+  color: #00ff88;
+  opacity: 0.5;
+  font-size: 18px;
+}
+
+/* ───── HISTORY ITEM (inside modal) ───── */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 20, 10, 0.5);
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  border-left: 3px solid #00ff88;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.history-item-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #00ff88;
+}
+
+.history-item-date {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.6;
+  margin-top: 3px;
+}
+
+.history-item-amount {
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.history-item-amount.positive {
+  color: #00ff88;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
+.history-item-amount.negative {
+  color: #ff6464;
+  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+}
+
+/* ───── EMPTY STATE (for modal) ───── */
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: #00ff88;
+  opacity: 0.7;
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* ───── BOTTOM NAV — STICKY FIX ───── */
+/* ✅ Always at bottom, doesn't move on scroll */
+.bottom-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  /* style.css already has the rest */
+}
+
+/* ───── APP PADDING (scroll safe for nav) ───── */
+/* ✅ Ensures content doesn't get hidden behind bottom nav */
+.app {
+  padding-bottom: 130px !important;
+}
+
+/* ───── PHOTO MODAL ───── */
+.photo-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: pointer;
+}
+
+.photo-modal.active {
+  display: flex;
+  animation: zoomIn 0.3s ease;
+}
+
+.photo-modal img {
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: 20px;
+  border: 3px solid #00ff88;
+  box-shadow: 0 0 60px rgba(0, 255, 136, 0.6);
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ───── SCROLL FIX (smooth on iOS) ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* ───── SECTION TITLE (already in style.css, no override) ───── */
 </style>
 </head>
 <body>
@@ -276,7 +604,7 @@
     <!-- ═══ REFERRAL CARD ═══ -->
     <div class="referral-card">
       <div class="section-title">🎁 YOUR REFERRAL LINK</div>
-      <div style="color: #7a9a7a; font-size: 12px; margin-top: 8px;">
+      <div style="color: #00ff88; opacity: 0.7; font-size: 12px; margin-top: 8px; font-weight: 600;">
         Share this link and earn rewards!
       </div>
       <div class="referral-row">
@@ -323,6 +651,7 @@
       </button>
     </div>
 
+    <!-- ═══ BOTTOM NAV — ALWAYS FIXED ═══ -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
@@ -372,7 +701,7 @@
 <div class="modal" id="supportModal">
   <div class="modal-content glass" style="text-align: center;">
     <h3>💬 Contact Support</h3>
-    <p style="color: #7a9a7a; font-size: 13px; margin: 12px 0;">
+    <p style="color: #00ff88; opacity: 0.7; font-size: 13px; margin: 12px 0;">
       Need help? Reach out to us!
     </p>
     <button class="upload-btn" onclick="gotoSupport()">💬 Open Support Chat</button>
@@ -384,7 +713,7 @@
 <div class="modal" id="howToModal">
   <div class="modal-content glass">
     <h3>📚 How To Earn</h3>
-    <div style="margin-top: 14px; line-height: 1.8; font-size: 13px; color: #ccc;">
+    <div style="margin-top: 14px; line-height: 1.8; font-size: 13px; color: #00ff88; opacity: 0.9;">
       <p style="margin-bottom: 12px;"><b style="color: #00ff88;">1. 📋 Complete Tasks</b><br>
       Go to Tasks → Choose a task → Complete → Submit screenshot</p>
 
@@ -808,7 +1137,7 @@ function closeHowTo() {
 }
 
 // ============================================================
-// 👑 ADMIN CHECK
+// 👑 ADMIN CHECK + PANEL
 // ============================================================
 async function checkAdmin() {
   if (!userId) return;
@@ -830,9 +1159,9 @@ function openAdminPanel() {
 document.addEventListener('DOMContentLoaded', async () => {
   if (!userId) {
     document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#fff;">
+      <div style="padding:50px;text-align:center;color:#00ff88;">
         <h2>⚠️ Open from Telegram</h2>
-        <p style="color: #7a9a7a; margin-top: 20px;">This Mini App works only inside Telegram.</p>
+        <p style="opacity: 0.7; margin-top: 20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
