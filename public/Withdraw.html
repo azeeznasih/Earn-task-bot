@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Withdraw</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   WITHDRAW PAGE — Premium Styles (Green Glow)
+   ═══════════════════════════════════════════════════════ */
+
+/* ───── PAGE HEADER ───── */
+.page-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-top: 8px;
+}
+
+.page-title {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 60%, #FFD700 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  filter: drop-shadow(0 0 24px rgba(0, 255, 136, 0.35));
+}
+
+/* ───── BALANCE CARD ───── */
+.balance-info-card {
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.12),
+    rgba(0, 255, 136, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  border-radius: 22px;
+  padding: 22px 20px;
+  margin-bottom: 14px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(0, 255, 136, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: cardSlideIn 0.4s ease backwards;
+}
+
+.balance-info-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+  animation: cardShine 3s infinite;
+}
+
+@keyframes cardShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.balance-info-label {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.balance-info-value {
+  font-size: 40px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: -1px;
+  line-height: 1;
+  text-shadow:
+    0 0 30px rgba(0, 255, 136, 0.6),
+    0 0 60px rgba(0, 255, 136, 0.3);
+}
+
+.balance-info-sub {
+  font-size: 11.5px;
+  color: #00ff88;
+  opacity: 0.65;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.balance-info-sub b {
+  color: #00ff88;
+  opacity: 1;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
+
+/* ───── MINIMUM WARNING BANNER ───── */
+.min-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.25);
+  border-left: 3px solid #ffa500;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #ffa500;
+  font-weight: 700;
+  line-height: 1.5;
+  animation: cardSlideIn 0.4s ease 0.05s backwards;
+}
+
+.min-warning .icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.min-warning b {
+  color: #ffa500;
+  font-weight: 900;
+  background: rgba(255, 165, 0, 0.15);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: 'SF Mono', monospace;
+}
+
+/* ───── MAIN CARD ───── */
+.withdraw-card {
+  background: rgba(0, 20, 10, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
+  border-radius: 22px;
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: cardSlideIn 0.4s ease 0.1s backwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.withdraw-card::before {
+  content: '💸';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 100px;
+  opacity: 0.04;
+  transform: rotate(-15deg);
+  pointer-events: none;
+}
+
+.card-title {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.75;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title i {
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
+
+/* ───── AMOUNT INPUT ───── */
+.amount-input-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 16px;
+  padding: 0 18px;
+  transition: all 0.25s;
+  margin-bottom: 8px;
+}
+
+.amount-input-wrap:focus-within {
+  border-color: #00ff88;
+  box-shadow:
+    0 0 24px rgba(0, 255, 136, 0.35),
+    inset 0 0 20px rgba(0, 255, 136, 0.05);
+}
+
+.amount-input-wrap .rupee {
+  font-size: 28px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+.amount-input-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #00ff88;
+  padding: 16px 10px;
+  font-size: 24px;
+  font-weight: 800;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: -0.5px;
+}
+
+.amount-input-wrap input::placeholder {
+  color: #00ff88;
+  opacity: 0.25;
+}
+
+.amount-input-wrap input::-webkit-outer-spin-button,
+.amount-input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.amount-input-wrap input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.amount-range {
+  text-align: center;
+  color: #00ff88;
+  opacity: 0.6;
+  font-size: 11px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.amount-range b {
+  color: #00ff88;
+  opacity: 1;
+  font-weight: 800;
+}
+
+/* ───── MAX BUTTON ───── */
+.max-btn-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.max-btn {
+  padding: 8px 16px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1.5px solid rgba(0, 255, 136, 0.4);
+  border-radius: 10px;
+  color: #00ff88;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.8px;
+  transition: all 0.2s;
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+.max-btn:active {
+  background: rgba(0, 255, 136, 0.25);
+  transform: scale(0.94);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* ───── QUICK AMOUNTS ───── */
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.quick-amounts button {
+  background: rgba(0, 255, 136, 0.06);
+  color: #00ff88;
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
+  padding: 11px 4px;
+  border-radius: 11px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+
+.quick-amounts button:active,
+.quick-amounts button.selected {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  transform: scale(0.94);
+  box-shadow:
+    0 0 25px rgba(0, 255, 136, 0.55),
+    0 0 50px rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
+}
+
+/* ───── PAYMENT METHOD ───── */
+.method-label {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.method-btn {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1.5px solid rgba(0, 255, 136, 0.15);
+  border-radius: 12px;
+  padding: 12px 8px;
+  color: #00ff88;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.3px;
+}
+
+.method-btn:active {
+  transform: scale(0.96);
+}
+
+.method-btn.selected {
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.2),
+    rgba(0, 255, 136, 0.08));
+  border-color: #00ff88;
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.method-btn .mi {
+  font-size: 15px;
+}
+
+/* ───── ACCOUNT DETAILS INPUT ───── */
+.account-detail-label {
+  font-size: 10.5px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.account-detail-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #00ff88;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: all 0.25s;
+  margin-bottom: 18px;
+}
+
+.account-detail-input:focus {
+  border-color: #00ff88;
+  box-shadow:
+    0 0 24px rgba(0, 255, 136, 0.3),
+    inset 0 0 20px rgba(0, 255, 136, 0.05);
+}
+
+.account-detail-input::placeholder {
+  color: #00ff88;
+  opacity: 0.35;
+  font-weight: 600;
+}
+
+/* ───── SUBMIT BUTTON ───── */
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 17px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 8px 32px rgba(0, 255, 136, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent);
+  animation: btnShine 3s ease-in-out infinite;
+}
+
+@keyframes btnShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.submit-btn:active {
+  transform: scale(0.97);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ───── LOADING SPINNER ───── */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ───── SUCCESS SCREEN ───── */
+.success-screen {
+  display: none;
+  text-align: center;
+  padding: 36px 20px;
+  border-radius: 22px;
+  background: rgba(0, 20, 10, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.5s ease;
+}
+
+.success-screen.active {
+  display: block;
+}
+
+.success-icon-big {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.12);
+  border: 3px solid #00ff88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54px;
+  margin: 0 auto 24px;
+  animation: bounceIn 0.6s ease;
+  box-shadow:
+    0 0 40px rgba(0, 255, 136, 0.5),
+    0 0 80px rgba(0, 255, 136, 0.2);
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+}
+
+.success-sub {
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.success-amount-box {
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.08),
+    rgba(0, 255, 136, 0.04));
+  border: 1.5px solid rgba(0, 255, 136, 0.35);
+  border-radius: 18px;
+  padding: 22px;
+  margin: 20px 0;
+}
+
+.success-amount-label {
+  color: #00ff88;
+  opacity: 0.7;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.success-amount-value {
+  font-size: 38px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1px;
+}
+
+.success-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  font-size: 12.5px;
+  gap: 10px;
+}
+
+.success-row:last-child {
+  border-bottom: none;
+}
+
+.success-row span:first-child {
+  color: #00ff88;
+  opacity: 0.65;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.success-row span:last-child {
+  color: #00ff88;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+  text-align: right;
+  max-width: 60%;
+}
+
+/* ───── BACK HOME BUTTON ───── */
+.back-home-btn {
+  width: 100%;
+  background: rgba(0, 255, 136, 0.08);
+  color: #00ff88;
+  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  padding: 16px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 20px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.back-home-btn:active {
+  background: rgba(0, 255, 136, 0.2);
+  transform: scale(0.97);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+}
+
+/* ───── BOTTOM SPACING ───── */
+.app {
+  padding-bottom: 130px !important;
+}
+
+/* ───── BOTTOM NAV FIX ───── */
+.bottom-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .balance-info-value { font-size: 34px; }
+  .amount-input-wrap input { font-size: 20px; }
+  .amount-input-wrap .rupee { font-size: 24px; }
+  .quick-amounts button { font-size: 11.5px; padding: 10px 3px; }
+  .method-btn { font-size: 11px; padding: 10px 6px; }
+  .submit-btn { font-size: 14px; padding: 15px; }
+  .success-amount-value { font-size: 30px; }
+}
+
+/* ───── SCROLL FIX ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-animation">
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+</div>
+
+<div class="iphone-frame">
+  <div class="iphone-notch"></div>
+
+  <div class="app">
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="page-header">
+      <div class="page-title">💸 Withdraw</div>
+      <div class="page-sub">Cash out your earnings</div>
+    </div>
+
+    <!-- ═══ MAIN FORM ═══ -->
+    <div id="mainForm">
+
+      <!-- Balance Card -->
+      <div class="balance-info-card">
+        <div class="balance-info-label">Available Balance</div>
+        <div class="balance-info-value" id="balanceValue">₹0.00</div>
+        <div class="balance-info-sub">
+          Minimum withdrawal: <b>₹<span id="minWithdrawLabel">50</span></b>
+        </div>
+      </div>
+
+      <!-- Min Warning Banner -->
+      <div class="min-warning" id="minWarning">
+        <span class="icon">⚠️</span>
+        <span>Minimum withdrawal amount is <b>₹<span id="minWithdrawLabel2">50</span></b></span>
+      </div>
+
+      <!-- Withdraw Card -->
+      <div class="withdraw-card">
+
+        <div class="card-title">
+          <i>💰</i> Enter Withdrawal Amount
+        </div>
+
+        <div class="amount-input-wrap">
+          <span class="rupee">₹</span>
+          <input type="number" id="amountInput" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="amount-range">
+          Min: <b>₹<span id="minLabel">50</span></b> • Max: <b>₹<span id="maxLabel">5000</span></b>
+        </div>
+
+        <div class="max-btn-row">
+          <button class="max-btn" onclick="setMaxAmount()">MAX</button>
+        </div>
+
+        <div class="quick-amounts">
+          <button onclick="setAmount(50, this)">₹50</button>
+          <button onclick="setAmount(100, this)">₹100</button>
+          <button onclick="setAmount(500, this)">₹500</button>
+          <button onclick="setAmount(1000, this)">₹1000</button>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="method-label">💳 Select Payment Method</div>
+        <div class="method-grid" id="methodGrid">
+          <button class="method-btn selected" data-method="upi" onclick="selectMethod('upi', this)">
+            <span class="mi">⚡</span> UPI
+          </button>
+          <button class="method-btn" data-method="bank" onclick="selectMethod('bank', this)">
+            <span class="mi">🏦</span> Bank
+          </button>
+          <button class="method-btn" data-method="wallet" onclick="selectMethod('wallet', this)">
+            <span class="mi">🌐</span> Wallet
+          </button>
+          <button class="method-btn" data-method="amazon" onclick="selectMethod('amazon', this)">
+            <span class="mi">📧</span> Amazon
+          </button>
+        </div>
+
+        <!-- Account Details -->
+        <div class="account-detail-label" id="accountDetailLabel">
+          ⚡ Enter your UPI ID
+        </div>
+        <input
+          type="text"
+          id="accountDetailInput"
+          class="account-detail-input"
+          placeholder="yourname@upi"
+          autocomplete="off"
+        >
+
+        <!-- Submit -->
+        <button class="submit-btn" id="submitBtn" onclick="submitWithdraw()">
+          💸 Request Withdrawal
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- ═══ SUCCESS SCREEN ═══ -->
+    <div class="success-screen" id="successScreen">
+      <div class="success-icon-big">✅</div>
+      <div class="success-title">REQUEST SUBMITTED!</div>
+      <div class="success-sub">
+        Your withdrawal request has been sent to admin.<br>
+        It will be processed within 24 hours.
+      </div>
+
+      <div class="success-amount-box">
+        <div class="success-amount-label">Withdrawal Amount</div>
+        <div class="success-amount-value" id="successAmount">₹0.00</div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.35);border-radius:14px;padding:14px;margin-top:10px;border:1px solid rgba(0,255,136,0.1);">
+        <div class="success-row">
+          <span>METHOD</span>
+          <span id="successMethod">UPI</span>
+        </div>
+        <div class="success-row">
+          <span>TO</span>
+          <span id="successTo">-</span>
+        </div>
+        <div class="success-row">
+          <span>STATUS</span>
+          <span style="color:#FFA500;">⏳ PENDING</span>
+        </div>
+        <div class="success-row">
+          <span>NEW BALANCE</span>
+          <span id="successNewBalance">₹0.00</span>
+        </div>
+        <div class="success-row">
+          <span>DATE</span>
+          <span id="successDate">-</span>
+        </div>
+      </div>
+
+      <button class="back-home-btn" onclick="goHome()">
+        🏠 Back to Home
+      </button>
+    </div>
+
+    <!-- ═══ BOTTOM NAV ═══ -->
+    <nav class="bottom-nav glass-nav">
+      <a href="/miniapp" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label" id="nav-home">HOME</span>
+      </a>
+      <a href="/miniapp/task" class="nav-item">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label" id="nav-task">TASK</span>
+      </a>
+      <a href="/miniapp/pay" class="nav-item">
+        <span class="nav-icon">💸</span>
+        <span class="nav-label" id="nav-pay">PAY</span>
+      </a>
+      <a href="/miniapp/profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label" id="nav-profile">PROFILE</span>
+      </a>
+    </nav>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 💸 WITHDRAW PAGE — Complete Logic
+// ============================================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#000000');
+  tg.setBackgroundColor('#000000');
+}
+
+const userId = tg?.initDataUnsafe?.user?.id;
+
+let userBalance = 0;
+let minWithdraw = 50;
+let maxWithdraw = 5000;
+let selectedMethod = 'upi';
+let selectedMethodLabel = 'UPI';
+let userSavedDetails = {};
+
+// ============================================================
+// 🔔 TOAST
+// ============================================================
+function showToast(msg, duration = 2500) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+// ============================================================
+// ⚙️ LOAD CONFIG + USER BALANCE
+// ============================================================
+async function loadConfig() {
+  try {
+    const res = await fetch('/miniapp/api/config');
+    const data = await res.json();
+
+    if (data.success && data.config) {
+      const cfg = data.config;
+
+      if (cfg.minWithdraw) minWithdraw = parseFloat(cfg.minWithdraw);
+      if (cfg.maxWithdraw) maxWithdraw = parseFloat(cfg.maxWithdraw);
+
+      document.getElementById('minWithdrawLabel').textContent = minWithdraw;
+      document.getElementById('minWithdrawLabel2').textContent = minWithdraw;
+      document.getElementById('minLabel').textContent = minWithdraw;
+      document.getElementById('maxLabel').textContent = maxWithdraw;
+
+      // Nav button names
+      if (cfg.btn_home) document.getElementById('nav-home').textContent = cfg.btn_home;
+      if (cfg.btn_task) document.getElementById('nav-task').textContent = cfg.btn_task;
+      if (cfg.btn_pay) document.getElementById('nav-pay').textContent = cfg.btn_pay;
+      if (cfg.btn_profile) document.getElementById('nav-profile').textContent = cfg.btn_profile;
+    }
+  } catch (e) {
+    console.log('Using defaults for withdraw config');
+  }
+}
+
+async function loadBalance() {
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`/miniapp/api/user/${userId}`);
+    const data = await res.json();
+
+    if (data.success && data.user) {
+      userBalance = parseFloat(data.user.balance) || 0;
+      document.getElementById('balanceValue').textContent =
+        '₹' + userBalance.toFixed(2);
+
+      // Pre-fill saved details
+      userSavedDetails = {
+        upi: data.user.upiId || '',
+        bank: data.user.bankAccNo || '',
+        wallet: data.user.walletAccount || '',
+        amazon: data.user.amazonEmail || ''
+      };
+
+      // Auto-fill for default UPI method
+      const input = document.getElementById('accountDetailInput');
+      if (userSavedDetails[selectedMethod]) {
+        input.value = userSavedDetails[selectedMethod];
+      }
+    }
+  } catch (e) {
+    console.error('Balance load failed');
+  }
+}
+
+// ============================================================
+// 📌 AMOUNT HANDLERS
+// ============================================================
+function setAmount(amt, btn) {
+  document.getElementById('amountInput').value = amt;
+  document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('selected'));
+  if (btn) btn.classList.add('selected');
+  haptic('light');
+}
+
+function setMaxAmount() {
+  if (userBalance <= 0) {
+    showToast('❌ No balance available');
+    return;
+  }
+  const max = Math.min(userBalance, maxWithdraw);
+  document.getElementById('amountInput').value = max.toFixed(2);
+  document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('selected'));
+  haptic('light');
+}
+
+// ============================================================
+// 💳 SELECT METHOD
+// ============================================================
+function selectMethod(method, btn) {
+  selectedMethod = method;
+
+  const labels = {
+    upi: 'UPI',
+    bank: 'Bank Transfer',
+    wallet: 'Wallet',
+    amazon: 'Amazon Gift Card'
+  };
+
+  selectedMethodLabel = labels[method] || 'UPI';
+
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  // Update input label + placeholder + value
+  const labels2 = {
+    upi: '⚡ Enter your UPI ID',
+    bank: '🏦 Enter Bank Account Number',
+    wallet: '🌐 Enter Wallet ID',
+    amazon: '📧 Enter Amazon Email'
+  };
+
+  const placeholders = {
+    upi: 'yourname@upi',
+    bank: 'Enter account number',
+    wallet: 'Enter wallet ID / UPI',
+    amazon: 'your@email.com'
+  };
+
+  document.getElementById('accountDetailLabel').textContent = labels2[method];
+  const input = document.getElementById('accountDetailInput');
+  input.placeholder = placeholders[method];
+  input.value = userSavedDetails[method] || '';
+
+  haptic('light');
+}
+
+// ============================================================
+// ✅ SUBMIT WITHDRAWAL
+// ============================================================
+async function submitWithdraw() {
+  const amountStr = document.getElementById('amountInput').value.trim();
+  const detail = document.getElementById('accountDetailInput').value.trim();
+  const btn = document.getElementById('submitBtn');
+
+  // Validations
+  const amount = parseFloat(amountStr);
+
+  if (isNaN(amount) || amount <= 0) {
+    showToast('❌ Enter a valid amount');
+    haptic('error');
+    return;
+  }
+
+  if (amount < minWithdraw) {
+    showToast(`❌ Minimum withdrawal is ₹${minWithdraw}`);
+    haptic('error');
+    return;
+  }
+
+  if (amount > maxWithdraw) {
+    showToast(`❌ Maximum withdrawal is ₹${maxWithdraw}`);
+    haptic('error');
+    return;
+  }
+
+  if (amount > userBalance) {
+    showToast(`❌ Insufficient balance. Available: ₹${userBalance.toFixed(2)}`);
+    haptic('error');
+    return;
+  }
+
+  if (!detail || detail.length < 3) {
+    showToast('❌ Enter valid account details');
+    haptic('error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span> SUBMITTING...';
+
+  try {
+    const res = await fetch('/miniapp/api/withdraw/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        amount: amount,
+        method: selectedMethodLabel,
+        details: detail
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      haptic('success');
+      const newBalance = (userBalance - amount);
+      showSuccessScreen(amount, detail, newBalance);
+    } else {
+      haptic('error');
+      showToast(`❌ ${data.error || 'Request failed'}`);
+      btn.disabled = false;
+      btn.innerHTML = '💸 Request Withdrawal';
+    }
+  } catch (e) {
+    console.error('Withdraw error:', e);
+    showToast('❌ Network error. Try again.');
+    haptic('error');
+    btn.disabled = false;
+    btn.innerHTML = '💸 Request Withdrawal';
+  }
+}
+
+// ============================================================
+// 🎉 SUCCESS SCREEN
+// ============================================================
+function showSuccessScreen(amount, detail, newBalance) {
+  document.getElementById('mainForm').style.display = 'none';
+  document.getElementById('successScreen').classList.add('active');
+
+  document.getElementById('successAmount').textContent = '₹' + amount.toFixed(2);
+  document.getElementById('successMethod').textContent = selectedMethodLabel;
+  document.getElementById('successTo').textContent = detail;
+  document.getElementById('successNewBalance').textContent = '₹' + newBalance.toFixed(2);
+  document.getElementById('successDate').textContent = new Date().toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+
+  // Auto-scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// 🏠 GO HOME
+// ============================================================
+function goHome() {
+  if (tg) {
+    tg.close();
+  } else {
+    window.location.href = '/miniapp';
+  }
+}
+
+// ============================================================
+// 🚀 INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!userId) {
+    document.body.innerHTML = `
+      <div style="padding:50px;text-align:center;color:#00ff88;">
+        <h2>⚠️ Open from Telegram</h2>
+        <p style="color:#00ff88;opacity:0.7;margin-top:20px;">This page works only inside Telegram Mini App.</p>
+      </div>
+    `;
+    return;
+  }
+
+  await loadConfig();
+  await loadBalance();
+
+  console.log('✅ Withdraw page ready');
+});
+
+// Prevent zoom
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.setAmount = setAmount;
+window.setMaxAmount = setMaxAmount;
+window.selectMethod = selectMethod;
+window.submitWithdraw = submitWithdraw;
+window.goHome = goHome;
+</script>
+
+</body>
+</html>
