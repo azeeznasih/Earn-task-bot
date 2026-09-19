@@ -8,9 +8,175 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   ADMIN PANEL — Complete Styles
+   ADMIN PANEL — Premium Styles (Green Glow)
    ═══════════════════════════════════════════════════════ */
 
+/* ───── PAGE HEADER ───── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 18px;
+  margin-bottom: 4px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.6));
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* ───── LOADING ───── */
+.loading {
+  text-align: center;
+  color: #00ff88;
+  opacity: 0.7;
+  padding: 40px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* ───── NOT ADMIN ───── */
+.empty-admin {
+  text-align: center;
+  padding: 60px 20px;
+  color: #00ff88;
+  opacity: 0.85;
+}
+
+.empty-admin .icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+  filter: drop-shadow(0 0 20px rgba(255, 100, 100, 0.4));
+}
+
+.empty-admin > div:first-of-type {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ff6464;
+  margin-bottom: 8px;
+}
+
+/* ───── ADMIN STATS GRID ───── */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.admin-stats .stat-card {
+  padding: 12px 6px;
+  border-radius: 14px;
+  text-align: center;
+  background: rgba(0, 20, 10, 0.5);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+  animation: cardSlideIn 0.4s ease backwards;
+}
+
+.admin-stats .stat-card:active {
+  transform: scale(0.96);
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+.admin-stats .stat-icon {
+  font-size: 20px;
+  margin-bottom: 5px;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
+
+.admin-stats .stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: -0.3px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+.admin-stats .stat-label {
+  font-size: 9px;
+  color: #00ff88;
+  opacity: 0.6;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+/* ───── ADMIN TABS ───── */
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: rgba(0, 20, 10, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tab {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #00ff88;
+  opacity: 0.55;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+
+.admin-tab:active {
+  transform: scale(0.95);
+}
+
+.admin-tab.active {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.15));
+  color: #00ff88;
+  opacity: 1;
+  box-shadow: 
+    0 0 18px rgba(0, 255, 136, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+}
+
+/* ───── ADMIN TAB CONTENT ───── */
 .admin-tab-content {
   animation: fadeIn 0.3s ease;
 }
@@ -20,156 +186,343 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ───── ADMIN MENU / CARD ───── */
+.admin-menu {
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.admin-menu .section-title {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.7;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+/* ───── ADMIN MENU BUTTON ───── */
+.admin-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: rgba(0, 20, 10, 0.5);
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  color: #00ff88;
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 8px;
+  font-family: inherit;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.admin-menu-btn:active {
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.4);
+  transform: scale(0.98) translateX(4px);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+.admin-menu-btn .menu-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.3));
+}
+
+.admin-menu-btn .menu-text {
+  flex: 1;
+  color: #00ff88;
+  font-weight: 700;
+}
+
+.admin-menu-btn .menu-arrow {
+  color: #00ff88;
+  opacity: 0.5;
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.admin-menu-btn:active .menu-arrow {
+  transform: translateX(4px);
+  opacity: 1;
+}
+
+/* ───── ADMIN NOTE ───── */
+.admin-note {
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #00ff88;
+  opacity: 0.85;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px dashed rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.04);
+}
+
+.admin-note b {
+  color: #00ff88;
+  font-weight: 800;
+  background: rgba(0, 255, 136, 0.15);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: 'SF Mono', monospace;
+}
+
+/* ───── ADMIN LIST ───── */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ───── ADMIN ITEM (request cards) ───── */
 .admin-item {
-  background: rgba(17, 26, 17, 0.55);
+  background: rgba(0, 20, 10, 0.55);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 16px;
   padding: 14px;
   margin-bottom: 10px;
   animation: cardSlideIn 0.3s ease backwards;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.admin-item:active {
+  transform: scale(0.99);
 }
 
 .admin-item-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  gap: 10px;
 }
+
 .admin-item-id {
-  font-size: 12px;
-  color: #7a9a7a;
+  font-size: 11.5px;
+  color: #00ff88;
+  opacity: 0.7;
   font-weight: 700;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
+
 .admin-item-amount {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #00ff88;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  letter-spacing: -0.3px;
 }
 
 .admin-item-row {
   font-size: 12px;
-  color: #ccc;
+  color: #00ff88;
+  opacity: 0.85;
   margin-bottom: 6px;
   line-height: 1.5;
   word-break: break-all;
-}
-.admin-item-row b { color: #7a9a7a; margin-right: 4px; }
-.admin-item-row code {
-  background: rgba(0, 0, 0, 0.4);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #00ff88;
-  font-size: 11px;
+  font-weight: 600;
 }
 
+.admin-item-row b {
+  color: #00ff88;
+  opacity: 0.55;
+  margin-right: 5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.admin-item-row code {
+  background: rgba(0, 255, 136, 0.08);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #00ff88;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+/* ───── ACTION BUTTONS ───── */
 .admin-item-actions {
   display: flex;
   gap: 8px;
   margin-top: 12px;
 }
 
-.btn-approve, .btn-reject {
+.btn-approve,
+.btn-reject {
   flex: 1;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12.5px;
   cursor: pointer;
   transition: transform 0.15s;
   font-family: inherit;
+  letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
 }
+
 .btn-approve {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.35);
 }
+
 .btn-reject {
-  background: rgba(255, 85, 85, 0.15);
-  color: #ff5555;
-  border: 1px solid rgba(255, 85, 85, 0.3);
+  background: rgba(255, 100, 100, 0.12);
+  color: #ff6464;
+  border: 1.5px solid rgba(255, 100, 100, 0.35);
 }
-.btn-approve:active, .btn-reject:active { transform: scale(0.95); }
-.btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.empty-admin {
-  text-align: center;
-  padding: 40px 20px;
-  color: #7a9a7a;
+.btn-approve:active,
+.btn-reject:active {
+  transform: scale(0.95);
 }
-.empty-admin .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
 
-/* Customization section */
+.btn-approve:disabled,
+.btn-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ───── CUSTOMIZE CARD ───── */
 .customize-card {
-  background: rgba(17, 26, 17, 0.55);
+  background: rgba(0, 20, 10, 0.55);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 18px;
   padding: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: cardSlideIn 0.4s ease backwards;
 }
 
 .customize-title {
-  font-size: 13px;
+  font-size: 11px;
   color: #00ff88;
-  font-weight: 700;
-  letter-spacing: 1px;
-  margin-bottom: 12px;
+  opacity: 0.7;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
+  text-transform: uppercase;
+}
+
+.customize-title i,
+.customize-title::before {
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .customize-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
 .customize-row input {
   flex: 1;
+  min-width: 0;
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
   border-radius: 12px;
-  color: #fff;
+  color: #00ff88;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   outline: none;
-  font-family: inherit;
-}
-
-.customize-row input:focus {
-  border-color: #00ff88;
-  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
-}
-
-.customize-row button {
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 800;
-  font-size: 12px;
-  cursor: pointer;
   font-family: inherit;
   transition: all 0.2s;
 }
 
+.customize-row input:focus {
+  border-color: #00ff88;
+  background: rgba(0, 30, 15, 0.6);
+  box-shadow: 
+    0 0 0 3px rgba(0, 255, 136, 0.1),
+    0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+.customize-row input::placeholder {
+  color: #00ff88;
+  opacity: 0.4;
+}
+
+.customize-row button {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
 .btn-save {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
 }
 
 .btn-reset {
-  background: rgba(255, 85, 85, 0.15);
-  color: #ff5555;
-  border: 1px solid rgba(255, 85, 85, 0.3) !important;
+  background: rgba(255, 100, 100, 0.12);
+  color: #ff6464;
+  border: 1.5px solid rgba(255, 100, 100, 0.35) !important;
 }
 
-.customize-row button:active { transform: scale(0.95); }
+.customize-row button:active {
+  transform: scale(0.94);
+}
 
-/* Admin management */
+/* ───── SAVE ALL BUTTON ───── */
+.save-all-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 6px 20px rgba(0, 170, 255, 0.35);
+  transition: transform 0.15s;
+}
+
+.save-all-btn:active {
+  transform: scale(0.97);
+}
+
+/* ───── ADMIN LIST SIMPLE ───── */
 .admin-list-simple {
   display: flex;
   flex-direction: column;
@@ -180,15 +533,23 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  background: rgba(0, 20, 10, 0.55);
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  border-radius: 14px;
   padding: 12px 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.admin-user-row:active {
+  transform: scale(0.99);
+  border-color: rgba(0, 255, 136, 0.3);
 }
 
 .admin-user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: linear-gradient(135deg, #00ff88, #00aaff);
   display: flex;
@@ -196,40 +557,69 @@
   justify-content: center;
   font-size: 18px;
   font-weight: 800;
-  color: #000;
+  color: #000000;
   flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
-.admin-user-info { flex: 1; min-width: 0; }
-.admin-user-name { font-size: 14px; font-weight: 700; color: #fff; }
-.admin-user-id { font-size: 11px; color: #7a9a7a; margin-top: 2px; font-family: 'SF Mono', monospace; }
+.admin-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-user-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-id {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.6;
+  margin-top: 3px;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-weight: 600;
+}
 
 .admin-user-actions {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .admin-user-actions button {
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: none;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   font-family: inherit;
+  transition: transform 0.15s;
 }
 
 .admin-user-actions .btn-profile {
   background: rgba(0, 170, 255, 0.15);
   color: #00aaff;
+  border: 1px solid rgba(0, 170, 255, 0.3);
 }
 
 .admin-user-actions .btn-remove {
-  background: rgba(255, 85, 85, 0.15);
-  color: #ff5555;
+  background: rgba(255, 100, 100, 0.15);
+  color: #ff6464;
+  border: 1px solid rgba(255, 100, 100, 0.3);
 }
 
-/* Add new block */
+.admin-user-actions button:active {
+  transform: scale(0.9);
+}
+
+/* ───── ADD ROW ───── */
 .add-row {
   display: flex;
   gap: 8px;
@@ -238,38 +628,62 @@
 
 .add-row input {
   flex: 1;
-  padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  min-width: 0;
+  padding: 13px 15px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-radius: 12px;
-  color: #fff;
-  font-size: 13px;
+  color: #00ff88;
+  font-size: 13.5px;
+  font-weight: 700;
   outline: none;
   font-family: inherit;
+  transition: all 0.2s;
+}
+
+.add-row input:focus {
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
+}
+
+.add-row input::placeholder {
+  color: #00ff88;
+  opacity: 0.4;
+  font-weight: 600;
 }
 
 .add-row button {
-  padding: 12px 18px;
+  padding: 13px 20px;
   border-radius: 12px;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
+  color: #000000;
   border: none;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 12.5px;
   cursor: pointer;
   font-family: inherit;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.35);
+  transition: transform 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
-/* Section divider */
+.add-row button:active {
+  transform: scale(0.95);
+}
+
+/* ───── SECTION DIVIDER ───── */
 .section-divider {
   display: flex;
   align-items: center;
   gap: 10px;
   margin: 20px 0 12px;
-  color: #7a9a7a;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  color: #00ff88;
+  opacity: 0.6;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
 .section-divider::before,
@@ -277,26 +691,40 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 255, 136, 0.2),
+    transparent);
 }
 
-/* Save all button */
-.save-all-btn {
-  width: 100%;
-  padding: 14px;
-  margin-top: 8px;
-  background: linear-gradient(135deg, #00aaff, #0088cc);
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  font-family: inherit;
+/* ───── BOTTOM NAV FIX ───── */
+.bottom-nav {
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
 }
 
-.save-all-btn:active { transform: scale(0.97); }
+.app {
+  padding-bottom: 130px !important;
+}
+
+/* ───── SCROLL FIX ───── */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 380px) {
+  .admin-stats .stat-value { font-size: 14px; }
+  .admin-stats .stat-icon { font-size: 18px; }
+  .admin-tab { padding: 9px 11px; font-size: 11px; }
+  .admin-item-amount { font-size: 15px; }
+  .customize-row input { font-size: 12px; padding: 10px 12px; }
+  .customize-row button { padding: 10px 12px; font-size: 10px; }
+}
 </style>
 </head>
 <body>
@@ -312,6 +740,7 @@
 
   <div class="app">
 
+    <!-- ═══ TOPBAR ═══ -->
     <header class="topbar">
       <div class="logo">
         <span class="logo-icon">👑</span>
@@ -319,23 +748,23 @@
       </div>
     </header>
 
-    <!-- LOADING -->
+    <!-- ═══ LOADING ═══ -->
     <div id="adminLoading" class="loading">⏳ Loading admin data...</div>
 
-    <!-- NOT ADMIN -->
+    <!-- ═══ NOT ADMIN ═══ -->
     <div id="notAdminMsg" class="empty-admin" style="display:none;">
       <div class="icon">🚫</div>
-      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">Access Denied</div>
-      <div>You are not an admin!</div>
+      <div>Access Denied</div>
+      <div style="font-size:13px;opacity:0.7;">You are not an admin!</div>
     </div>
 
-    <!-- ADMIN CONTENT -->
+    <!-- ═══ ADMIN CONTENT ═══ -->
     <div id="adminContent" style="display:none;">
 
-      <!-- ADMIN INFO -->
+      <!-- Admin Info -->
       <div class="user-card glass">
         <div class="user-info">
-          <div class="avatar" style="border-color:#ff6b6b;background:rgba(255,107,107,0.15);">
+          <div class="avatar" style="border-color:#00ff88;background:rgba(0,255,136,0.15);">
             <span>👑</span>
           </div>
           <div>
@@ -345,7 +774,7 @@
         </div>
       </div>
 
-      <!-- STATS GRID -->
+      <!-- Stats Grid -->
       <div class="admin-stats">
         <div class="stat-card glass">
           <div class="stat-icon">👥</div>
@@ -355,7 +784,7 @@
         <div class="stat-card glass">
           <div class="stat-icon">💰</div>
           <div class="stat-value" id="statBalance">₹0</div>
-          <div class="stat-label">Total Balance</div>
+          <div class="stat-label">Balance</div>
         </div>
         <div class="stat-card glass">
           <div class="stat-icon">📋</div>
@@ -379,7 +808,7 @@
         </div>
       </div>
 
-      <!-- TABS (scrollable) -->
+      <!-- Tabs -->
       <div class="admin-tabs glass">
         <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊</button>
         <button class="admin-tab" onclick="switchTab('withdrawals')" data-tab="withdrawals">💸 WD</button>
@@ -433,7 +862,7 @@
 
       <!-- ═══ TAB: WITHDRAWALS ═══ -->
       <div id="tab-withdrawals" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
+        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
           <div class="section-title" style="margin-bottom:0;">💸 PENDING WITHDRAWALS</div>
         </div>
         <div id="withdrawalList" class="admin-list">
@@ -443,7 +872,7 @@
 
       <!-- ═══ TAB: ADD FUND ═══ -->
       <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
+        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
           <div class="section-title" style="margin-bottom:0;">💰 PENDING ADD FUND</div>
         </div>
         <div id="addFundList" class="admin-list">
@@ -453,7 +882,7 @@
 
       <!-- ═══ TAB: SUBMISSIONS ═══ -->
       <div id="tab-submissions" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
+        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
           <div class="section-title" style="margin-bottom:0;">📸 PENDING TASK SUBMISSIONS</div>
         </div>
         <div id="submissionList" class="admin-list">
@@ -463,7 +892,7 @@
 
       <!-- ═══ TAB: USERS ═══ -->
       <div id="tab-users" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:12px; margin-bottom:10px;">
+        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
           <div class="section-title" style="margin-bottom:0;">👥 ALL USERS</div>
         </div>
         <div id="userList" class="admin-list">
@@ -474,46 +903,43 @@
       <!-- ═══ TAB: CUSTOMIZE ═══ -->
       <div id="tab-customize" class="admin-tab-content" style="display:none;">
 
-        <!-- App Logo -->
         <div class="customize-card">
           <div class="customize-title">⚡ APP LOGO</div>
           <div class="customize-row">
             <input type="text" id="cust_logo" placeholder="Task Earn Bot">
             <button class="btn-save" onclick="saveCustomize('app_logo', 'cust_logo')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('app_logo', 'cust_logo')">Reset</button>
+            <button class="btn-reset" onclick="resetCustomize('app_logo', 'cust_logo')">↺</button>
           </div>
         </div>
 
-        <!-- Button Names -->
         <div class="customize-card">
           <div class="customize-title">🔘 BUTTON NAMES</div>
 
           <div class="customize-row">
             <input type="text" id="cust_home" placeholder="HOME">
             <button class="btn-save" onclick="saveCustomize('btn_home', 'cust_home')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_home', 'cust_home')">Reset</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_home', 'cust_home')">↺</button>
           </div>
 
           <div class="customize-row">
             <input type="text" id="cust_task" placeholder="TASK">
             <button class="btn-save" onclick="saveCustomize('btn_task', 'cust_task')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_task', 'cust_task')">Reset</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_task', 'cust_task')">↺</button>
           </div>
 
           <div class="customize-row">
             <input type="text" id="cust_pay" placeholder="PAY">
             <button class="btn-save" onclick="saveCustomize('btn_pay', 'cust_pay')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_pay', 'cust_pay')">Reset</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_pay', 'cust_pay')">↺</button>
           </div>
 
           <div class="customize-row">
             <input type="text" id="cust_profile" placeholder="PROFILE">
             <button class="btn-save" onclick="saveCustomize('btn_profile', 'cust_profile')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_profile', 'cust_profile')">Reset</button>
+            <button class="btn-reset" onclick="resetCustomize('btn_profile', 'cust_profile')">↺</button>
           </div>
         </div>
 
-        <!-- Reset All -->
         <button class="save-all-btn" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);" onclick="resetAllCustomize()">
           🔄 Reset All to Default
         </button>
@@ -542,6 +968,7 @@
 
     </div>
 
+    <!-- ═══ BOTTOM NAV ═══ -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
         <span class="nav-icon">🏠</span>
@@ -566,7 +993,7 @@
 
 <script>
 // ============================================================
-// 👑 ADMIN PANEL — Mini App (Complete)
+// 👑 ADMIN PANEL — Complete Logic (Working Condition)
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -583,7 +1010,6 @@ let isAdminUser = false;
 let isOwner = false;
 let appConfig = {};
 
-// Default values for reset
 const DEFAULTS = {
   app_logo: "Task Earn Bot",
   btn_home: "HOME",
@@ -677,7 +1103,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadUsers();
   await loadCustomize();
 
-  // Admins tab — only for owner
   if (isOwner) {
     await loadAdmins();
   }
@@ -711,32 +1136,27 @@ async function loadAdminInfo() {
 // 📊 LOAD STATS
 // ============================================================
 async function loadStats() {
-  // Total users + balance
   const d1 = await apiCall('/miniapp/api/total-balance');
   if (d1.success) {
     document.getElementById('statUsers').textContent = d1.totalUsers || 0;
     document.getElementById('statBalance').textContent = '₹' + (d1.totalBalance || 0).toFixed(0);
   }
 
-  // Tasks
   const d2 = await apiCall('/miniapp/api/tasks');
   if (d2.success) {
     document.getElementById('statTasks').textContent = d2.tasks?.length || 0;
   }
 
-  // Pending WD
   const d3 = await apiCall('/miniapp/api/admin/pending-withdrawals');
   if (d3.success) {
     document.getElementById('statWd').textContent = d3.withdrawals?.length || 0;
   }
 
-  // Pending AF
   const d4 = await apiCall('/miniapp/api/admin/pending-addfunds');
   if (d4.success) {
     document.getElementById('statAf').textContent = d4.addFunds?.length || 0;
   }
 
-  // Pending Subs
   const d5 = await apiCall('/miniapp/api/admin/pending-submissions');
   if (d5.success) {
     document.getElementById('statSub').textContent = d5.submissions?.length || 0;
@@ -779,7 +1199,7 @@ async function loadWithdrawals() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div>No pending withdrawals</div>
+        <div style="color:#00ff88;opacity:0.7;">No pending withdrawals</div>
       </div>
     `;
     return;
@@ -848,7 +1268,7 @@ async function loadAddFunds() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div>No pending add funds</div>
+        <div style="color:#00ff88;opacity:0.7;">No pending add funds</div>
       </div>
     `;
     return;
@@ -915,7 +1335,7 @@ async function loadSubmissions() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div>No pending submissions</div>
+        <div style="color:#00ff88;opacity:0.7;">No pending submissions</div>
       </div>
     `;
     return;
@@ -983,7 +1403,7 @@ async function loadUsers() {
   const data = await apiCall('/miniapp/api/admin/all-users');
 
   if (!data.success || !data.users || data.users.length === 0) {
-    listEl.innerHTML = '<div class="empty-admin">No users</div>';
+    listEl.innerHTML = '<div class="empty-admin" style="color:#00ff88;opacity:0.7;">No users</div>';
     return;
   }
 
@@ -1006,7 +1426,7 @@ async function loadUsers() {
 }
 
 // ============================================================
-// 🎨 CUSTOMIZE — Load current values
+// 🎨 CUSTOMIZE
 // ============================================================
 async function loadCustomize() {
   const res = await apiCall('/miniapp/api/config');
@@ -1021,7 +1441,6 @@ async function loadCustomize() {
   }
 }
 
-// Save single field
 async function saveCustomize(key, inputId) {
   const input = document.getElementById(inputId);
   const value = input.value.trim();
@@ -1046,7 +1465,6 @@ async function saveCustomize(key, inputId) {
   }
 }
 
-// Reset single field to default
 async function resetCustomize(key, inputId) {
   if (!confirm(`Reset ${key} to default?`)) return;
 
@@ -1065,7 +1483,6 @@ async function resetCustomize(key, inputId) {
   }
 }
 
-// Reset all
 async function resetAllCustomize() {
   if (!confirm('Reset ALL customization to default?')) return;
 
@@ -1091,7 +1508,7 @@ async function loadAdmins() {
 
   const data = await apiCall('/miniapp/api/admin/list');
   if (!data.success || !data.admins) {
-    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
+    listEl.innerHTML = '<div class="empty-admin" style="color:#00ff88;opacity:0.7;">Failed to load</div>';
     return;
   }
 
