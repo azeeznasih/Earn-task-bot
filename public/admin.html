@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Admin Panel</title>
-<link rel="stylesheet" href="style.css">
+<title>Admin Control Core</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   ADMIN PANEL — Premium Styles + SCROLL FIX
+   ADMIN CONTROL CORE — Green Glassmorphism Premium
    ═══════════════════════════════════════════════════════ */
 
-/* ───── 🔓 SCROLL FIX (CRITICAL) ───── */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* ───── 🔓 SCROLL FIX ───── */
 html, body {
   height: auto !important;
   min-height: 100vh !important;
@@ -23,30 +24,52 @@ html, body {
   overscroll-behavior-y: auto !important;
   touch-action: pan-y !important;
   padding-bottom: 200px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0e0a;
+  color: #ffffff;
 }
 
-.app {
-  overflow: visible !important;
-  max-height: none !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  padding-bottom: 220px !important;
-  position: relative !important;
-}
-
-.app::after {
+/* ───── GREEN GLASSMORPHISM BACKGROUND ───── */
+body::before {
   content: '';
-  display: block;
-  height: 120px;
-  width: 100%;
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(0, 255, 100, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 90% 90%, rgba(0, 200, 80, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 150, 0.05) 0%, transparent 70%),
+    linear-gradient(135deg, #0a0e0a 0%, #0d140d 100%);
+  z-index: -2;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0, 255, 100, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0, 200, 80, 0.06) 0%, transparent 40%);
+  animation: bgFloat 20s ease-in-out infinite;
+  z-index: -1;
   pointer-events: none;
 }
 
-.iphone-frame {
-  min-height: 100vh !important;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(20px, -20px) rotate(5deg); }
+  66% { transform: translate(-20px, 20px) rotate(-5deg); }
+}
+
+/* ───── CONTAINER ───── */
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 14px 220px;
+  position: relative;
+  z-index: 1;
 }
 
 /* ───── TOPBAR ───── */
@@ -56,6 +79,17 @@ html, body {
   justify-content: space-between;
   padding: 8px 0 18px;
   margin-bottom: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 14, 10, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-left: -14px;
+  margin-right: -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.10);
 }
 
 .logo {
@@ -64,9 +98,19 @@ html, body {
   gap: 10px;
 }
 
-.logo-icon {
-  font-size: 24px;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.6));
+.logo-icon-svg {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon-svg svg {
+  width: 28px;
+  height: 28px;
+  fill: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
 }
 
 .logo-text {
@@ -90,16 +134,32 @@ html, body {
   font-weight: 700;
 }
 
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(0, 255, 136, 0.15);
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .empty-admin {
   text-align: center;
-  padding: 60px 20px;
+  padding: 40px 20px;
   color: #00ff88;
-  opacity: 0.85;
+  opacity: 0.75;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .empty-admin .icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  font-size: 48px;
+  margin-bottom: 12px;
   opacity: 0.5;
 }
 
@@ -108,24 +168,51 @@ html, body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .admin-stats .stat-card {
-  padding: 12px 6px;
-  border-radius: 14px;
+  padding: 14px 8px;
+  border-radius: 16px;
   text-align: center;
-  background: rgba(0, 20, 10, 0.5);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  background: rgba(0, 255, 100, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  animation: cardSlideIn 0.4s ease backwards;
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.admin-stats .stat-card::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -30%;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.admin-stats .stat-card:active {
+  transform: scale(0.97);
 }
 
 .admin-stats .stat-icon {
-  font-size: 20px;
-  margin-bottom: 5px;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-stats .stat-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .admin-stats .stat-value {
@@ -133,16 +220,20 @@ html, body {
   font-weight: 800;
   color: #00ff88;
   text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  position: relative;
+  z-index: 1;
 }
 
 .admin-stats .stat-label {
   font-size: 9px;
   color: #00ff88;
-  opacity: 0.6;
+  opacity: 0.65;
   letter-spacing: 0.8px;
   font-weight: 700;
-  margin-top: 3px;
+  margin-top: 4px;
   text-transform: uppercase;
+  position: relative;
+  z-index: 1;
 }
 
 /* ───── ADMIN TABS ───── */
@@ -154,11 +245,11 @@ html, body {
   margin-bottom: 14px;
   overflow-x: auto;
   scrollbar-width: none;
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 255, 100, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .admin-tabs::-webkit-scrollbar {
@@ -179,6 +270,15 @@ html, body {
   transition: all 0.25s;
   white-space: nowrap;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-tab svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .admin-tab:active {
@@ -186,7 +286,7 @@ html, body {
 }
 
 .admin-tab.active {
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.15));
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.20), rgba(0, 200, 100, 0.15));
   color: #00ff88;
   opacity: 1;
   box-shadow: 0 0 18px rgba(0, 255, 136, 0.35);
@@ -203,6 +303,16 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ───── GLASS CARD ───── */
+.glass {
+  background: rgba(0, 255, 100, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
 /* ───── ADMIN MENU ───── */
 .admin-menu {
   border-radius: 20px;
@@ -213,7 +323,7 @@ html, body {
 .admin-menu .section-title {
   font-size: 11px;
   color: #00ff88;
-  opacity: 0.7;
+  opacity: 0.75;
   letter-spacing: 1.5px;
   font-weight: 800;
   margin-bottom: 12px;
@@ -226,8 +336,8 @@ html, body {
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: rgba(0, 20, 10, 0.5);
-  border: 1px solid rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 100, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   color: #00ff88;
   padding: 14px;
   border-radius: 14px;
@@ -238,6 +348,20 @@ html, body {
   font-family: inherit;
   text-align: left;
   transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-menu-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .admin-menu-btn:active {
@@ -246,9 +370,25 @@ html, body {
   transform: scale(0.98) translateX(4px);
 }
 
+.admin-menu-btn:active::before {
+  opacity: 1;
+}
+
 .admin-menu-btn .menu-icon {
-  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 10px;
   flex-shrink: 0;
+}
+
+.admin-menu-btn .menu-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .admin-menu-btn .menu-text {
@@ -261,6 +401,7 @@ html, body {
   color: #00ff88;
   opacity: 0.5;
   font-size: 20px;
+  font-weight: 300;
 }
 
 /* ───── ADMIN NOTE ───── */
@@ -277,24 +418,31 @@ html, body {
   background: rgba(0, 255, 136, 0.04);
 }
 
-/* ───── ADMIN LIST ───── */
+.admin-note b {
+  color: #00ff88;
+}
+
+/* ───── ADMIN ITEM (Cards) ───── */
 .admin-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-/* ───── ADMIN ITEM ───── */
 .admin-item {
-  background: rgba(0, 20, 10, 0.55);
+  background: rgba(0, 255, 100, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.18);
   border-radius: 16px;
   padding: 14px;
-  margin-bottom: 10px;
   animation: cardSlideIn 0.3s ease backwards;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .admin-item-header {
@@ -310,7 +458,7 @@ html, body {
 .admin-item-id {
   font-size: 11.5px;
   color: #00ff88;
-  opacity: 0.7;
+  opacity: 0.75;
   font-weight: 700;
   font-family: 'SF Mono', 'Courier New', monospace;
 }
@@ -355,6 +503,7 @@ html, body {
   margin-top: 12px;
 }
 
+/* ───── BUTTONS ───── */
 .btn-approve,
 .btn-reject {
   flex: 1;
@@ -387,10 +536,10 @@ html, body {
 
 /* ───── CUSTOMIZE CARD ───── */
 .customize-card {
-  background: rgba(0, 20, 10, 0.55);
+  background: rgba(0, 255, 100, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.18);
   border-radius: 18px;
   padding: 16px;
   margin-bottom: 14px;
@@ -400,7 +549,7 @@ html, body {
 .customize-title {
   font-size: 11px;
   color: #00ff88;
-  opacity: 0.7;
+  opacity: 0.75;
   font-weight: 800;
   letter-spacing: 1.5px;
   margin-bottom: 14px;
@@ -418,7 +567,7 @@ html, body {
   min-width: 0;
   padding: 12px 14px;
   background: rgba(0, 0, 0, 0.45);
-  border: 1.5px solid rgba(0, 255, 136, 0.2);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
   border-radius: 12px;
   color: #00ff88;
   font-size: 13px;
@@ -469,6 +618,44 @@ html, body {
   font-family: inherit;
 }
 
+/* ───── LIMITS ───── */
+.limits-card {
+  background: rgba(0, 255, 100, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.limits-current {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 255, 136, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 136, 0.12);
+}
+
+.limits-current-label {
+  font-size: 11px;
+  color: #00ff88;
+  opacity: 0.7;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.limits-current-value {
+  font-size: 15px;
+  color: #00ff88;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
 /* ───── ADMIN USER ROW ───── */
 .admin-list-simple {
   display: flex;
@@ -480,8 +667,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 20, 10, 0.55);
-  border: 1px solid rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 100, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 14px;
   padding: 12px 14px;
 }
@@ -498,6 +685,10 @@ html, body {
   font-weight: 800;
   color: #000000;
   flex-shrink: 0;
+}
+
+.admin-user-avatar.owner-avatar {
+  background: linear-gradient(135deg, #ffcc00, #ff9900);
 }
 
 .admin-user-info {
@@ -587,7 +778,7 @@ html, body {
   background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.2), transparent);
 }
 
-/* ───── BOTTOM NAV FIX ───── */
+/* ───── BOTTOM NAV ───── */
 .bottom-nav,
 .glass-nav {
   position: fixed !important;
@@ -599,6 +790,44 @@ html, body {
   opacity: 1 !important;
   display: flex !important;
   pointer-events: auto !important;
+  background: rgba(10, 14, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  border-radius: 22px;
+  padding: 8px 12px;
+  gap: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #00ff88;
+  opacity: 0.55;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.nav-item.active,
+.nav-item:active {
+  opacity: 1;
+  background: rgba(0, 255, 136, 0.12);
+}
+
+.nav-icon {
+  font-size: 18px;
+}
+
+.nav-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 /* ───── TOAST ───── */
@@ -618,282 +847,462 @@ html, body {
   text-align: center;
   box-shadow: 0 8px 32px rgba(0, 255, 136, 0.5);
   animation: toastUp 0.3s ease;
+  pointer-events: none;
 }
 
 @keyframes toastUp {
   from { opacity: 0; transform: translate(-50%, 20px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 360px) {
+  .admin-stats { gap: 6px; }
+  .admin-stats .stat-card { padding: 12px 6px; }
+  .admin-stats .stat-value { font-size: 14px; }
+  .admin-tab { padding: 8px 10px; font-size: 11px; }
+  .app { padding: 12px 10px 220px; }
+}
+
+/* ───── SCROLLBAR (for scroll) ───── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 255, 136, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.3);
+  border-radius: 2px;
+}
 </style>
 </head>
+
 <body>
 
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
+<div class="app">
 
-<div class="iphone-frame">
-  <div class="iphone-notch"></div>
-
-  <div class="app">
-
-    <header class="topbar">
-      <div class="logo">
-        <span class="logo-icon">👑</span>
-        <span class="logo-text" id="appLogo">ADMIN PANEL</span>
+  <!-- ═══════════════════════════════════════════════════════
+       TOPBAR
+       ═══════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon-svg">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l6 2.67v4.33c0 3.7-2.56 7.16-6 8-3.44-.84-6-4.3-6-8V7.67L12 5z"/></svg>
       </div>
-    </header>
+      <span class="logo-text" id="appLogo">ADMIN CONTROL</span>
+    </div>
+  </header>
 
-    <div id="adminLoading" class="loading">⏳ Loading admin data...</div>
+  <!-- ═══════════════════════════════════════════════════════
+       LOADING
+       ═══════════════════════════════════════════════════════ -->
+  <div id="adminLoading" class="loading">
+    <div class="spinner"></div>
+    Loading admin data...
+  </div>
 
-    <div id="notAdminMsg" class="empty-admin" style="display:none;">
-      <div class="icon">🚫</div>
-      <div style="font-size:16px;font-weight:700;color:#ff6464;margin-bottom:8px;">Access Denied</div>
-      <div style="font-size:13px;opacity:0.7;">You are not an admin!</div>
+  <!-- ═══════════════════════════════════════════════════════
+       NOT ADMIN
+       ═══════════════════════════════════════════════════════ -->
+  <div id="notAdminMsg" class="empty-admin" style="display:none;">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="#ff6464" width="48" height="48"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/></svg>
+    </div>
+    <div style="font-size:16px;font-weight:800;color:#ff6464;margin-bottom:8px;">Access Denied</div>
+    <div style="font-size:13px;opacity:0.7;">You are not an admin!</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════════════════ -->
+  <div id="adminContent" style="display:none;">
+
+    <!-- ═══════════════════════════════════════════════════════
+         ADMIN STATS (6 cards)
+         ═══════════════════════════════════════════════════════ -->
+    <div class="admin-stats">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#4A9EFF"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div class="stat-value" id="statUsers">0</div>
+        <div class="stat-label">Users</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#FFC107"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        <div class="stat-value" id="statBalance">₹0</div>
+        <div class="stat-label">Balance</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#00C853"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+        </div>
+        <div class="stat-value" id="statTasks">0</div>
+        <div class="stat-label">Tasks</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#FF9800"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        <div class="stat-value" id="statWd">0</div>
+        <div class="stat-label">Pend WD</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#4A9EFF"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2zm-6 7h2v2h-2v-2zm-4 0h2v2h-2v-2z"/></svg>
+        </div>
+        <div class="stat-value" id="statAf">0</div>
+        <div class="stat-label">Pend AF</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="#F44336"><path d="M9 3L5 7h3v6h2V7h3L9 3zm6 14h-3v-6h-2v6H7l4 4 4-4z"/></svg>
+        </div>
+        <div class="stat-value" id="statSub">0</div>
+        <div class="stat-label">Pend Sub</div>
+      </div>
     </div>
 
-    <div id="adminContent" style="display:none;">
+    <!-- ═══════════════════════════════════════════════════════
+         TABS
+         ═══════════════════════════════════════════════════════ -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Dash
+      </button>
+      <button class="admin-tab" data-tab="withdrawals" onclick="switchTab('withdrawals')">
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        WD
+      </button>
+      <button class="admin-tab" data-tab="addfunds" onclick="switchTab('addfunds')">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        AF
+      </button>
+      <button class="admin-tab" data-tab="submissions" onclick="switchTab('submissions')">
+        <svg viewBox="0 0 24 24"><path d="M9 3L5 7h3v6h2V7h3L9 3zm6 14h-3v-6h-2v6H7l4 4 4-4z"/></svg>
+        Tasks
+      </button>
+      <button class="admin-tab" data-tab="users" onclick="switchTab('users')">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Users
+      </button>
+      <button class="admin-tab" data-tab="limits" onclick="switchTab('limits')">
+        <svg viewBox="0 0 24 24"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
+        Limits
+      </button>
+      <button class="admin-tab" data-tab="customize" onclick="switchTab('customize')">
+        <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+        Theme
+      </button>
+      <button class="admin-tab" data-tab="admins" onclick="switchTab('admins')">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        Admins
+      </button>
+    </div>
 
-      <div class="user-card glass">
-        <div class="user-info">
-          <div class="avatar" style="border-color:#00ff88;background:rgba(0,255,136,0.15);">
-            <span>👑</span>
-          </div>
-          <div>
-            <div class="username" id="adminName">Admin</div>
-            <div class="userid" id="adminId">ID: -</div>
-          </div>
-        </div>
-      </div>
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: DASHBOARD
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-dashboard" class="admin-tab-content">
+      <div class="admin-menu glass">
+        <div class="section-title">⚡ QUICK ACTIONS</div>
 
-      <div class="admin-stats">
-        <div class="stat-card glass">
-          <div class="stat-icon">👥</div>
-          <div class="stat-value" id="statUsers">0</div>
-          <div class="stat-label">Users</div>
-        </div>
-        <div class="stat-card glass">
-          <div class="stat-icon">💰</div>
-          <div class="stat-value" id="statBalance">₹0</div>
-          <div class="stat-label">Balance</div>
-        </div>
-        <div class="stat-card glass">
-          <div class="stat-icon">📋</div>
-          <div class="stat-value" id="statTasks">0</div>
-          <div class="stat-label">Tasks</div>
-        </div>
-        <div class="stat-card glass">
-          <div class="stat-icon">💸</div>
-          <div class="stat-value" id="statWd">0</div>
-          <div class="stat-label">Pending WD</div>
-        </div>
-        <div class="stat-card glass">
-          <div class="stat-icon">💰</div>
-          <div class="stat-value" id="statAf">0</div>
-          <div class="stat-label">Pending AF</div>
-        </div>
-        <div class="stat-card glass">
-          <div class="stat-icon">📸</div>
-          <div class="stat-value" id="statSub">0</div>
-          <div class="stat-label">Pending Sub</div>
-        </div>
-      </div>
-
-      <div class="admin-tabs glass">
-        <button class="admin-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">📊</button>
-        <button class="admin-tab" onclick="switchTab('withdrawals')" data-tab="withdrawals">💸 WD</button>
-        <button class="admin-tab" onclick="switchTab('addfunds')" data-tab="addfunds">💰 AF</button>
-        <button class="admin-tab" onclick="switchTab('submissions')" data-tab="submissions">📸 Tasks</button>
-        <button class="admin-tab" onclick="switchTab('users')" data-tab="users">👥 Users</button>
-        <button class="admin-tab" onclick="switchTab('customize')" data-tab="customize">🎨</button>
-        <button class="admin-tab" onclick="switchTab('admins')" data-tab="admins">👑</button>
-      </div>
-
-      <!-- ═══ TAB: DASHBOARD ═══ -->
-      <div id="tab-dashboard" class="admin-tab-content">
-        <div class="admin-menu glass">
-          <div class="section-title">⚙️ QUICK ACTIONS</div>
-
-          <button class="admin-menu-btn" onclick="openBotPanel('balance')">
-            <span class="menu-icon">💰</span>
-            <span class="menu-text">Balance Management</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
-          <button class="admin-menu-btn" onclick="openBotPanel('tasks')">
-            <span class="menu-icon">📋</span>
-            <span class="menu-text">Tasks Manager</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
-          <button class="admin-menu-btn" onclick="openBotPanel('gifts')">
-            <span class="menu-icon">🎁</span>
-            <span class="menu-text">Gift Codes</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
-          <button class="admin-menu-btn" onclick="openBotPanel('broadcast')">
-            <span class="menu-icon">📢</span>
-            <span class="menu-text">Broadcast</span>
-            <span class="menu-arrow">›</span>
-          </button>
-
-          <button class="admin-menu-btn" onclick="openBotPanel('settings')">
-            <span class="menu-icon">⚙️</span>
-            <span class="menu-text">Settings</span>
-            <span class="menu-arrow">›</span>
-          </button>
-        </div>
-
-        <div class="admin-note glass">
-          💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
-        </div>
-      </div>
-
-      <!-- ═══ TAB: WITHDRAWALS ═══ -->
-      <div id="tab-withdrawals" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
-          <div class="section-title" style="margin-bottom:0;">💸 PENDING WITHDRAWALS</div>
-        </div>
-        <div id="withdrawalList" class="admin-list">
-          <div class="loading">⏳ Loading...</div>
-        </div>
-      </div>
-
-      <!-- ═══ TAB: ADD FUNDS ═══ -->
-      <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
-          <div class="section-title" style="margin-bottom:0;">💰 PENDING ADD FUND</div>
-        </div>
-        <div id="addFundList" class="admin-list">
-          <div class="loading">⏳ Loading...</div>
-        </div>
-      </div>
-
-      <!-- ═══ TAB: SUBMISSIONS ═══ -->
-      <div id="tab-submissions" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
-          <div class="section-title" style="margin-bottom:0;">📸 PENDING TASK SUBMISSIONS</div>
-        </div>
-        <div id="submissionList" class="admin-list">
-          <div class="loading">⏳ Loading...</div>
-        </div>
-      </div>
-
-      <!-- ═══ TAB: USERS ═══ -->
-      <div id="tab-users" class="admin-tab-content" style="display:none;">
-        <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
-          <div class="section-title" style="margin-bottom:0;">👥 ALL USERS</div>
-        </div>
-        <div id="userList" class="admin-list">
-          <div class="loading">⏳ Loading...</div>
-        </div>
-      </div>
-
-      <!-- ═══ TAB: CUSTOMIZE ═══ -->
-      <div id="tab-customize" class="admin-tab-content" style="display:none;">
-
-        <div class="customize-card">
-          <div class="customize-title">⚡ APP LOGO</div>
-          <div class="customize-row">
-            <input type="text" id="cust_logo" placeholder="Task Earn Bot">
-            <button class="btn-save" onclick="saveCustomize('app_logo', 'cust_logo')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('app_logo', 'cust_logo')">↺</button>
-          </div>
-        </div>
-
-        <div class="customize-card">
-          <div class="customize-title">🔘 BUTTON NAMES</div>
-
-          <div class="customize-row">
-            <input type="text" id="cust_home" placeholder="HOME">
-            <button class="btn-save" onclick="saveCustomize('btn_home', 'cust_home')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_home', 'cust_home')">↺</button>
-          </div>
-
-          <div class="customize-row">
-            <input type="text" id="cust_task" placeholder="TASK">
-            <button class="btn-save" onclick="saveCustomize('btn_task', 'cust_task')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_task', 'cust_task')">↺</button>
-          </div>
-
-          <div class="customize-row">
-            <input type="text" id="cust_pay" placeholder="PAY">
-            <button class="btn-save" onclick="saveCustomize('btn_pay', 'cust_pay')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_pay', 'cust_pay')">↺</button>
-          </div>
-
-          <div class="customize-row">
-            <input type="text" id="cust_profile" placeholder="PROFILE">
-            <button class="btn-save" onclick="saveCustomize('btn_profile', 'cust_profile')">Save</button>
-            <button class="btn-reset" onclick="resetCustomize('btn_profile', 'cust_profile')">↺</button>
-          </div>
-        </div>
-
-        <button class="save-all-btn" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);" onclick="resetAllCustomize()">
-          🔄 Reset All to Default
+        <button class="admin-menu-btn" onclick="openBotPanel('balance')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#FFC107"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+          </span>
+          <span class="menu-text">Balance Management</span>
+          <span class="menu-arrow">›</span>
         </button>
 
+        <button class="admin-menu-btn" onclick="openBotPanel('tasks')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#00C853"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+          </span>
+          <span class="menu-text">Tasks Manager</span>
+          <span class="menu-arrow">›</span>
+        </button>
+
+        <button class="admin-menu-btn" onclick="openBotPanel('gifts')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#9C27B0"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/></svg>
+          </span>
+          <span class="menu-text">Gift Codes</span>
+          <span class="menu-arrow">›</span>
+        </button>
+
+        <button class="admin-menu-btn" onclick="openBotPanel('broadcast')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#F44336"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          </span>
+          <span class="menu-text">Broadcast</span>
+          <span class="menu-arrow">›</span>
+        </button>
+
+        <button class="admin-menu-btn" onclick="openBotPanel('gateways')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#FF9800"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+          </span>
+          <span class="menu-text">Gateway Setup</span>
+          <span class="menu-arrow">›</span>
+        </button>
+
+        <button class="admin-menu-btn" onclick="openBotPanel('settings')">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="#4A9EFF"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          </span>
+          <span class="menu-text">Settings</span>
+          <span class="menu-arrow">›</span>
+        </button>
       </div>
 
-      <!-- ═══ TAB: ADMINS ═══ -->
-      <div id="tab-admins" class="admin-tab-content" style="display:none;">
+      <div class="admin-note glass">
+        💡 Full controls — Bot-ൽ <b>/admin</b> command ഉപയോഗിക്കുക.
+      </div>
+    </div>
 
-        <div class="customize-card">
-          <div class="customize-title">👑 ADMIN MANAGEMENT</div>
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: WITHDRAWALS
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-withdrawals" class="admin-tab-content" style="display:none;">
+      <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
+        <div class="section-title" style="margin-bottom:0;">💸 PENDING WITHDRAWALS</div>
+      </div>
+      <div id="withdrawalList" class="admin-list">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
 
-          <div class="add-row">
-            <input type="text" id="newAdminId" placeholder="Enter User ID" inputmode="numeric">
-            <button onclick="addAdmin()">➕ Add</button>
-          </div>
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: ADD FUNDS
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-addfunds" class="admin-tab-content" style="display:none;">
+      <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
+        <div class="section-title" style="margin-bottom:0;">💰 PENDING ADD FUND</div>
+      </div>
+      <div id="addFundList" class="admin-list">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: SUBMISSIONS
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-submissions" class="admin-tab-content" style="display:none;">
+      <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
+        <div class="section-title" style="margin-bottom:0;">📸 PENDING TASK SUBMISSIONS</div>
+      </div>
+      <div id="submissionList" class="admin-list">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
+
+         <!-- ═══════════════════════════════════════════════════════
+         TAB: USERS
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-users" class="admin-tab-content" style="display:none;">
+      <div class="admin-menu glass" style="padding:14px; margin-bottom:12px;">
+        <div class="section-title" style="margin-bottom:0;">👥 ALL USERS</div>
+      </div>
+      <div id="userList" class="admin-list">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: LIMITS (NEW — Min/Max Withdraw + Add Fund + Tax)
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-limits" class="admin-tab-content" style="display:none;">
+
+      <!-- Withdraw Limits -->
+      <div class="limits-card">
+        <div class="customize-title">💸 WITHDRAW LIMITS</div>
+
+        <div class="limits-current">
+          <span class="limits-current-label">Current Min</span>
+          <span class="limits-current-value">₹<span id="curr_min_wd">10</span></span>
+        </div>
+        <div class="customize-row">
+          <input type="number" id="set_min_wd" placeholder="Min Withdraw" inputmode="numeric">
+          <button class="btn-save" onclick="saveSetting('min_withdraw', 'set_min_wd')">Save</button>
+          <button class="btn-reset" onclick="resetSetting('min_withdraw', 'set_min_wd', 10)">↺</button>
         </div>
 
-        <div class="section-divider">CURRENT ADMINS</div>
-
-        <div id="adminsList" class="admin-list-simple">
-          <div class="loading">⏳ Loading...</div>
+        <div class="limits-current" style="margin-top:12px;">
+          <span class="limits-current-label">Current Max</span>
+          <span class="limits-current-value">₹<span id="curr_max_wd">10000</span></span>
+        </div>
+        <div class="customize-row">
+          <input type="number" id="set_max_wd" placeholder="Max Withdraw" inputmode="numeric">
+          <button class="btn-save" onclick="saveSetting('max_withdraw', 'set_max_wd')">Save</button>
+          <button class="btn-reset" onclick="resetSetting('max_withdraw', 'set_max_wd', 10000)">↺</button>
         </div>
 
+        <div class="limits-current" style="margin-top:12px;">
+          <span class="limits-current-label">Withdraw Tax %</span>
+          <span class="limits-current-value"><span id="curr_tax">0</span>%</span>
+        </div>
+        <div class="customize-row">
+          <input type="number" id="set_tax" placeholder="Tax % (0-50)" inputmode="numeric">
+          <button class="btn-save" onclick="saveSetting('tax_percent', 'set_tax')">Save</button>
+          <button class="btn-reset" onclick="resetSetting('tax_percent', 'set_tax', 0)">↺</button>
+        </div>
+      </div>
+
+      <!-- Add Fund Limits -->
+      <div class="limits-card">
+        <div class="customize-title">💰 ADD FUND LIMITS</div>
+
+        <div class="limits-current">
+          <span class="limits-current-label">Current Min</span>
+          <span class="limits-current-value">₹<span id="curr_min_af">5</span></span>
+        </div>
+        <div class="customize-row">
+          <input type="number" id="set_min_af" placeholder="Min Add Fund" inputmode="numeric">
+          <button class="btn-save" onclick="saveSetting('auto_upi_min', 'set_min_af')">Save</button>
+          <button class="btn-reset" onclick="resetSetting('auto_upi_min', 'set_min_af', 5)">↺</button>
+        </div>
+
+        <div class="limits-current" style="margin-top:12px;">
+          <span class="limits-current-label">Current Max</span>
+          <span class="limits-current-value">₹<span id="curr_max_af">200</span></span>
+        </div>
+        <div class="customize-row">
+          <input type="number" id="set_max_af" placeholder="Max Add Fund" inputmode="numeric">
+          <button class="btn-save" onclick="saveSetting('auto_upi_max', 'set_max_af')">Save</button>
+          <button class="btn-reset" onclick="resetSetting('auto_upi_max', 'set_max_af', 200)">↺</button>
+        </div>
+      </div>
+
+      <div class="admin-note glass" style="margin-top:14px;">
+        💡 All limits apply to both Bot + Mini App instantly.
       </div>
 
     </div>
 
-    <nav class="bottom-nav glass-nav">
-      <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">HOME</span>
-      </a>
-      <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label">TASK</span>
-      </a>
-      <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label">PAY</span>
-      </a>
-      <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">PROFILE</span>
-      </a>
-    </nav>
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: CUSTOMIZE (Theme)
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-customize" class="admin-tab-content" style="display:none;">
+
+      <div class="customize-card">
+        <div class="customize-title">⚡ APP LOGO</div>
+        <div class="customize-row">
+          <input type="text" id="cust_logo" placeholder="Task Earn Bot">
+          <button class="btn-save" onclick="saveCustomize('app_logo', 'cust_logo')">Save</button>
+          <button class="btn-reset" onclick="resetCustomize('app_logo', 'cust_logo')">↺</button>
+        </div>
+      </div>
+
+      <div class="customize-card">
+        <div class="customize-title">🔘 BUTTON NAMES</div>
+
+        <div class="customize-row">
+          <input type="text" id="cust_home" placeholder="HOME">
+          <button class="btn-save" onclick="saveCustomize('btn_home', 'cust_home')">Save</button>
+          <button class="btn-reset" onclick="resetCustomize('btn_home', 'cust_home')">↺</button>
+        </div>
+
+        <div class="customize-row">
+          <input type="text" id="cust_task" placeholder="TASK">
+          <button class="btn-save" onclick="saveCustomize('btn_task', 'cust_task')">Save</button>
+          <button class="btn-reset" onclick="resetCustomize('btn_task', 'cust_task')">↺</button>
+        </div>
+
+        <div class="customize-row">
+          <input type="text" id="cust_pay" placeholder="PAY">
+          <button class="btn-save" onclick="saveCustomize('btn_pay', 'cust_pay')">Save</button>
+          <button class="btn-reset" onclick="resetCustomize('btn_pay', 'cust_pay')">↺</button>
+        </div>
+
+        <div class="customize-row">
+          <input type="text" id="cust_profile" placeholder="PROFILE">
+          <button class="btn-save" onclick="saveCustomize('btn_profile', 'cust_profile')">Save</button>
+          <button class="btn-reset" onclick="resetCustomize('btn_profile', 'cust_profile')">↺</button>
+        </div>
+      </div>
+
+      <button class="save-all-btn" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);" onclick="resetAllCustomize()">
+        🔄 Reset All to Default
+      </button>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB: ADMINS
+         ═══════════════════════════════════════════════════════ -->
+    <div id="tab-admins" class="admin-tab-content" style="display:none;">
+
+      <div class="customize-card">
+        <div class="customize-title">👑 ADMIN MANAGEMENT</div>
+
+        <div class="add-row">
+          <input type="text" id="newAdminId" placeholder="Enter User ID" inputmode="numeric">
+          <button onclick="addAdmin()">➕ Add</button>
+        </div>
+      </div>
+
+      <div class="section-divider">CURRENT ADMINS</div>
+
+      <div id="adminsList" class="admin-list-simple">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+
+    </div>
 
   </div>
-</div>
+  <!-- /adminContent -->
 
+  <!-- ═══════════════════════════════════════════════════════
+       BOTTOM NAV
+       ═══════════════════════════════════════════════════════ -->
+  <nav class="bottom-nav glass-nav">
+    <a href="/miniapp" class="nav-item">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">HOME</span>
+    </a>
+    <a href="/miniapp/task" class="nav-item">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">TASK</span>
+    </a>
+    <a href="/miniapp/pay" class="nav-item">
+      <span class="nav-icon">💸</span>
+      <span class="nav-label">PAY</span>
+    </a>
+    <a href="/miniapp/profile" class="nav-item">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">PROFILE</span>
+    </a>
+  </nav>
+
+</div>
+<!-- /app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════ -->
 <script>
 // ============================================================
-// 👑 ADMIN PANEL — Complete Logic + FIXES
+// 👑 ADMIN PANEL — Complete Logic
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
 if (tg) {
   tg.ready();
   tg.expand();
-  tg.setHeaderColor('#000000');
-  tg.setBackgroundColor('#000000');
-
+  tg.setHeaderColor('#0a0e0a');
+  tg.setBackgroundColor('#0a0e0a');
   try {
     if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
   } catch (e) {}
@@ -933,13 +1342,6 @@ function forceScrollEnable() {
     app.style.height = 'auto';
     app.style.maxHeight = 'none';
     app.style.paddingBottom = '220px';
-  }
-
-  const frame = document.querySelector('.iphone-frame');
-  if (frame) {
-    frame.style.overflow = 'visible';
-    frame.style.height = 'auto';
-    frame.style.maxHeight = 'none';
   }
 }
 
@@ -1033,16 +1435,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('adminContent').style.display = 'block';
 
   await loadConfig();
-  await loadAdminInfo();
   await loadStats();
   await loadWithdrawals();
   await loadAddFunds();
   await loadSubmissions();
   await loadUsers();
+  await loadAllLimits();
   await loadCustomize();
 
   if (isOwner) {
     await loadAdmins();
+  } else {
+    const adminsTab = document.querySelector('[data-tab="admins"]');
+    if (adminsTab) adminsTab.style.display = 'none';
   }
 
   setTimeout(forceScrollEnable, 300);
@@ -1056,20 +1461,8 @@ async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
   if (res.success && res.config) {
     appConfig = res.config;
-
     const logo = document.getElementById('appLogo');
-    if (logo && appConfig.appLogo) logo.textContent = 'ADMIN — ' + appConfig.appLogo;
-  }
-}
-
-// ============================================================
-// 👤 ADMIN INFO
-// ============================================================
-async function loadAdminInfo() {
-  const data = await apiCall(`/miniapp/api/user/${userId}`);
-  if (data.success) {
-    document.getElementById('adminName').textContent = data.user.firstName || 'Admin';
-    document.getElementById('adminId').textContent = 'ID: ' + data.user.userId;
+    if (logo && appConfig.appLogo) logo.textContent = appConfig.appLogo.toUpperCase();
   }
 }
 
@@ -1117,12 +1510,15 @@ function switchTab(tab) {
   document.querySelectorAll('.admin-tab-content').forEach(el => {
     el.style.display = 'none';
   });
-  document.getElementById('tab-' + tab).style.display = 'block';
+
+  const target = document.getElementById('tab-' + tab);
+  if (target) target.style.display = 'block';
 
   if (tab === 'withdrawals') loadWithdrawals();
   else if (tab === 'addfunds') loadAddFunds();
   else if (tab === 'submissions') loadSubmissions();
   else if (tab === 'users') loadUsers();
+  else if (tab === 'limits') loadAllLimits();
   else if (tab === 'customize') loadCustomize();
   else if (tab === 'admins' && isOwner) loadAdmins();
 
@@ -1134,7 +1530,7 @@ function switchTab(tab) {
 // ============================================================
 async function loadWithdrawals() {
   const listEl = document.getElementById('withdrawalList');
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   const data = await apiCall('/miniapp/api/admin/pending-withdrawals');
 
@@ -1142,7 +1538,7 @@ async function loadWithdrawals() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div style="color:#00ff88;opacity:0.7;">No pending withdrawals</div>
+        <div>No pending withdrawals</div>
       </div>
     `;
     return;
@@ -1202,7 +1598,7 @@ async function rejectWd(id) {
 // ============================================================
 async function loadAddFunds() {
   const listEl = document.getElementById('addFundList');
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   const data = await apiCall('/miniapp/api/admin/pending-addfunds');
 
@@ -1210,7 +1606,7 @@ async function loadAddFunds() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div style="color:#00ff88;opacity:0.7;">No pending add funds</div>
+        <div>No pending add funds</div>
       </div>
     `;
     return;
@@ -1263,13 +1659,15 @@ async function rejectAf(id) {
     showToast('❌ ' + (data.error || 'Failed'));
   }
 }
+</script>
 
+<script>
 // ============================================================
 // 📸 SUBMISSIONS
 // ============================================================
 async function loadSubmissions() {
   const listEl = document.getElementById('submissionList');
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   const data = await apiCall('/miniapp/api/admin/pending-submissions');
 
@@ -1277,7 +1675,7 @@ async function loadSubmissions() {
     listEl.innerHTML = `
       <div class="empty-admin">
         <div class="icon">📭</div>
-        <div style="color:#00ff88;opacity:0.7;">No pending submissions</div>
+        <div>No pending submissions</div>
       </div>
     `;
     return;
@@ -1320,6 +1718,7 @@ async function approveSub(id) {
     loadStats();
   } else {
     showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
   }
 }
 
@@ -1328,6 +1727,7 @@ async function rejectSub(id) {
   const data = await apiCall(`/miniapp/api/admin/reject-sub/${id}`, { method: 'POST' });
   if (data.success) {
     showToast('❌ Rejected');
+    haptic('success');
     document.getElementById('sub-' + id)?.remove();
     loadStats();
   } else {
@@ -1340,24 +1740,32 @@ async function rejectSub(id) {
 // ============================================================
 async function loadUsers() {
   const listEl = document.getElementById('userList');
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   const data = await apiCall('/miniapp/api/admin/all-users');
 
   if (!data.success || !data.users || data.users.length === 0) {
-    listEl.innerHTML = '<div class="empty-admin" style="color:#00ff88;opacity:0.7;">No users</div>';
+    listEl.innerHTML = `
+      <div class="empty-admin">
+        <div class="icon">📭</div>
+        <div>No users</div>
+      </div>
+    `;
     return;
   }
 
   let html = '';
   data.users.forEach((u, i) => {
+    const initial = (u.firstName || 'U').charAt(0).toUpperCase();
+    const isBanned = u.isBanned ? '🚫 ' : '';
+
     html += `
       <div class="admin-item">
         <div class="admin-item-header">
           <div class="admin-item-id">#${i + 1}</div>
           <div class="admin-item-amount">₹${(u.balance || 0).toFixed(2)}</div>
         </div>
-        <div class="admin-item-row"><b>Name:</b> ${escapeHtml(u.firstName || 'User')}</div>
+        <div class="admin-item-row"><b>Name:</b> ${isBanned}${escapeHtml(u.firstName || 'User')}</div>
         <div class="admin-item-row"><b>ID:</b> <code>${u.userId}</code></div>
         <div class="admin-item-row"><b>Username:</b> ${u.username ? '@' + escapeHtml(u.username) : '-'}</div>
         <div class="admin-item-row"><b>Withdrawn:</b> ₹${(u.withdrawnTotal || 0).toFixed(2)}</div>
@@ -1368,6 +1776,165 @@ async function loadUsers() {
 }
 
 // ============================================================
+// 💰 LIMITS — Load + Save + Reset
+// ============================================================
+async function loadAllLimits() {
+  try {
+    const res = await apiCall('/miniapp/api/admin/settings');
+    if (res.success && res.settings) {
+      const s = res.settings;
+
+      // Withdraw
+      const minWd = s.min_withdraw || 10;
+      const maxWd = s.max_withdraw || 10000;
+      const tax = s.tax_percent || 0;
+
+      const setMinWd = document.getElementById('set_min_wd');
+      const currMinWd = document.getElementById('curr_min_wd');
+      if (setMinWd) setMinWd.value = minWd;
+      if (currMinWd) currMinWd.textContent = minWd;
+
+      const setMaxWd = document.getElementById('set_max_wd');
+      const currMaxWd = document.getElementById('curr_max_wd');
+      if (setMaxWd) setMaxWd.value = maxWd;
+      if (currMaxWd) currMaxWd.textContent = maxWd;
+
+      const setTax = document.getElementById('set_tax');
+      const currTax = document.getElementById('curr_tax');
+      if (setTax) setTax.value = tax;
+      if (currTax) currTax.textContent = tax;
+
+      // Add Fund
+      const minAf = s.auto_upi_min || 5;
+      const maxAf = s.auto_upi_max || 200;
+
+      const setMinAf = document.getElementById('set_min_af');
+      const currMinAf = document.getElementById('curr_min_af');
+      if (setMinAf) setMinAf.value = minAf;
+      if (currMinAf) currMinAf.textContent = minAf;
+
+      const setMaxAf = document.getElementById('set_max_af');
+      const currMaxAf = document.getElementById('curr_max_af');
+      if (setMaxAf) setMaxAf.value = maxAf;
+      if (currMaxAf) currMaxAf.textContent = maxAf;
+
+      console.log('✅ Limits loaded:', s);
+    }
+  } catch (e) {
+    console.error('Load limits error:', e);
+  }
+}
+
+async function saveSetting(key, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const value = input.value.trim();
+
+  if (!value || isNaN(value)) {
+    showToast('❌ Enter valid number');
+    haptic('error');
+    return;
+  }
+
+  const numValue = parseFloat(value);
+
+  if (numValue < 0) {
+    showToast('❌ Value must be positive');
+    haptic('error');
+    return;
+  }
+
+  if (key === 'min_withdraw' && numValue < 1) {
+    showToast('❌ Min withdraw must be at least ₹1');
+    haptic('error');
+    return;
+  }
+
+  if (key === 'max_withdraw') {
+    const minW = parseFloat(document.getElementById('set_min_wd').value) || 10;
+    if (numValue <= minW) {
+      showToast('❌ Max must be greater than Min');
+      haptic('error');
+      return;
+    }
+  }
+
+  if (key === 'tax_percent' && (numValue < 0 || numValue > 50)) {
+    showToast('❌ Tax must be 0-50%');
+    haptic('error');
+    return;
+  }
+
+  try {
+    const data = await apiCall('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      body: JSON.stringify({ key, value: numValue })
+    });
+
+    if (data.success) {
+      const currMap = {
+        'min_withdraw': 'curr_min_wd',
+        'max_withdraw': 'curr_max_wd',
+        'tax_percent': 'curr_tax',
+        'auto_upi_min': 'curr_min_af',
+        'auto_upi_max': 'curr_max_af'
+      };
+
+      const currEl = document.getElementById(currMap[key]);
+      if (currEl) currEl.textContent = numValue;
+
+      showToast(`✅ ${key.replace(/_/g, ' ')} = ${numValue}`);
+      haptic('success');
+
+      await loadAllLimits();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+      haptic('error');
+    }
+  } catch (e) {
+    console.error('Save setting error:', e);
+    showToast('❌ Network error');
+    haptic('error');
+  }
+}
+
+async function resetSetting(key, inputId, defaultValue) {
+  if (!confirm(`Reset ${key.replace(/_/g, ' ')} to ${defaultValue}?`)) return;
+
+  const input = document.getElementById(inputId);
+  if (input) input.value = defaultValue;
+
+  try {
+    const data = await apiCall('/miniapp/api/admin/settings/update', {
+      method: 'POST',
+      body: JSON.stringify({ key, value: defaultValue })
+    });
+
+    if (data.success) {
+      const currMap = {
+        'min_withdraw': 'curr_min_wd',
+        'max_withdraw': 'curr_max_wd',
+        'tax_percent': 'curr_tax',
+        'auto_upi_min': 'curr_min_af',
+        'auto_upi_max': 'curr_max_af'
+      };
+
+      const currEl = document.getElementById(currMap[key]);
+      if (currEl) currEl.textContent = defaultValue;
+
+      showToast(`🔄 Reset to ${defaultValue}`);
+      haptic('success');
+
+      await loadAllLimits();
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'));
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  }
+}
+
+// ============================================================
 // 🎨 CUSTOMIZE
 // ============================================================
 async function loadCustomize() {
@@ -1375,16 +1942,26 @@ async function loadCustomize() {
   if (res.success && res.config) {
     appConfig = res.config;
 
-    document.getElementById('cust_logo').value = appConfig.appLogo || DEFAULTS.app_logo;
-    document.getElementById('cust_home').value = appConfig.btn_home || DEFAULTS.btn_home;
-    document.getElementById('cust_task').value = appConfig.btn_task || DEFAULTS.btn_task;
-    document.getElementById('cust_pay').value = appConfig.btn_pay || DEFAULTS.btn_pay;
-    document.getElementById('cust_profile').value = appConfig.btn_profile || DEFAULTS.btn_profile;
+    const el_logo = document.getElementById('cust_logo');
+    if (el_logo) el_logo.value = appConfig.appLogo || DEFAULTS.app_logo;
+
+    const el_home = document.getElementById('cust_home');
+    if (el_home) el_home.value = appConfig.btn_home || DEFAULTS.btn_home;
+
+    const el_task = document.getElementById('cust_task');
+    if (el_task) el_task.value = appConfig.btn_task || DEFAULTS.btn_task;
+
+    const el_pay = document.getElementById('cust_pay');
+    if (el_pay) el_pay.value = appConfig.btn_pay || DEFAULTS.btn_pay;
+
+    const el_prof = document.getElementById('cust_profile');
+    if (el_prof) el_prof.value = appConfig.btn_profile || DEFAULTS.btn_profile;
   }
 }
 
 async function saveCustomize(key, inputId) {
   const input = document.getElementById(inputId);
+  if (!input) return;
   const value = input.value.trim();
 
   if (!value) {
@@ -1401,17 +1978,19 @@ async function saveCustomize(key, inputId) {
   if (data.success) {
     showToast('✅ Saved!');
     haptic('success');
+    await loadConfig();
   } else {
     showToast('❌ ' + (data.error || 'Failed'));
+    haptic('error');
   }
 }
 
 async function resetCustomize(key, inputId) {
-  if (!confirm(`Reset ${key} to default?`)) return;
+  if (!confirm(`Reset to default?`)) return;
 
   const defaultValue = DEFAULTS[key] || '';
   const input = document.getElementById(inputId);
-  input.value = defaultValue;
+  if (input) input.value = defaultValue;
 
   const data = await apiCall('/miniapp/api/admin/save-config', {
     method: 'POST',
@@ -1421,6 +2000,7 @@ async function resetCustomize(key, inputId) {
   if (data.success) {
     showToast('🔄 Reset to default!');
     haptic('success');
+    await loadConfig();
   }
 }
 
@@ -1445,11 +2025,12 @@ async function resetAllCustomize() {
 // ============================================================
 async function loadAdmins() {
   const listEl = document.getElementById('adminsList');
-  listEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   const data = await apiCall('/miniapp/api/admin/list');
   if (!data.success || !data.admins) {
-    listEl.innerHTML = '<div class="empty-admin" style="color:#00ff88;opacity:0.7;">Failed to load</div>';
+    listEl.innerHTML = '<div class="empty-admin">Failed to load</div>';
     return;
   }
 
@@ -1458,7 +2039,7 @@ async function loadAdmins() {
     const isOwnerRow = a.role === 'owner';
     html += `
       <div class="admin-user-row">
-        <div class="admin-user-avatar">${isOwnerRow ? '👑' : '👤'}</div>
+        <div class="admin-user-avatar ${isOwnerRow ? 'owner-avatar' : ''}">${isOwnerRow ? '👑' : '👤'}</div>
         <div class="admin-user-info">
           <div class="admin-user-name">${escapeHtml(a.name || 'Admin')}${isOwnerRow ? ' (Owner)' : ''}</div>
           <div class="admin-user-id">${a.userId}</div>
@@ -1474,6 +2055,7 @@ async function loadAdmins() {
 
 async function addAdmin() {
   const input = document.getElementById('newAdminId');
+  if (!input) return;
   const newId = input.value.trim();
 
   if (!newId || isNaN(newId)) {
@@ -1515,33 +2097,22 @@ async function removeAdmin(adminId) {
 }
 
 // ============================================================
-// 🎯 QUICK ACTIONS — Redirect to Bot with /admin
+// 🎯 QUICK ACTIONS — Open Bot
 // ============================================================
 function openBotPanel(action) {
   haptic('light');
 
-  // Show toast
   showToast(`📱 Opening Bot for ${action}...`);
 
-  // Try to open bot chat
   setTimeout(() => {
     try {
-      // Get bot username from config
       const botUsername = appConfig.botUsername || 'TaskEarnBot';
 
-      // Try Telegram deep link
       if (tg?.openTelegramLink) {
-        // Deep link to bot with /admin command
         tg.openTelegramLink(`https://t.me/${botUsername}?start=admin_${action}`);
       } else {
-        // Fallback
         window.open(`https://t.me/${botUsername}`, '_blank');
       }
-
-      // Optionally close mini app after opening bot
-      // (Comment this out if you want to keep mini app open)
-      // setTimeout(() => { if (tg?.close) tg.close(); }, 800);
-
     } catch (e) {
       console.error('Open bot error:', e);
       showToast('❌ Could not open bot. Tap /admin in bot chat.');
@@ -1550,7 +2121,7 @@ function openBotPanel(action) {
 }
 
 // ============================================================
-// EXPOSE
+// 🌐 EXPOSE GLOBALS
 // ============================================================
 window.switchTab = switchTab;
 window.approveWd = approveWd;
@@ -1559,204 +2130,26 @@ window.approveAf = approveAf;
 window.rejectAf = rejectAf;
 window.approveSub = approveSub;
 window.rejectSub = rejectSub;
+window.saveSetting = saveSetting;
+window.resetSetting = resetSetting;
 window.saveCustomize = saveCustomize;
 window.resetCustomize = resetCustomize;
 window.resetAllCustomize = resetAllCustomize;
 window.addAdmin = addAdmin;
 window.removeAdmin = removeAdmin;
 window.openBotPanel = openBotPanel;
+window.loadAllLimits = loadAllLimits;
 
+// Prevent gesture zoom
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ============================================================
+// 🔄 FINAL SCROLL FIX — After everything loads
+// ============================================================
+setTimeout(forceScrollEnable, 2000);
+setTimeout(forceScrollEnable, 4000);
 </script>
 
 </body>
 </html>
 
-// ============================================================
-// 💰 MIN/MAX WITHDRAW SETTINGS — Logic
-// ============================================================
-
-// Load all settings when page loads
-async function loadAllLimits() {
-  try {
-    const res = await apiCall('/miniapp/api/admin/settings');
-    if (res.success && res.settings) {
-      const s = res.settings;
-
-      // Withdraw
-      document.getElementById('set_min_wd').value = s.min_withdraw || 10;
-      document.getElementById('curr_min_wd').textContent = s.min_withdraw || 10;
-
-      document.getElementById('set_max_wd').value = s.max_withdraw || 10000;
-      document.getElementById('curr_max_wd').textContent = s.max_withdraw || 10000;
-
-      document.getElementById('set_tax').value = s.tax_percent || 0;
-      document.getElementById('curr_tax').textContent = s.tax_percent || 0;
-
-      // Add Fund
-      document.getElementById('set_min_af').value = s.auto_upi_min || 5;
-      document.getElementById('curr_min_af').textContent = s.auto_upi_min || 5;
-
-      document.getElementById('set_max_af').value = s.auto_upi_max || 200;
-      document.getElementById('curr_max_af').textContent = s.auto_upi_max || 200;
-
-      console.log('✅ Limits loaded:', s);
-    }
-  } catch (e) {
-    console.error('Load limits error:', e);
-  }
-}
-
-// Save single setting
-async function saveSetting(key, inputId) {
-  const input = document.getElementById(inputId);
-  const value = input.value.trim();
-
-  if (!value || isNaN(value)) {
-    showToast('❌ Enter valid number');
-    haptic('error');
-    return;
-  }
-
-  const numValue = parseFloat(value);
-
-  // Validation
-  if (numValue < 0) {
-    showToast('❌ Value must be positive');
-    haptic('error');
-    return;
-  }
-
-  // Special validation
-  if (key === 'min_withdraw' && numValue < 1) {
-    showToast('❌ Min withdraw must be at least ₹1');
-    haptic('error');
-    return;
-  }
-
-  if (key === 'max_withdraw') {
-    const minW = parseFloat(document.getElementById('set_min_wd').value) || 10;
-    if (numValue <= minW) {
-      showToast('❌ Max must be greater than Min');
-      haptic('error');
-      return;
-    }
-  }
-
-  if (key === 'tax_percent' && (numValue < 0 || numValue > 50)) {
-    showToast('❌ Tax must be 0-50%');
-    haptic('error');
-    return;
-  }
-
-  try {
-    const data = await apiCall('/miniapp/api/admin/settings/update', {
-      method: 'POST',
-      body: JSON.stringify({ key, value: numValue })
-    });
-
-    if (data.success) {
-      // Update current display
-      const currMap = {
-        'min_withdraw': 'curr_min_wd',
-        'max_withdraw': 'curr_max_wd',
-        'tax_percent': 'curr_tax',
-        'auto_upi_min': 'curr_min_af',
-        'auto_upi_max': 'curr_max_af'
-      };
-
-      const currEl = document.getElementById(currMap[key]);
-      if (currEl) currEl.textContent = numValue;
-
-      // Visual feedback
-      const btn = event?.target?.closest('.settings-btn.save');
-      if (btn) {
-        btn.classList.add('saved');
-        btn.textContent = '✅ Saved';
-        setTimeout(() => {
-          btn.classList.remove('saved');
-          btn.innerHTML = '💾 Save';
-        }, 1500);
-      }
-
-      showToast(`✅ ${key} = ${numValue}`);
-      haptic('success');
-
-      // Reload all to ensure sync
-      await loadAllLimits();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-      haptic('error');
-    }
-  } catch (e) {
-    console.error('Save setting error:', e);
-    showToast('❌ Network error');
-    haptic('error');
-  }
-}
-
-// Reset setting to default
-async function resetSetting(key, inputId, defaultValue) {
-  if (!confirm(`Reset ${key} to ${defaultValue}?`)) return;
-
-  const input = document.getElementById(inputId);
-  input.value = defaultValue;
-
-  try {
-    const data = await apiCall('/miniapp/api/admin/settings/update', {
-      method: 'POST',
-      body: JSON.stringify({ key, value: defaultValue })
-    });
-
-    if (data.success) {
-      // Update current display
-      const currMap = {
-        'min_withdraw': 'curr_min_wd',
-        'max_withdraw': 'curr_max_wd',
-        'tax_percent': 'curr_tax',
-        'auto_upi_min': 'curr_min_af',
-        'auto_upi_max': 'curr_max_af'
-      };
-
-      const currEl = document.getElementById(currMap[key]);
-      if (currEl) currEl.textContent = defaultValue;
-
-      showToast(`🔄 Reset to ${defaultValue}`);
-      haptic('success');
-
-      await loadAllLimits();
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) {
-    showToast('❌ Network error');
-  }
-}
-
-// Update switchTab to load limits when switched
-const originalSwitchTab = window.switchTab;
-window.switchTab = function(tab) {
-  originalSwitchTab(tab);
-
-  if (tab === 'limits') {
-    loadAllLimits();
-  }
-};
-
-// Load limits on page init
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    loadAllLimits();
-  }, 1000);
-});
-
-// Expose globals
-window.loadAllLimits = loadAllLimits;
-window.saveSetting = saveSetting;
-window.resetSetting = resetSetting;
-
-// ============================================================
-// 🔄 ALSO: Update switchTab in original to load limits
-// ============================================================
-// ഈ line കൂടി switchTab-ന്റെ അവസാനത്തിൽ add ചെയ്യൂ:
-// if (tab === 'limits') loadAllLimits();
