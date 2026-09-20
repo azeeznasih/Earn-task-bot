@@ -5793,27 +5793,3 @@ setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => {});
 }, 300000);
-
-// // ============================================================
-// 🌐 EXPRESS SERVER START
-// ============================================================
-let serverStarted = false;
-
-if (!serverStarted) {
-  serverStarted = true;
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
-  });
-  // ... server error handling
-}
-
-// ✅ ഇത് — Mini App OFF ആവാതിരിക്കാൻ!
-setInterval(() => {
-  let renderUrl = process.env.RENDER_EXTERNAL_URL;
-  if (renderUrl) fetch(renderUrl).catch(() => {});
-}, 300000);
-
-// ============================================================
-// ✅ END OF FILE
-// ============================================================
-console.log("✅ bot.js loaded — Complete bot with all features");
