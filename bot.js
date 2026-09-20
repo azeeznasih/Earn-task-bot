@@ -5010,3 +5010,810 @@ bot.callbackQuery(/^newuser_detail_/, async (ctx) => {
 });
 
 console.log("✅ Part 8A Loaded — Admin Panel + Status + New Users");
+
+// ============================================================
+// 🎨 CUSTOMIZE YOUR THEME (2 Sub-buttons)
+// ============================================================
+bot.callbackQuery("adm_customize_theme", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let text =
+    `🎨 *Customize Your Theme*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `👇 *Choose what to customize:*`;
+  let kb = new InlineKeyboard()
+    .text("🎨 Admin Panel Customizing", "adm_panel_custom").row()
+    .text("⌨️ Keyboard Buttons Customizing & Edit", "adm_keyboard_custom").row()
+    .text("🔙 Back to Admin", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+// ============================================================
+// 🎬 START COMMAND SETUP
+// ============================================================
+bot.callbackQuery("adm_start_setup", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderStartSetup(ctx);
+});
+
+async function renderStartSetup(ctx) {
+  let welcome = await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
+  let earnText = await getConfig("start_earn_text", "How to Earn:");
+  let clickText = await getConfig("start_click_text", "(((CLICK HERE )))");
+  let channelLink = await getConfig("start_channel_link", "https://t.me/yourchannel");
+  let font = await getConfig("start_font_style", "normal");
+
+  let fontNames = {
+    normal: "⚪ Normal",
+    smallcaps: "🔤 Small Caps",
+    bold: "𝐁𝐨𝐥𝐝",
+    italic: "𝑰𝒕𝒂𝒍𝒊𝒄",
+    mono: "𝙈𝙤𝙣𝙤",
+    fullwidth: "ＦｕｌｌＷｉ𝐝𝐭𝐡"
+  };
+
+  let text =
+    `🎬 *START COMMAND SETUP*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📌 *Current Settings:*\n\n` +
+    `🏡 Welcome: ${welcome}\n\n` +
+    `📝 Earn Text: ${earnText}\n\n` +
+    `🔗 Click Text: ${clickText}\n\n` +
+    `📢 Channel: ${channelLink}\n\n` +
+    `🎨 Font: ${fontNames[font] || font}`;
+
+  let kb = new InlineKeyboard()
+    .text("📝 Edit Welcome", "start_edit_welcome").row()
+    .text("📝 Edit Earn Text", "start_edit_earn").row()
+    .text("📝 Edit Click Text", "start_edit_click").row()
+    .text("📢 Set Channel Link", "start_edit_channel").row()
+    .text("🎨 Font Style", "start_edit_font").row()
+    .text("👁️ Preview", "start_preview").row()
+    .text("🔄 Reset to Default", "start_reset").row()
+    .text("🔙 Back", "admin");
+
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+}
+
+bot.callbackQuery("start_edit_welcome", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "START_WAIT_WELCOME";
+  let cur = await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
+  await ctx.editMessageText(
+    `📝 *Edit Welcome Text*\n\n📌 Current:\n"${cur}"\n\n📝 Send new welcome text:`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_start_setup") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("start_edit_earn", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "START_WAIT_EARN";
+  let cur = await getConfig("start_earn_text", "How to Earn:");
+  await ctx.editMessageText(
+    `📝 *Edit Earn Text*\n\n📌 Current:\n"${cur}"\n\n📝 Send new text:`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_start_setup") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("start_edit_click", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "START_WAIT_CLICK";
+  let cur = await getConfig("start_click_text", "(((CLICK HERE )))");
+  await ctx.editMessageText(
+    `📝 *Edit Click Text*\n\n📌 Current:\n"${cur}"\n\n📝 Send new text:`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_start_setup") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("start_edit_channel", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "START_WAIT_CHANNEL";
+  let cur = await getConfig("start_channel_link", "https://t.me/yourchannel");
+  await ctx.editMessageText(
+    `📢 *Set Channel Link*\n\n📌 Current:\n${cur}\n\n📝 Send new link:\n\n⚠️ Must start with https://t.me/`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_start_setup") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("start_edit_font", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let cur = await getConfig("start_font_style", "normal");
+  let text = `🎨 *Font Style*\n\n📌 Current: ${cur}\n\n👇 Choose:`;
+  let kb = new InlineKeyboard()
+    .text("⚪ Normal", "start_font_normal").row()
+    .text("🔤 Small Caps", "start_font_smallcaps").row()
+    .text("𝐁𝐨𝐥𝐝", "start_font_bold").row()
+    .text("𝑰𝒕𝒂𝒍𝒊𝒄", "start_font_italic").row()
+    .text("𝙈𝙤𝙣𝙤", "start_font_mono").row()
+    .text("ＦｕｌｌＷｉ𝐝𝐭𝐡", "start_font_fullwidth").row()
+    .text("🔙 Back", "adm_start_setup");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+async function setFontStyle(ctx, style) {
+  await setConfig("start_font_style", style);
+  ctx.answerCallbackQuery({ text: `✅ ${style}` });
+  await renderStartSetup(ctx);
+}
+
+bot.callbackQuery("start_font_normal", async (ctx) => { await setFontStyle(ctx, "normal"); });
+bot.callbackQuery("start_font_smallcaps", async (ctx) => { await setFontStyle(ctx, "smallcaps"); });
+bot.callbackQuery("start_font_bold", async (ctx) => { await setFontStyle(ctx, "bold"); });
+bot.callbackQuery("start_font_italic", async (ctx) => { await setFontStyle(ctx, "italic"); });
+bot.callbackQuery("start_font_mono", async (ctx) => { await setFontStyle(ctx, "mono"); });
+bot.callbackQuery("start_font_fullwidth", async (ctx) => { await setFontStyle(ctx, "fullwidth"); });
+
+bot.callbackQuery("start_preview", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+
+  let welcome = await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
+  let earnText = await getConfig("start_earn_text", "How to Earn:");
+  let clickText = await getConfig("start_click_text", "(((CLICK HERE )))");
+  let channelLink = await getConfig("start_channel_link", "https://t.me/yourchannel");
+  let font = await getConfig("start_font_style", "normal");
+
+  let fWelcome = welcome;
+  let fEarn = earnText;
+  let fClick = clickText;
+  if (font === "smallcaps") {
+    fWelcome = toSmallCaps(welcome);
+    fEarn = toSmallCaps(earnText);
+    fClick = toSmallCaps(clickText);
+  }
+
+  let previewText =
+    `👁️ *PREVIEW*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `${fWelcome}\n\n` +
+    `${fEarn} <a href="${channelLink}">${fClick}</a>\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📌 Settings:\n` +
+    `🏡 ${welcome}\n` +
+    `📝 ${earnText}\n` +
+    `🔗 ${clickText}\n` +
+    `📢 ${channelLink}\n` +
+    `🎨 ${font}`;
+
+  let kb = new InlineKeyboard()
+    .url("🔗 Test Link", channelLink).row()
+    .text("🔙 Back", "adm_start_setup");
+
+  await ctx.editMessageText(previewText, { reply_markup: kb, parse_mode: "HTML" }).catch(() => {});
+});
+
+bot.callbackQuery("start_reset", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let kb = new InlineKeyboard()
+    .text("✅ Yes, Reset", "start_reset_yes")
+    .text("❌ Cancel", "adm_start_setup");
+  await ctx.editMessageText(
+    `⚠️ *Reset to Default?*\n\nThis will restore:\n\n🏡 Welcome To Task Payment Bot!\n\nHow to Earn: (((CLICK HERE )))\n\n[✅ Confirm] [❌ Cancel]`,
+    { parse_mode: "Markdown", reply_markup: kb }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("start_reset_yes", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  await setConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
+  await setConfig("start_earn_text", "How to Earn:");
+  await setConfig("start_click_text", "(((CLICK HERE )))");
+  await setConfig("start_channel_link", "https://t.me/yourchannel");
+  await setConfig("start_font_style", "normal");
+  await ctx.answerCallbackQuery({ text: "✅ Reset!" });
+  await renderStartSetup(ctx);
+});
+
+console.log("✅ Part 8B-1 Loaded — Customize Theme + Start Setup");
+
+
+// ============================================================
+// 🎨 ADMIN PANEL CUSTOMIZING
+// ============================================================
+bot.callbackQuery("adm_panel_custom", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderAdminPanelCustom(ctx);
+});
+
+async function renderAdminPanelCustom(ctx) {
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+
+  let text =
+    `🎨 *Admin Panel Customizing*\n\n` +
+    `📝 Click a button to edit.\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🔄 *Row Customize:*`;
+
+  let kb = new InlineKeyboard();
+  for (let r = 0; r <= maxRow; r++) {
+    let rowButtons = layout.filter(b => b.row === r);
+    if (rowButtons.length > 0) {
+      let shortName = rowButtons[0].name.length > 12 ? rowButtons[0].name.substring(0, 12) + ".." : rowButtons[0].name;
+      kb.text(shortName, `admrow_first_${r}`)
+        .text("⬆️", `admrow_up_${r}`)
+        .text("⬇️", `admrow_down_${r}`)
+        .row();
+    }
+  }
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+
+  let kb2 = new InlineKeyboard();
+  for (let i = 0; i < layout.length; i++) {
+    let shortName = layout[i].name.length > 12 ? layout[i].name.substring(0, 12) + ".." : layout[i].name;
+    kb2.text(shortName, `admbtn_edit_${i}`)
+      .text("⬆️", `admbtn_up_${i}`)
+      .text("⬇️", `admbtn_down_${i}`)
+      .text("📥", `admbtn_move_${i}`)
+      .row();
+  }
+  kb2.row({ text: "♻️ Reset Admin Panel", callback_data: "admpanel_reset" });
+  kb2.row({ text: "🎨 Update for All Admins", callback_data: "admpanel_update_all" });
+  kb2.row({ text: "🔙 Back", callback_data: "adm_customize_theme" });
+
+  await ctx.reply("🎯 *Btn Customize:*", { reply_markup: kb2, parse_mode: "Markdown" });
+}
+
+bot.callbackQuery(/^admrow_up_/, async (ctx) => {
+  let r = parseInt(ctx.callbackQuery.data.replace("admrow_up_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (r <= 0) return ctx.answerCallbackQuery({ text: "Top!", show_alert: true });
+  layout.forEach(b => {
+    if (b.row === r) b.row = r - 1;
+    else if (b.row === r - 1) b.row = r;
+  });
+  await setConfig("admin_panel_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬆️" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery(/^admrow_down_/, async (ctx) => {
+  let r = parseInt(ctx.callbackQuery.data.replace("admrow_down_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+  if (r >= maxRow) return ctx.answerCallbackQuery({ text: "Bottom!", show_alert: true });
+  layout.forEach(b => {
+    if (b.row === r) b.row = r + 1;
+    else if (b.row === r + 1) b.row = r;
+  });
+  await setConfig("admin_panel_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬇️" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery(/^admbtn_edit_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("admbtn_edit_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  let btn = layout[idx];
+  let text = `✏️ *Edit Button*\n\n📛 ${btn.name}\n📍 Row: ${btn.row}`;
+  let kb = new InlineKeyboard().text("📝 Rename", `admbtn_rename_${idx}`).row().text("🔙 Back", "adm_panel_custom");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^admbtn_rename_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("admbtn_rename_", ""), 10);
+  userState[ctx.from.id] = `ADM_BTN_RENAME_${idx}`;
+  await ctx.editMessageText("📝 Send new name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_panel_custom") }).catch(() => {});
+});
+
+bot.callbackQuery(/^admbtn_up_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("admbtn_up_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (idx <= 0) return ctx.answerCallbackQuery({ text: "Top!", show_alert: true });
+  if (layout[idx].row === layout[idx - 1].row) {
+    let temp = layout[idx]; layout[idx] = layout[idx - 1]; layout[idx - 1] = temp;
+    await setConfig("admin_panel_layout", layout);
+  }
+  ctx.answerCallbackQuery({ text: "⬆️" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery(/^admbtn_down_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("admbtn_down_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (idx >= layout.length - 1) return ctx.answerCallbackQuery({ text: "Bottom!", show_alert: true });
+  if (layout[idx].row === layout[idx + 1].row) {
+    let temp = layout[idx]; layout[idx] = layout[idx + 1]; layout[idx + 1] = temp;
+    await setConfig("admin_panel_layout", layout);
+  }
+  ctx.answerCallbackQuery({ text: "⬇️" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery(/^admbtn_move_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("admbtn_move_", ""), 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+  let btn = layout[idx];
+  let text = `📥 *Move Button*\n\n📛 ${btn.name}\n📍 Row: ${btn.row}\n\n👉 Choose new row:`;
+  let kb = new InlineKeyboard();
+  for (let r = 0; r <= maxRow; r++) {
+    if (r === btn.row) continue;
+    kb.text(`Row ${r + 1}`, `admbtn_moveto_${idx}_${r}`).row();
+  }
+  kb.text("🔙 Back", "adm_panel_custom");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^admbtn_moveto_/, async (ctx) => {
+  let parts = ctx.callbackQuery.data.replace("admbtn_moveto_", "").split("_");
+  let idx = parseInt(parts[0], 10);
+  let newRow = parseInt(parts[1], 10);
+  let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  layout[idx].row = newRow;
+  await setConfig("admin_panel_layout", layout);
+  ctx.answerCallbackQuery({ text: "✅" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery("admpanel_reset", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  await ctx.editMessageText(
+    `⚠️ *Reset Admin Panel?*\n\nThis will restore the original layout.`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("✅ Confirm", "admpanel_reset_yes").text("❌ Cancel", "adm_panel_custom") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("admpanel_reset_yes", async (ctx) => {
+  await setConfig("admin_panel_layout", JSON.parse(JSON.stringify(DEFAULT_ADMIN_PANEL_LAYOUT)));
+  ctx.answerCallbackQuery({ text: "✅ Reset!" });
+  await rerender(ctx, "adm_panel_custom");
+});
+
+bot.callbackQuery("admpanel_update_all", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let admins = await BotAdmin.find({ isActive: true });
+  let total = admins.length + 1;
+  await ctx.editMessageText(
+    `⚠️ *Update for All Admins?*\n\n👥 Total: ${total} admins`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("✅ Confirm", "admpanel_update_yes").text("❌ Cancel", "adm_panel_custom") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("admpanel_update_yes", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "⏳ Updating..." });
+  let startTime = Date.now();
+  let admins = await BotAdmin.find({ isActive: true });
+  let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+  let messageSendEnabled = await getConfig("admin_panel_msg_send", true);
+  let updateMsg = await getConfig("admin_panel_update_msg", "🎨 Admin Panel Updated!\nYour panel has been updated.");
+
+  let sent = 0, failed = 0;
+  let allIds = [ownerId, ...admins.map(a => a.userId)];
+  let uniqueIds = [...new Set(allIds)];
+
+  for (let id of uniqueIds) {
+    try {
+      if (messageSendEnabled) {
+        await bot.api.sendMessage(id, updateMsg);
+      }
+      sent++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (e) { failed++; }
+  }
+  let timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  await ctx.editMessageText(
+    `✅ *Update Complete!*\n\n✅ Success: ${sent}\n❌ Failed: ${failed}\n👥 Total: ${uniqueIds.length}\n\n⏱️ Time: ${timeTaken}s`,
+    { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_panel_custom"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+// ============================================================
+// ⌨️ KEYBOARD CUSTOMIZING
+// ============================================================
+bot.callbackQuery("adm_keyboard_custom", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderKeyboardCustom(ctx);
+});
+
+async function renderKeyboardCustom(ctx) {
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+
+  let text =
+    `⌨️ *Keyboard Customizing*\n\n` +
+    `📝 Click a button to edit.\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🔄 *Row Customize:*`;
+
+  let kb = new InlineKeyboard();
+  for (let r = 0; r <= maxRow; r++) {
+    let rowButtons = layout.filter(b => b.row === r);
+    if (rowButtons.length > 0) {
+      let shortName = rowButtons[0].name.length > 12 ? rowButtons[0].name.substring(0, 12) + ".." : rowButtons[0].name;
+      kb.text(shortName, `kbrow_first_${r}`)
+        .text("⬆️", `kbrow_up_${r}`)
+        .text("⬇️", `kbrow_down_${r}`)
+        .row();
+    }
+  }
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+
+  let kb2 = new InlineKeyboard();
+  for (let i = 0; i < layout.length; i++) {
+    let shortName = layout[i].name.length > 12 ? layout[i].name.substring(0, 12) + ".." : layout[i].name;
+    kb2.text(shortName, `kbbtn_edit_${i}`)
+      .text("⬆️", `kbbtn_up_${i}`)
+      .text("⬇️", `kbbtn_down_${i}`)
+      .text("📥", `kbbtn_move_${i}`)
+      .row();
+  }
+  kb2.row({ text: "♻️ Reset Keyboard", callback_data: "kbpanel_reset" });
+  kb2.row({ text: "🎨 Update for All Users", callback_data: "kbpanel_update_all" });
+  kb2.row({ text: "🔔 Update Message Send", callback_data: "kbpanel_msg_toggle" });
+  kb2.row({ text: "🔙 Back", callback_data: "adm_customize_theme" });
+
+  await ctx.reply("🎯 *Btn Customize:*", { reply_markup: kb2, parse_mode: "Markdown" });
+}
+
+bot.callbackQuery(/^kbrow_up_/, async (ctx) => {
+  let r = parseInt(ctx.callbackQuery.data.replace("kbrow_up_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (r <= 0) return ctx.answerCallbackQuery({ text: "Top!", show_alert: true });
+  layout.forEach(b => {
+    if (b.row === r) b.row = r - 1;
+    else if (b.row === r - 1) b.row = r;
+  });
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬆️" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery(/^kbrow_down_/, async (ctx) => {
+  let r = parseInt(ctx.callbackQuery.data.replace("kbrow_down_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+  if (r >= maxRow) return ctx.answerCallbackQuery({ text: "Bottom!", show_alert: true });
+  layout.forEach(b => {
+    if (b.row === r) b.row = r + 1;
+    else if (b.row === r + 1) b.row = r;
+  });
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "⬇️" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery(/^kbbtn_edit_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("kbbtn_edit_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  let btn = layout[idx];
+  let text = `✏️ *Edit Button*\n\n📛 ${btn.name}\n📍 Row: ${btn.row}`;
+  let kb = new InlineKeyboard().text("📝 Rename", `kbbtn_rename_${idx}`).row().text("🔙 Back", "adm_keyboard_custom");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^kbbtn_rename_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("kbbtn_rename_", ""), 10);
+  userState[ctx.from.id] = `KB_BTN_RENAME_${idx}`;
+  await ctx.editMessageText("📝 Send new name:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_keyboard_custom") }).catch(() => {});
+});
+
+bot.callbackQuery(/^kbbtn_up_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("kbbtn_up_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx <= 0) return ctx.answerCallbackQuery({ text: "Top!", show_alert: true });
+  if (layout[idx].row === layout[idx - 1].row) {
+    let temp = layout[idx]; layout[idx] = layout[idx - 1]; layout[idx - 1] = temp;
+    await setConfig("keyboard_layout", layout);
+  }
+  ctx.answerCallbackQuery({ text: "⬆️" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery(/^kbbtn_down_/, async (ctx) => {
+  let idx = parseInt(ctx.callbackQuery.data.replace("kbbtn_down_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx >= layout.length - 1) return ctx.answerCallbackQuery({ text: "Bottom!", show_alert: true });
+  if (layout[idx].row === layout[idx + 1].row) {
+    let temp = layout[idx]; layout[idx] = layout[idx + 1]; layout[idx + 1] = temp;
+    await setConfig("keyboard_layout", layout);
+  }
+  ctx.answerCallbackQuery({ text: "⬇️" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery(/^kbbtn_move_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  let idx = parseInt(ctx.callbackQuery.data.replace("kbbtn_move_", ""), 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
+  let btn = layout[idx];
+  let text = `📥 *Move Button*\n\n📛 ${btn.name}\n📍 Row: ${btn.row}\n\n👉 Choose:`;
+  let kb = new InlineKeyboard();
+  for (let r = 0; r <= maxRow; r++) {
+    if (r === btn.row) continue;
+    kb.text(`Row ${r + 1}`, `kbbtn_moveto_${idx}_${r}`).row();
+  }
+  kb.text("🔙 Back", "adm_keyboard_custom");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^kbbtn_moveto_/, async (ctx) => {
+  let parts = ctx.callbackQuery.data.replace("kbbtn_moveto_", "").split("_");
+  let idx = parseInt(parts[0], 10);
+  let newRow = parseInt(parts[1], 10);
+  let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+  if (idx < 0 || idx >= layout.length) return;
+  layout[idx].row = newRow;
+  await setConfig("keyboard_layout", layout);
+  ctx.answerCallbackQuery({ text: "✅" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery("kbpanel_reset", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  await ctx.editMessageText(
+    `⚠️ *Reset Keyboard?*`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("✅ Confirm", "kbpanel_reset_yes").text("❌ Cancel", "adm_keyboard_custom") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("kbpanel_reset_yes", async (ctx) => {
+  await setConfig("keyboard_layout", JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT)));
+  ctx.answerCallbackQuery({ text: "✅ Reset!" });
+  await rerender(ctx, "adm_keyboard_custom");
+});
+
+bot.callbackQuery("kbpanel_update_all", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let totalUsers = await User.countDocuments({});
+  await ctx.editMessageText(
+    `⚠️ *Update Keyboard for All Users?*\n\n👥 Total: ${totalUsers} users`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("✅ Confirm", "kbpanel_update_yes").text("❌ Cancel", "adm_keyboard_custom") }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("kbpanel_update_yes", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "⏳ Updating..." });
+  let startTime = Date.now();
+  let users = await User.find({});
+  let messageSendEnabled = await getConfig("kb_update_msg_send", true);
+  let updateMsg = await getConfig("kb_update_msg", "🎨 Keyboard Updated!\nYour keyboard has been updated successfully.");
+  let sent = 0, failed = 0;
+
+  for (let u of users) {
+    try {
+      if (messageSendEnabled) {
+        await bot.api.sendMessage(u.userId, updateMsg);
+      }
+      sent++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (e) { failed++; }
+  }
+  let timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+  await ctx.editMessageText(
+    `✅ *Update Complete!*\n\n✅ Success: ${sent}\n❌ Failed: ${failed}\n👥 Total: ${users.length}\n\n⏱️ Time: ${timeTaken}s`,
+    { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_keyboard_custom"), parse_mode: "Markdown" }
+  ).catch(() => {});
+});
+
+bot.callbackQuery("kbpanel_msg_toggle", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let enabled = await getConfig("kb_update_msg_send", true);
+  let msg = await getConfig("kb_update_msg", "🎨 Keyboard Updated!\nYour keyboard has been updated successfully.");
+  let text =
+    `🔔 *Update Message Send*\n\n📊 Status: ${enabled ? "🟢 ON" : "🔴 OFF"}\n\n📝 Current:\n"${msg}"`;
+  let kb = new InlineKeyboard()
+    .text(enabled ? "🔴 Turn OFF" : "🟢 Turn ON", "kbmsg_toggle").row()
+    .text("✏️ Edit Message", "kbmsg_edit").row()
+    .text("🔙 Back", "adm_keyboard_custom");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("kbmsg_toggle", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("kb_update_msg_send", true);
+  await setConfig("kb_update_msg_send", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await rerender(ctx, "kbpanel_msg_toggle");
+});
+
+bot.callbackQuery("kbmsg_edit", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "KB_MSG_EDIT";
+  await ctx.editMessageText("📝 Send new update message:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "kbpanel_msg_toggle") }).catch(() => {});
+});
+
+console.log("✅ Part 8B-2 Loaded — Admin Panel + Keyboard Customizing");
+
+// ============================================================
+// 🚀 FINAL BOT STARTUP
+// ============================================================
+bot.catch((err) => console.error("❌ Bot Error:", err.message));
+
+let botRetryCount = 0;
+const MAX_BOT_RETRIES = 15;
+
+async function startBotSafe() {
+  try {
+    await bot.start({
+      onStart: (info) => {
+        console.log(`🚀 Bot @${info.username} running!`);
+        botRetryCount = 0;
+      }
+    });
+  } catch (err) {
+    const errMsg = err?.message || String(err);
+    console.error("❌ Bot start error:", errMsg);
+    if (errMsg.includes("409") || errMsg.includes("Conflict")) {
+      botRetryCount++;
+      if (botRetryCount <= MAX_BOT_RETRIES) {
+        console.log(`⚠️ 409 Conflict. Retry ${botRetryCount}/${MAX_BOT_RETRIES} in 5s...`);
+        await new Promise(r => setTimeout(r, 5000));
+        return startBotSafe();
+      }
+    }
+    console.error("❌ Bot failed after max retries. Exiting...");
+    process.exit(1);
+  }
+}
+
+mongoose.connect(MONGO_URI)
+  .then(async () => {
+    console.log("🍃 MongoDB Connected!");
+
+    await getConfig("auto_upi_id", "nasih@fam");
+    await getConfig("auto_upi_min", 5);
+    await getConfig("auto_upi_max", 200);
+    await getConfig("auto_upi_enabled", true);
+    await getConfig("auto_verify_enabled", true);
+    await getConfig("manual_verify_enabled", true);
+    await getConfig("min_withdraw", 10);
+    await getConfig("max_withdraw", 10000);
+    await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
+    await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+    await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+    await getConfig("welcome_channel_link", "https://t.me/yourchannel");
+    await getConfig("bot_active", true);
+    await getConfig("quick_pay_tax_enabled", false);
+    await getConfig("quick_pay_tax_percent", 0);
+    await getConfig("new_user_notif", true);
+    await getConfig("broadcast_msg_send", true);
+    await getConfig("kb_update_msg_send", true);
+    await getConfig("kb_update_msg", "🎨 Keyboard Updated!\nYour keyboard has been updated successfully.");
+    await getConfig("admin_panel_msg_send", true);
+    await getConfig("admin_panel_update_msg", "🎨 Admin Panel Updated!\nYour panel has been updated.");
+
+    // Start Command Defaults
+    await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
+    await getConfig("start_earn_text", "How to Earn:");
+    await getConfig("start_click_text", "(((CLICK HERE )))");
+    await getConfig("start_channel_link", "https://t.me/yourchannel");
+    await getConfig("start_font_style", "normal");
+
+    // Channels
+    await getConfig("withdraw_request_channel_link", "https://t.me/yourchannel");
+    await getConfig("payout_channel_link", "https://t.me/payoutchannel");
+    await getConfig("broadcast_channel_link", "https://t.me/broadcastchannel");
+
+    let fund = await LiveFund.findOne({ key: "main_fund" });
+    if (!fund) await LiveFund.create({ key: "main_fund" });
+
+    let wsCount = await WithdrawSettings.countDocuments({});
+    if (wsCount === 0) {
+      const defaults = [
+        { method: "upi", isActive: true, minAmount: 10, maxAmount: 10000, taxPercent: 0 },
+        { method: "bank", isActive: true, minAmount: 100, maxAmount: 50000, taxPercent: 0 },
+        { method: "wallet", isActive: true, minAmount: 10, maxAmount: 10000, taxPercent: 0 },
+        { method: "amazon", isActive: false, minAmount: 100, maxAmount: 5000, taxPercent: 0 },
+        { method: "redeem", isActive: false, minAmount: 50, maxAmount: 2000, taxPercent: 0 }
+      ];
+      for (let d of defaults) await WithdrawSettings.create(d);
+    }
+
+    let apiKey = await getConfig("auto_upi_api_key", null);
+    if (!apiKey) {
+      apiKey = "KEY_" + crypto.randomBytes(16).toString("hex");
+      await setConfig("auto_upi_api_key", apiKey);
+      console.log("🔐 Generated new API Key:", apiKey);
+    }
+
+    console.log("⏳ Waiting 8s for cleanup...");
+    await new Promise(r => setTimeout(r, 8000));
+
+    console.log("🔐 API Secret Key:", apiKey);
+    console.log("📡 Custom API: POST /api/add-payment");
+    console.log("📡 Test API: POST /api/test-utr");
+    console.log(`🌐 Mini App: ${process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + PORT}/miniapp`);
+
+    await startBotSafe();
+  })
+  .catch((err) => {
+    console.error("❌ DB Error:", err);
+    process.exit(1);
+  });
+
+// ============================================================
+// 🌐 EXPRESS SERVER START
+// ============================================================
+let serverStarted = false;
+
+if (!serverStarted) {
+  serverStarted = true;
+
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} already in use. Retrying in 2s...`);
+      setTimeout(() => {
+        server.close();
+        server.listen(PORT, "0.0.0.0");
+      }, 2000);
+    } else {
+      console.error('❌ Server error:', err);
+    }
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received. Closing server...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received. Closing server...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+}
+
+setInterval(() => {
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
+}, 300000);
+
+// // ============================================================
+// 🌐 EXPRESS SERVER START
+// ============================================================
+let serverStarted = false;
+
+if (!serverStarted) {
+  serverStarted = true;
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
+  });
+  // ... server error handling
+}
+
+// ✅ ഇത് — Mini App OFF ആവാതിരിക്കാൻ!
+setInterval(() => {
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
+}, 300000);
+
+// ============================================================
+// ✅ END OF FILE
+// ============================================================
+console.log("✅ bot.js loaded — Complete bot with all features");
