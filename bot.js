@@ -5601,6 +5601,344 @@ setInterval(() => {
 }, 300000);
 
 // ============================================================
+// 📋 TASK MANAGER
+// ============================================================
+async function renderTaskManager(ctx) {
+  let tasks = await Task.find({});
+  let keyboard = new InlineKeyboard();
+  if (tasks.length === 0) keyboard.text("📂 No Tasks", "noop").row();
+  else tasks.forEach(t => {
+    keyboard.text(`📄 ${t.title}`, `view_task_${t.taskId}`)
+            .text("🗑️", `del_task_${t.taskId}`).row();
+  });
+  keyboard.text("➕ Add New Task", "adm_create_task").row();
+  keyboard.text("🔙 Back", "admin");
+  let taskText = "💡 *Manage Tasks*";
+  if (ctx.callbackQuery) {
+    await ctx.editMessageText(taskText, { reply_markup: keyboard, parse_mode: "Markdown" }).catch(() => {});
+  } else {
+    await ctx.reply(taskText, { reply_markup: keyboard, parse_mode: "Markdown" });
+  }
+}
+
+bot.callbackQuery("adm_tasks_manager", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderTaskManager(ctx);
+});
+
+bot.callbackQuery(/^view_task_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let tId = ctx.callbackQuery.data.replace("view_task_", "");
+  let task = await Task.findOne({ taskId: tId });
+  if (!task) return;
+  let msg = `📋 *Task Details*\n\n🆔 ${task.taskId}\n📌 ${task.title}\n💰 ₹${task.reward}\n🔗 ${task.link}\n📸 Type: ${task.taskType || "photo"}\n📢 Alert: ${task.alertChannel || "Not Set"}`;
+  let kb = new InlineKeyboard()
+    .text("✏️ Edit Title", `task_edit_title_${task.taskId}`).row()
+    .text("✏️ Edit Reward", `task_edit_reward_${task.taskId}`).row()
+    .text("✏️ Edit Link", `task_edit_link_${task.taskId}`).row()
+    .text("✏️ Edit Alert Channel", `task_edit_channel_${task.taskId}`).row()
+    .text("🗑️ Delete Task", `del_task_${task.taskId}`).row()
+    .text("🔙 Back", "adm_tasks_manager");
+  await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^task_edit_title_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let tId = ctx.callbackQuery.data.replace("task_edit_title_", "");
+  userState[ctx.from.id] = `TASK_EDIT_TITLE_${tId}`;
+  await ctx.editMessageText("📝 Send new title:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", `view_task_${tId}`) });
+});
+
+bot.callbackQuery(/^task_edit_reward_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let tId = ctx.callbackQuery.data.replace("task_edit_reward_", "");
+  userState[ctx.from.id] = `TASK_EDIT_REWARD_${tId}`;
+  await ctx.editMessageText("📝 Send new reward:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", `view_task_${tId}`) });
+});
+
+bot.callbackQuery(/^task_edit_link_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let tId = ctx.callbackQuery.data.replace("task_edit_link_", "");
+  userState[ctx.from.id] = `TASK_EDIT_LINK_${tId}`;
+  await ctx.editMessageText("📝 Send new link:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", `view_task_${tId}`) });
+});
+
+bot.callbackQuery(/^task_edit_channel_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let tId = ctx.callbackQuery.data.replace("task_edit_channel_", "");
+  userState[ctx.from.id] = `TASK_EDIT_CHANNEL_${tId}`;
+  await ctx.editMessageText("📝 Send new alert channel:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", `view_task_${tId}`) });
+});
+
+bot.callbackQuery(/^del_task_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let tId = ctx.callbackQuery.data.replace("del_task_", "");
+  await Task.deleteOne({ taskId: tId });
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
+  await renderTaskManager(ctx);
+});
+
+bot.callbackQuery("adm_create_task", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "WAITING_FOR_TASK_CREATE";
+  await ctx.editMessageText(
+    `➕ *New Task*\n\nFormat: \`TaskID | Title | Reward | Link\`\n\nExample:\n\`T1 | Subscribe | 10 | https://t.me/channel\``,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_tasks_manager") }
+  );
+});
+
+// ============================================================
+// 💬 SUPPORT ADMIN PANEL
+// ============================================================
+bot.callbackQuery("adm_support", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let messages = await SupportMessage.aggregate([
+    { $sort: { createdAt: -1 } },
+    { $group: {
+      _id: "$userId",
+      userName: { $first: "$userName" },
+      lastMessage: { $first: "$message" },
+      lastTime: { $first: "$createdAt" },
+      totalMessages: { $sum: 1 },
+      hasUnread: { $max: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] } }
+    }},
+    { $sort: { lastTime: -1 } },
+    { $limit: 50 }
+  ]);
+  let text = `💬 *Customer Support*\n\n📊 Total: ${messages.length}\n\n👇 Click to view:`;
+  let kb = new InlineKeyboard();
+  for (let m of messages) {
+    let icon = m.hasUnread ? "🔴" : "✅";
+    kb.text(`${icon} ${m.userName} — 🆔 ${m._id}`, `support_view_${m._id}`).row();
+  }
+  kb.text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^support_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("support_view_", ""), 10);
+  let msgs = await SupportMessage.find({ userId: uid }).sort({ createdAt: 1 }).limit(50);
+  let u = await User.findOne({ userId: uid });
+  let text = `💬 *Chat with ${u?.firstName || "User"}*\n🆔 \`${uid}\`\n\n`;
+  msgs.forEach((m) => {
+    let icon = m.fromAdmin ? "🤖" : "👤";
+    let time = formatDateTime(m.createdAt);
+    text += `${icon} ${time}:\n"${m.message}"\n\n`;
+  });
+  let kb = new InlineKeyboard()
+    .text("📩 Reply", `support_reply_${uid}`).row()
+    .text("🗑️ Clear Chat", `support_clear_${uid}`).row()
+    .text("🔙 Back", "adm_support");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery(/^support_clear_/, async (ctx) => {
+  ctx.answerCallbackQuery({ text: "🗑️ Cleared!" });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("support_clear_", ""), 10);
+  await SupportMessage.deleteMany({ userId: uid });
+  await rerender(ctx, "adm_support");
+});
+
+// ============================================================
+// 📢 BROADCAST
+// ============================================================
+bot.callbackQuery("adm_broadcast", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "BROADCAST_WAIT_MSG";
+  await ctx.editMessageText(
+    `📢 *Broadcast*\n\nSend Your Broadcast Message\n\n📝 Type your message:`,
+    { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("❌ Close", "broadcast_cancel") }
+  );
+});
+
+bot.callbackQuery("broadcast_cancel", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "❌ Cancelled!" }).catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  delete userState[ctx.from.id];
+  if (global.broadcastCache) delete global.broadcastCache[ctx.from.id];
+  await ctx.editMessageText("❌ *Cancelled.*", { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "admin") }).catch(() => {});
+});
+
+bot.callbackQuery("broadcast_confirm", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let userId = ctx.from.id;
+  let cacheObj = global.broadcastCache?.[userId];
+  if (!cacheObj) return ctx.answerCallbackQuery({ text: "❌ Expired!", show_alert: true });
+  delete userState[userId];
+  delete global.broadcastCache[userId];
+  await ctx.answerCallbackQuery({ text: "⏳ Broadcasting..." });
+  let startTime = Date.now();
+  let allUsers = await User.find({});
+  let count = 0, failed = 0;
+  for (let u of allUsers) {
+    try {
+      if (cacheObj.type === "photo") {
+        await ctx.api.sendPhoto(u.userId, cacheObj.fileId, { caption: cacheObj.caption || "" });
+      } else {
+        await ctx.api.sendMessage(u.userId, cacheObj.content || "");
+      }
+      count++;
+      await new Promise(r => setTimeout(r, 50));
+    } catch (e) { failed++; }
+  }
+  let timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+  let text =
+    `✅ *Broadcast Complete!*\n\n` +
+    `✅ Sent: ${count}\n` +
+    `❌ Failed: ${failed}\n` +
+    `👥 Total: ${allUsers.length}\n\n` +
+    `⏱️ Time: ${timeTaken}s`;
+  await ctx.editMessageText(text, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🏠 Admin Panel", "admin") }).catch(() => {});
+});
+
+// ============================================================
+// 📝 TASK MANAGER STATE HANDLERS
+// ============================================================
+bot.on("message:text", async (ctx, next) => {
+  let userId = ctx.from.id;
+  let state = userState[userId];
+  let text = ctx.message.text.trim();
+  if (!state) return next();
+
+  if (state === "WAITING_FOR_TASK_CREATE" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 4) return ctx.reply("❌ Use: TaskID | Title | Reward | Link");
+    await Task.create({
+      taskId: parts[0], title: parts[1],
+      reward: parseFloat(parts[2]), link: parts[3],
+      alertChannel: await getConfig("default_task_alert_channel", "Not Set")
+    });
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Task Created", `${parts[1]}`, parseFloat(parts[2]));
+    return ctx.reply(`✅ Task '${parts[1]}' created!`);
+  }
+
+  if (state.startsWith("TASK_EDIT_TITLE_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_TITLE_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { title: text });
+    return ctx.reply(`✅ Title updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_REWARD_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_REWARD_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await Task.updateOne({ taskId }, { reward: amt });
+    return ctx.reply(`✅ Reward updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_LINK_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_LINK_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { link: text });
+    return ctx.reply(`✅ Link updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_CHANNEL_") && (await isAdmin(userId))) {
+    let taskId = state.replace("TASK_EDIT_CHANNEL_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { alertChannel: text });
+    return ctx.reply(`✅ Alert Channel updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state === "SUPPORT_ADMIN_REPLY_PENDING") {
+    delete userState[userId];
+    return next();
+  }
+  if (state === "KB_MSG_EDIT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("kb_update_msg", text);
+    return ctx.reply(`✅ Message Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "kbpanel_msg_toggle") });
+  }
+  if (state.startsWith("ADM_BTN_RENAME_") && (await isAdmin(userId))) {
+    let idx = parseInt(state.replace("ADM_BTN_RENAME_", ""), 10);
+    delete userState[userId];
+    let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+    if (idx < 0 || idx >= layout.length) return;
+    layout[idx].name = text;
+    await setConfig("admin_panel_layout", layout);
+    return ctx.reply(`✅ Renamed to: ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_panel_custom") });
+  }
+  if (state.startsWith("KB_BTN_RENAME_") && (await isAdmin(userId))) {
+    let idx = parseInt(state.replace("KB_BTN_RENAME_", ""), 10);
+    delete userState[userId];
+    let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    if (idx < 0 || idx >= layout.length) return;
+    layout[idx].name = text;
+    await setConfig("keyboard_layout", layout);
+    return ctx.reply(`✅ Renamed to: ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_keyboard_custom") });
+  }
+  if (state === "LIVEFUND_WAIT_AMOUNT" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+    await LiveFund.findOneAndUpdate(
+      { key: "main_fund" },
+      { totalFund: amt, usedFund: 0, updatedAt: new Date() },
+      { upsert: true }
+    );
+    return ctx.reply(`✅ Fund Set: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "status_live_fund") });
+  }
+  if (state.startsWith("SUPPORT_ADMIN_REPLY_")) {
+    let targetId = parseInt(state.replace("SUPPORT_ADMIN_REPLY_", ""), 10);
+    delete userState[userId];
+    let targetUser = await User.findOne({ userId: targetId });
+    await SupportMessage.create({
+      userId: targetId,
+      userName: targetUser?.firstName || "User",
+      username: targetUser?.username || "",
+      message: text,
+      fromAdmin: true,
+      isRead: true,
+      replied: true
+    });
+    try {
+      await bot.api.sendMessage(targetId,
+        `💬 *Support Message from Admin*\n\n${text}`,
+        { parse_mode: "Markdown" });
+      await ctx.reply(`✅ Reply sent to \`${targetId}\`!`, { parse_mode: "Markdown" });
+    } catch (e) {
+      await ctx.reply(`❌ Failed: ${e.message}`);
+    }
+    return;
+  }
+  if (state === "START_WAIT_WELCOME" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_welcome", text);
+    return ctx.reply(`✅ Welcome Text Updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_EARN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_earn_text", text);
+    return ctx.reply(`✅ Earn Text Updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_CLICK" && (await isAdmin(userId))) {
+    delete userState[userId];
+    await setConfig("start_click_text", text);
+    return ctx.reply(`✅ Click Text Updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_CHANNEL" && (await isAdmin(userId))) {
+    delete userState[userId];
+    if (!text.startsWith("https://t.me/")) return ctx.reply("❌ Invalid link!");
+    await setConfig("start_channel_link", text);
+    return ctx.reply(`✅ Channel Link Updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  return next();
+});
+
+console.log("✅ Task Manager + Support + Broadcast + States Loaded");
+
+// ============================================================
 // ✅ END OF FILE
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
