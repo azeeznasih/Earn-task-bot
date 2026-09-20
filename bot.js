@@ -5797,7 +5797,8 @@ setInterval(() => {
 // ============================================================
 // 🔀 BUTTON ROUTING
 // ============================================================
-let user = await getUser(userId);
+
+
 let layout = await getCurrentKeyboardLayoutForUser(userId);
 let findKeyByName = (name) => {
   let btn = layout.find(b => b.name === name);
