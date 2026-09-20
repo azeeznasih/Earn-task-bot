@@ -5793,28 +5793,6 @@ setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => {});
 }, 300000);
-
-// ============================================================
-// 🔀 BUTTON ROUTING
-// ============================================================
-
-
-let layout = await getCurrentKeyboardLayoutForUser(userId);
-let findKeyByName = (name) => {
-  let btn = layout.find(b => b.name === name);
-  return btn ? btn.key : null;
-};
-let matchedKey = findKeyByName(text);
-
-if (matchedKey === "btn_balance" || /balance/i.test(text)) {
-
-// Auto-ping every 5 minutes
-setInterval(() => { ... }, 300000);
-
-// ✅ ഇവിടെ Paste ചെയ്യൂ
-
-// ============================================================
-// ✅ END OF FILE
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
 console.log("✅ All Mini App APIs loaded!");
