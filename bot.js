@@ -5939,6 +5939,484 @@ bot.on("message:text", async (ctx, next) => {
 console.log("✅ Task Manager + Support + Broadcast + States Loaded");
 
 // ============================================================
+// 🔧 ADMIN STATE HANDLERS — Text Input Fix
+// ============================================================
+bot.on("message:text", async (ctx, next) => {
+  let text = ctx.message.text.trim();
+  let userId = ctx.from.id;
+  let state = userState[userId];
+  let isAdminUser = await isAdmin(userId);
+
+  // ✅ Skip commands
+  if (text.startsWith("/")) return next();
+
+  // ✅ Skip if state handled by other handlers
+  if (!state) return next();
+
+  // ============================================================
+  // 📢 BROADCAST
+  // ============================================================
+  if (state === "BROADCAST_WAIT_MSG" && isAdminUser) {
+    delete userState[userId];
+    global.broadcastCache = global.broadcastCache || {};
+    global.broadcastCache[userId] = { content: text };
+    let totalUsers = await User.countDocuments({});
+    let kb = new InlineKeyboard()
+      .text("✅ Confirm", "broadcast_confirm")
+      .text("❌ Close", "broadcast_cancel");
+    await ctx.reply(
+      `📢 *Broadcast Preview*\n\n━━━━━━━━━━━━━━━━━━━━\n\n${text}\n\n━━━━━━━━━━━━━━━━━━━━\n\n👥 Recipients: ${totalUsers}\n\nConfirm?`,
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+    return;
+  }
+
+  // ============================================================
+  // 💸 WITHDRAW SETTINGS — Min / Max / Tax
+  // ============================================================
+  if (state.startsWith("ADMWD_MIN_") && isAdminUser) {
+    let method = state.replace("ADMWD_MIN_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+    await WithdrawSettings.findOneAndUpdate({ method }, { minAmount: amt, updatedAt: new Date() }, { upsert: true });
+    return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `admwd_edit_${method}`) });
+  }
+  if (state.startsWith("ADMWD_MAX_") && isAdminUser) {
+    let method = state.replace("ADMWD_MAX_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+    await WithdrawSettings.findOneAndUpdate({ method }, { maxAmount: amt, updatedAt: new Date() }, { upsert: true });
+    return ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `admwd_edit_${method}`) });
+  }
+  if (state.startsWith("ADMWD_TAX_") && isAdminUser) {
+    let method = state.replace("ADMWD_TAX_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply("❌ Tax must be 0-50%!");
+    await WithdrawSettings.findOneAndUpdate({ method }, { taxPercent: amt, updatedAt: new Date() }, { upsert: true });
+    return ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text("🔙 Back", `admwd_edit_${method}`) });
+  }
+
+  // ============================================================
+  // 💰 SET WITHDRAW TAX
+  // ============================================================
+  if (state === "WAITING_TAX_PERCENT" && isAdminUser) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply("❌ Tax must be 0-50%!");
+    await setConfig("tax_percent", amt);
+    return ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_set_wd_tax") });
+  }
+
+  // ============================================================
+  // ⚡ QUICK PAY TAX
+  // ============================================================
+  if (state === "WAITING_QUICK_PAY_TAX" && isAdminUser) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply("❌ Tax must be 0-50%!");
+    await setConfig("quick_pay_tax_percent", amt);
+    return ctx.reply(`✅ Quick Pay Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_quick_pay") });
+  }
+
+  // ============================================================
+  // 💰 LIVE FUND — Set Amount
+  // ============================================================
+  if (state === "LIVEFUND_WAIT_AMOUNT" && isAdminUser) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid amount!");
+    await LiveFund.findOneAndUpdate(
+      { key: "main_fund" },
+      { totalFund: amt, usedFund: 0, updatedAt: new Date() },
+      { upsert: true }
+    );
+    return ctx.reply(`✅ Fund Set: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "status_live_fund") });
+  }
+
+  // ============================================================
+  // 👑 NEW OWNER
+  // ============================================================
+  if (state === "WAITING_NEW_OWNER" && (await isOwner(userId))) {
+    delete userState[userId];
+    let newOwnerId = parseInt(text, 10);
+    if (isNaN(newOwnerId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: newOwnerId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    let kb = new InlineKeyboard()
+      .text("✅ Yes, Transfer", `admin_transfer_confirm_${newOwnerId}`).row()
+      .text("❌ Cancel", "adm_admins");
+    return ctx.reply(`⚠️ *Confirm Transfer*\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newOwnerId}\`\n\nSure?`, {
+      parse_mode: "Markdown", reply_markup: kb
+    });
+  }
+
+  // ============================================================
+  // 👮 ADMIN ADD
+  // ============================================================
+  if (state === "WAITING_ADMIN_ADD" && (await isOwner(userId))) {
+    delete userState[userId];
+    let newAdminId = parseInt(text, 10);
+    if (isNaN(newAdminId)) return ctx.reply("❌ Invalid!");
+    if (newAdminId === userId) return ctx.reply("❌ You are owner!");
+    let targetUser = await User.findOne({ userId: newAdminId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    await BotAdmin.findOneAndUpdate(
+      { userId: newAdminId },
+      { addedAt: new Date(), addedBy: userId, isActive: true },
+      { upsert: true }
+    );
+    await logAdminAction(userId, ctx.from.first_name || "Owner", "Admin Added", `Added ${newAdminId}`, 0, newAdminId);
+    return ctx.reply(`✅ Admin Added!\n\n👤 ${targetUser.firstName || "User"}\n🆔 \`${newAdminId}\``, {
+      parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_admins")
+    });
+  }
+
+  // ============================================================
+  // 🚫 BAN/UNBAN USER
+  // ============================================================
+  if (state === "BAN_USER_WAIT" && isAdminUser) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.isBanned = true;
+    await targetUser.save();
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "User Banned", `${targetId}`, 0, targetId);
+    try { await ctx.api.sendMessage(targetId, `🚫 You have been banned from using this bot.`); } catch (e) {}
+    return ctx.reply(`✅ User ${targetId} BANNED`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban") });
+  }
+  if (state === "UNBAN_USER_WAIT" && isAdminUser) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.isBanned = false;
+    await targetUser.save();
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "User Unbanned", `${targetId}`, 0, targetId);
+    try { await ctx.api.sendMessage(targetId, `✅ You have been unbanned. Welcome back!`); } catch (e) {}
+    return ctx.reply(`✅ User ${targetId} UNBANNED`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban") });
+  }
+
+  // ============================================================
+  // 🚫 BAN WALLET
+  // ============================================================
+  if (state === "BAN_WALLET_WAIT" && isAdminUser) {
+    delete userState[userId];
+    await setConfig("banned_wallet", text);
+    return ctx.reply(`✅ Wallet Banned: ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_manage_ban_wallet") });
+  }
+
+  // ============================================================
+  // ➕➖ BALANCE — Add / Remove
+  // ============================================================
+  if (state === "WAITING_FOR_ADD_BAL" && isAdminUser) {
+    delete userState[userId];
+    let parts = text.split(/\s+/);
+    let targetId = parseInt(parts[0], 10);
+    let amount = parseFloat(parts[1]);
+    if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) {
+      targetUser = await User.create({ userId: targetId, firstName: "Unknown", balance: amount, referredBy: "Auto Started" });
+      await logBalanceHistory(targetId, "Admin Added Balance (New)", amount);
+    } else {
+      targetUser.balance += amount;
+      await targetUser.save();
+      await logBalanceHistory(targetId, "Admin Added Balance", amount);
+    }
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
+    return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
+  }
+  if (state === "WAITING_FOR_REM_BAL" && isAdminUser) {
+    delete userState[userId];
+    let parts = text.split(/\s+/);
+    let targetId = parseInt(parts[0], 10);
+    let amount = parseFloat(parts[1]);
+    if (isNaN(targetId) || isNaN(amount)) return ctx.reply("❌ Use: UserID Amount");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    targetUser.balance = Math.max(0, targetUser.balance - amount);
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
+    return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`);
+  }
+
+  // ============================================================
+  // 👤 USER DETAIL — Add/Remove Balance
+  // ============================================================
+  if (state.startsWith("UADD_WAIT_")) {
+    let targetId = parseInt(state.replace("UADD_WAIT_", ""), 10);
+    delete userState[userId];
+    let amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.balance += amount;
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Added Balance", amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetId}`, amount, targetId);
+    try { await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n🟢 Added: ₹${amount}\n💵 New: ₹${targetUser.balance.toFixed(2)}`); } catch (e) {}
+    return ctx.reply(`✅ Added ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${targetId}`) });
+  }
+  if (state.startsWith("UREM_WAIT_")) {
+    let targetId = parseInt(state.replace("UREM_WAIT_", ""), 10);
+    delete userState[userId];
+    let amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply("❌ User not found!");
+    targetUser.balance = Math.max(0, targetUser.balance - amount);
+    await targetUser.save();
+    await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetId}`, amount, targetId);
+    try { await ctx.api.sendMessage(targetId, `💰 Balance Updated!\n\n📉 Removed: ₹${amount}\n💵 New: ₹${targetUser.balance.toFixed(2)}`); } catch (e) {}
+    return ctx.reply(`✅ Removed ₹${amount}. New: ₹${targetUser.balance.toFixed(2)}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${targetId}`) });
+  }
+  if (state.startsWith("UMSG_WAIT_")) {
+    let targetId = parseInt(state.replace("UMSG_WAIT_", ""), 10);
+    delete userState[userId];
+    try {
+      await ctx.api.sendMessage(targetId, `📨 Message from Admin:\n\n${text}`);
+      return ctx.reply(`✅ Sent to ${targetId}`, { reply_markup: new InlineKeyboard().text("🔙 Back", `user_detail_${targetId}`) });
+    } catch (e) {
+      return ctx.reply(`❌ Failed: ${e.message}`);
+    }
+  }
+
+  // ============================================================
+  // 🔍 FIND USER
+  // ============================================================
+  if (state === "WAITING_FOR_TRACKER_ID" && isAdminUser) {
+    delete userState[userId];
+    let targetId = parseInt(text, 10);
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid!");
+    let targetUser = await User.findOne({ userId: targetId });
+    if (!targetUser) return ctx.reply(`❌ User not found!`);
+    return ctx.reply(`👤 Loading user ${targetId}...`, { reply_markup: new InlineKeyboard().text("👤 View Details", `user_detail_${targetId}`) });
+  }
+
+  // ============================================================
+  // 💬 TALK WITH USER
+  // ============================================================
+  if (state === "WAITING_FOR_USER_MESSAGE" && isAdminUser) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 2) return ctx.reply(`❌ Format: \`UserID | Message\``, { parse_mode: "Markdown" });
+    let targetId = parseInt(parts[0], 10);
+    let message = parts.slice(1).join("|").trim();
+    if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
+    try {
+      await ctx.api.sendMessage(targetId, `📨 *Admin Message*\n\n${message}`, { parse_mode: "Markdown" });
+      return ctx.reply(`✅ Sent to \`${targetId}\`!`, { parse_mode: "Markdown" });
+    } catch (e) {
+      return ctx.reply(`❌ Failed: ${e.message}`);
+    }
+  }
+
+  // ============================================================
+  // 📋 TASK CREATE / EDIT
+  // ============================================================
+  if (state === "WAITING_FOR_TASK_CREATE" && isAdminUser) {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 4) return ctx.reply("❌ Use: TaskID | Title | Reward | Link");
+    await Task.create({
+      taskId: parts[0], title: parts[1],
+      reward: parseFloat(parts[2]), link: parts[3],
+      alertChannel: await getConfig("default_task_alert_channel", "Not Set")
+    });
+    await logAdminAction(userId, ctx.from.first_name || "Admin", "Task Created", `${parts[1]}`, parseFloat(parts[2]));
+    return ctx.reply(`✅ Task '${parts[1]}' created!`);
+  }
+  if (state.startsWith("TASK_EDIT_TITLE_") && isAdminUser) {
+    let taskId = state.replace("TASK_EDIT_TITLE_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { title: text });
+    return ctx.reply(`✅ Title updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_REWARD_") && isAdminUser) {
+    let taskId = state.replace("TASK_EDIT_REWARD_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await Task.updateOne({ taskId }, { reward: amt });
+    return ctx.reply(`✅ Reward updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_LINK_") && isAdminUser) {
+    let taskId = state.replace("TASK_EDIT_LINK_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { link: text });
+    return ctx.reply(`✅ Link updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+  if (state.startsWith("TASK_EDIT_CHANNEL_") && isAdminUser) {
+    let taskId = state.replace("TASK_EDIT_CHANNEL_", "");
+    delete userState[userId];
+    await Task.updateOne({ taskId }, { alertChannel: text });
+    return ctx.reply(`✅ Alert Channel updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `view_task_${taskId}`) });
+  }
+
+  // ============================================================
+  // 🎁 GIFT CODES
+  // ============================================================
+  if (state === "WAITING_REDEEM_CODES" && isAdminUser) {
+    delete userState[userId];
+    return await saveCodes(text, "redeem", ctx);
+  }
+  if (state === "WAITING_AMAZON_CODES" && isAdminUser) {
+    delete userState[userId];
+    return await saveCodes(text, "amazon", ctx);
+  }
+  if (state.startsWith("WAITING_GC_AMT_") && isAdminUser) {
+    let code = state.replace("WAITING_GC_AMT_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "redeem" }, { amount: amt });
+    return ctx.reply(`✅ Amount: ₹${amt}`);
+  }
+  if (state.startsWith("WAITING_GC_MAX_") && isAdminUser) {
+    let code = state.replace("WAITING_GC_MAX_", "");
+    delete userState[userId];
+    let maxUses = parseInt(text);
+    if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "redeem" }, { maxUses });
+    return ctx.reply(`✅ Max: ${maxUses}`);
+  }
+  if (state.startsWith("WAITING_AMZ_AMT_") && isAdminUser) {
+    let code = state.replace("WAITING_AMZ_AMT_", "");
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "amazon" }, { amount: amt });
+    return ctx.reply(`✅ Amount: ₹${amt}`);
+  }
+  if (state.startsWith("WAITING_AMZ_MAX_") && isAdminUser) {
+    let code = state.replace("WAITING_AMZ_MAX_", "");
+    delete userState[userId];
+    let maxUses = parseInt(text);
+    if (isNaN(maxUses) || maxUses < 1) return ctx.reply("❌ Invalid!");
+    await GiftCode.updateOne({ code, type: "amazon" }, { maxUses });
+    return ctx.reply(`✅ Max: ${maxUses}`);
+  }
+
+  // ============================================================
+  // 🎬 START COMMAND SETUP
+  // ============================================================
+  if (state === "START_WAIT_WELCOME" && isAdminUser) {
+    delete userState[userId];
+    await setConfig("start_welcome", text);
+    return ctx.reply(`✅ Welcome Text Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_EARN" && isAdminUser) {
+    delete userState[userId];
+    await setConfig("start_earn_text", text);
+    return ctx.reply(`✅ Earn Text Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_CLICK" && isAdminUser) {
+    delete userState[userId];
+    await setConfig("start_click_text", text);
+    return ctx.reply(`✅ Click Text Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+  if (state === "START_WAIT_CHANNEL" && isAdminUser) {
+    delete userState[userId];
+    if (!text.startsWith("https://t.me/")) return ctx.reply("❌ Must start with https://t.me/", { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+    await setConfig("start_channel_link", text);
+    return ctx.reply(`✅ Channel Link Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_start_setup") });
+  }
+
+  // ============================================================
+  // 🎨 ADMIN PANEL BTN RENAME
+  // ============================================================
+  if (state.startsWith("ADM_BTN_RENAME_") && isAdminUser) {
+    let idx = parseInt(state.replace("ADM_BTN_RENAME_", ""), 10);
+    delete userState[userId];
+    let layout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+    if (idx < 0 || idx >= layout.length) return;
+    layout[idx].name = text;
+    await setConfig("admin_panel_layout", layout);
+    return ctx.reply(`✅ Renamed to: ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_panel_custom") });
+  }
+
+  // ============================================================
+  // ⌨️ KEYBOARD BTN RENAME
+  // ============================================================
+  if (state.startsWith("KB_BTN_RENAME_") && isAdminUser) {
+    let idx = parseInt(state.replace("KB_BTN_RENAME_", ""), 10);
+    delete userState[userId];
+    let layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    if (idx < 0 || idx >= layout.length) return;
+    layout[idx].name = text;
+    await setConfig("keyboard_layout", layout);
+    return ctx.reply(`✅ Renamed to: ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_keyboard_custom") });
+  }
+
+  // ============================================================
+  // 🔔 KEYBOARD UPDATE MESSAGE
+  // ============================================================
+  if (state === "KB_MSG_EDIT" && isAdminUser) {
+    delete userState[userId];
+    await setConfig("kb_update_msg", text);
+    return ctx.reply(`✅ Message Updated!\n\n📌 ${text}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "kbpanel_msg_toggle") });
+  }
+
+  // ============================================================
+  // 💬 SUPPORT ADMIN REPLY
+  // ============================================================
+  if (state.startsWith("SUPPORT_ADMIN_REPLY_")) {
+    let targetId = parseInt(state.replace("SUPPORT_ADMIN_REPLY_", ""), 10);
+    delete userState[userId];
+    let targetUser = await User.findOne({ userId: targetId });
+    await SupportMessage.create({
+      userId: targetId,
+      userName: targetUser?.firstName || "User",
+      username: targetUser?.username || "",
+      message: text,
+      fromAdmin: true,
+      isRead: true,
+      replied: true
+    });
+    try {
+      await bot.api.sendMessage(targetId,
+        `💬 *Support Message from Admin*\n\n${text}`,
+        { parse_mode: "Markdown" });
+      return ctx.reply(`✅ Reply sent to \`${targetId}\`!`, { parse_mode: "Markdown" });
+    } catch (e) {
+      return ctx.reply(`❌ Failed: ${e.message}`);
+    }
+  }
+
+  // ============================================================
+  // 🏦 GATEWAY — Wait Name
+  // ============================================================
+  if (state === "GW_WAIT_NAME" && isAdminUser) {
+    let gwName = text.toUpperCase();
+    userState[userId] = `GW_WAIT_URL_${gwName}`;
+    return ctx.reply(`✅ Name: ${gwName}\n\n📝 Send API URL:`);
+  }
+  if (state.startsWith("GW_WAIT_URL_") && isAdminUser) {
+    let gwName = state.replace("GW_WAIT_URL_", "");
+    delete userState[userId];
+    if (!text.startsWith("http")) return ctx.reply("❌ Invalid URL!");
+    await Gateway.create({ name: gwName, url: text.trim(), type: "deposit", isActive: false });
+    return ctx.reply(`✅ Gateway Saved!\n\n📛 ${gwName}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_gateway_menu") });
+  }
+
+  // ============================================================
+  // 🚫 OTHERWISE — Unknown
+  // ============================================================
+  // If state exists but not handled above → keep waiting
+  return;
+});
+
+console.log("✅ Admin State Handlers Loaded");
+
+// ============================================================
 // ✅ END OF FILE
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
