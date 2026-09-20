@@ -1,7 +1,6 @@
 // ============================================================
 // 🤖 TELEGRAM BOT + MINI APP + GATEWAY SYSTEM
-// Complete Working Bot - All Features
-// Part 1 of 8 — Foundation + Schemas
+// Complete Working Bot — All Features
 // ============================================================
 require("dotenv").config();
 const { Bot, Keyboard, InlineKeyboard, InputFile } = require("grammy");
@@ -10,9 +9,7 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 
-// ============================================================
 // ⚡ CACHE
-// ============================================================
 const cache = {
   config: {},
   admins: [],
@@ -20,9 +17,7 @@ const cache = {
   ownerId: null
 };
 
-// ============================================================
 // 🌐 EXPRESS SETUP
-// ============================================================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -42,9 +37,7 @@ app.use("/miniapp", express.static(path.join(__dirname, "public")));
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// ============================================================
 // ⚙️ CONFIG
-// ============================================================
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
 const MAIN_OWNER_ID = parseInt(process.env.ADMIN_ID || "8061612320", 10);
@@ -57,9 +50,7 @@ if (!BOT_TOKEN || !MONGO_URI) {
 const bot = new Bot(BOT_TOKEN);
 const userState = {};
 
-// ============================================================
 // 🔄 RERENDER HELPER
-// ============================================================
 async function rerender(ctx, callbackData) {
   try {
     const fakeUpdate = {
@@ -78,11 +69,8 @@ async function rerender(ctx, callbackData) {
   }
 }
 
-// ============================================================
 // 🗄️ MONGOOSE SCHEMAS
-// ============================================================
 
-// ---------- USER ----------
 const userSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   firstName: { type: String, default: "" },
@@ -104,7 +92,6 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
-// ---------- USER PREFERENCE ----------
 const userPreferenceSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   keyboardLayout: { type: Array, default: null },
@@ -114,7 +101,6 @@ const userPreferenceSchema = new mongoose.Schema({
 });
 const UserPreference = mongoose.models.UserPreference || mongoose.model("UserPreference", userPreferenceSchema);
 
-// ---------- BOT ADMIN ----------
 const botAdminSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   addedAt: { type: Date, default: Date.now },
@@ -125,7 +111,6 @@ const botAdminSchema = new mongoose.Schema({
 });
 const BotAdmin = mongoose.models.BotAdmin || mongoose.model("BotAdmin", botAdminSchema);
 
-// ---------- TASK ----------
 const taskSchema = new mongoose.Schema({
   taskId: { type: String, required: true, unique: true },
   title: { type: String, required: true },
@@ -140,7 +125,6 @@ const taskSchema = new mongoose.Schema({
 });
 const Task = mongoose.models.Task || mongoose.model("Task", taskSchema);
 
-// ---------- GIFT CODE ----------
 const giftCodeSchema = new mongoose.Schema({
   code: { type: String, required: true },
   amount: { type: Number, required: true },
@@ -153,7 +137,6 @@ const giftCodeSchema = new mongoose.Schema({
 giftCodeSchema.index({ code: 1, type: 1 }, { unique: true });
 const GiftCode = mongoose.models.GiftCode || mongoose.model("GiftCode", giftCodeSchema);
 
-// ---------- TASK SUBMISSION ----------
 const taskSubmissionSchema = new mongoose.Schema({
   submissionId: { type: String, required: true, unique: true },
   userId: { type: Number, required: true },
@@ -167,7 +150,6 @@ const taskSubmissionSchema = new mongoose.Schema({
 });
 const TaskSubmission = mongoose.models.TaskSubmission || mongoose.model("TaskSubmission", taskSubmissionSchema);
 
-// ---------- WITHDRAWAL ----------
 const withdrawalSchema = new mongoose.Schema({
   withdrawalId: { type: String, required: true, unique: true },
   userId: { type: Number, required: true },
@@ -185,7 +167,6 @@ const withdrawalSchema = new mongoose.Schema({
 });
 const Withdrawal = mongoose.models.Withdrawal || mongoose.model("Withdrawal", withdrawalSchema);
 
-// ---------- BALANCE HISTORY ----------
 const balanceHistorySchema = new mongoose.Schema({
   userId: { type: Number, required: true },
   action: { type: String, required: true },
@@ -202,7 +183,6 @@ async function logBalanceHistory(userId, action, amount) {
   }
 }
 
-// ---------- ADMIN LOG ----------
 const adminLogSchema = new mongoose.Schema({
   adminId: { type: Number, required: true },
   adminName: { type: String, default: "" },
@@ -222,7 +202,6 @@ async function logAdminAction(adminId, adminName, action, details = "", amount =
   }
 }
 
-// ---------- MANUAL ADD FUND ----------
 const addFundSchema = new mongoose.Schema({
   requestId: { type: String, required: true, unique: true },
   userId: { type: Number, required: true },
@@ -238,7 +217,6 @@ const addFundSchema = new mongoose.Schema({
 });
 const AddFund = mongoose.models.AddFund || mongoose.model("AddFund", addFundSchema);
 
-// ---------- RECEIVED PAYMENT ----------
 const receivedPaymentSchema = new mongoose.Schema({
   utr: { type: String, required: true, unique: true },
   amount: { type: Number, required: true },
@@ -251,7 +229,6 @@ const receivedPaymentSchema = new mongoose.Schema({
 });
 const ReceivedPayment = mongoose.models.ReceivedPayment || mongoose.model("ReceivedPayment", receivedPaymentSchema);
 
-// ---------- UPI PAYMENT ----------
 const upiPaymentSchema = new mongoose.Schema({
   orderId: { type: String, required: true, unique: true },
   userId: { type: Number, required: true },
@@ -266,7 +243,6 @@ const upiPaymentSchema = new mongoose.Schema({
 });
 const UPIPayment = mongoose.models.UPIPayment || mongoose.model("UPIPayment", upiPaymentSchema);
 
-// ---------- CHANNEL ----------
 const channelSchema = new mongoose.Schema({
   channelId: { type: String, required: true, unique: true },
   inviteLink: { type: String, required: true },
@@ -277,14 +253,12 @@ const channelSchema = new mongoose.Schema({
 });
 const Channel = mongoose.models.Channel || mongoose.model("Channel", channelSchema);
 
-// ---------- CONFIG ----------
 const configSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: mongoose.Schema.Types.Mixed }
 });
 const Config = mongoose.models.Config || mongoose.model("Config", configSchema);
 
-// ---------- GATEWAY ----------
 const gatewaySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   url: { type: String, required: true },
@@ -297,7 +271,6 @@ const gatewaySchema = new mongoose.Schema({
 });
 const Gateway = mongoose.models.Gateway || mongoose.model("Gateway", gatewaySchema);
 
-// ---------- VERIFICATION ----------
 const verificationSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   deviceHash: { type: String, default: "" },
@@ -307,7 +280,6 @@ const verificationSchema = new mongoose.Schema({
 });
 const Verification = mongoose.models.Verification || mongoose.model("Verification", verificationSchema);
 
-// ---------- REDEEM REQUEST ----------
 const redeemRequestSchema = new mongoose.Schema({
   requestId: { type: String, required: true, unique: true },
   userId: { type: Number, required: true },
@@ -321,7 +293,6 @@ const redeemRequestSchema = new mongoose.Schema({
 });
 const RedeemRequest = mongoose.models.RedeemRequest || mongoose.model("RedeemRequest", redeemRequestSchema);
 
-// ---------- WITHDRAW SETTINGS ----------
 const withdrawSettingsSchema = new mongoose.Schema({
   method: { type: String, required: true, unique: true },
   isActive: { type: Boolean, default: true },
@@ -332,7 +303,6 @@ const withdrawSettingsSchema = new mongoose.Schema({
 });
 const WithdrawSettings = mongoose.models.WithdrawSettings || mongoose.model("WithdrawSettings", withdrawSettingsSchema);
 
-// ---------- LIVE FUND ----------
 const liveFundSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true, default: "main_fund" },
   totalFund: { type: Number, default: 0 },
@@ -342,7 +312,6 @@ const liveFundSchema = new mongoose.Schema({
 });
 const LiveFund = mongoose.models.LiveFund || mongoose.model("LiveFund", liveFundSchema);
 
-// ---------- BROADCAST ----------
 const broadcastSchema = new mongoose.Schema({
   broadcastId: { type: String, required: true, unique: true },
   adminId: { type: Number, required: true },
@@ -359,7 +328,6 @@ const broadcastSchema = new mongoose.Schema({
 });
 const Broadcast = mongoose.models.Broadcast || mongoose.model("Broadcast", broadcastSchema);
 
-// ---------- NEW USER LOG ----------
 const newUserLogSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
   firstName: { type: String, default: "" },
@@ -368,7 +336,6 @@ const newUserLogSchema = new mongoose.Schema({
 });
 const NewUserLog = mongoose.models.NewUserLog || mongoose.model("NewUserLog", newUserLogSchema);
 
-// ---------- SUPPORT MESSAGE (NEW) ----------
 const supportMessageSchema = new mongoose.Schema({
   userId: { type: Number, required: true },
   userName: { type: String, default: "" },
@@ -381,7 +348,7 @@ const supportMessageSchema = new mongoose.Schema({
 });
 const SupportMessage = mongoose.models.SupportMessage || mongoose.model("SupportMessage", supportMessageSchema);
 
-console.log("✅ Part 1 of 8 Loaded — Foundation + Schemas");
+console.log("✅ Schemas Loaded");
 
 // ============================================================
 // 🔧 HELPERS & FUNCTIONS
@@ -584,9 +551,6 @@ function convertOwnerLink(input) {
   return `https://t.me/${str}`;
 }
 
-// ============================================================
-// 🔤 SMALL CAPS
-// ============================================================
 function toSmallCaps(text) {
   const map = {
     'a':'ᴀ','b':'ʙ','c':'ᴄ','d':'ᴅ','e':'ᴇ','f':'ꜰ','g':'ɢ','h':'ʜ','i':'ɪ',
@@ -666,13 +630,11 @@ const STYLE_COLORS = INLINE_STYLE_COLORS;
 async function buildKeyboardFromLayout(userId) {
   let userPref = await UserPreference.findOne({ userId });
   let layout;
-
   if (userPref && userPref.keyboardLayout && userPref.keyboardLayout.length > 0) {
     layout = userPref.keyboardLayout;
   } else {
     layout = await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
   }
-
   let keyboardRows = [];
   let maxRow = layout.length > 0 ? Math.max(...layout.map(b => b.row)) : 0;
   for (let r = 0; r <= maxRow; r++) {
@@ -693,32 +655,27 @@ async function buildKeyboardFromLayout(userId) {
 async function buildStyledKb(buttons, userId = null) {
   let styleMap = await getConfig("inline_button_styles", {});
   let names = await getConfig("inline_button_names", {});
-
   if (userId) {
     let userPref = await UserPreference.findOne({ userId });
     if (userPref && userPref.inlineMenus && userPref.inlineMenus.styles) {
       styleMap = { ...styleMap, ...userPref.inlineMenus.styles };
     }
   }
-
   let styled = buttons.map(row =>
     row.map(btn => {
       let newBtn = { text: btn.text };
       if (btn.callback_data) newBtn.callback_data = btn.callback_data;
       if (btn.url) newBtn.url = btn.url;
       if (btn.web_app) newBtn.web_app = btn.web_app;
-
       if (btn.callback_data && styleMap[btn.callback_data]) {
         let colorKey = styleMap[btn.callback_data];
         if (colorKey !== "none" && INLINE_STYLE_COLORS[colorKey]) {
           newBtn.text = `${INLINE_STYLE_COLORS[colorKey].emoji} ${newBtn.text}`;
         }
       }
-
       if (btn.callback_data && names[btn.callback_data]) {
         newBtn.text = names[btn.callback_data];
       }
-
       return newBtn;
     })
   );
@@ -760,7 +717,7 @@ async function saveUserAdminPanelLayout(userId, layout) {
   );
 }
 
-console.log("✅ Part 2 of 8 Loaded — Helpers & Functions");
+console.log("✅ Helpers Loaded");
 
 // ============================================================
 // 🧾 RECEIPT PAGE
@@ -775,15 +732,11 @@ app.get("/receipt/:id", async (req, res) => {
     let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
     let ownerName = await getConfig("owner_display_name", null);
     let ownerLink = await getConfig("owner_display_link", null);
-    
     if (!ownerName) {
       let ownerUser = await User.findOne({ userId: ownerId });
       ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
     }
-    if (!ownerLink) {
-      ownerLink = ownerId.toString();
-    }
-    
+    if (!ownerLink) ownerLink = ownerId.toString();
     let finalOwnerLink = convertOwnerLink(ownerLink);
 
     let isSuccess = wd.status === "Approved";
@@ -858,11 +811,6 @@ app.get("/receipt/:id", async (req, res) => {
 });
 
 app.get("/", (req, res) => res.send("Bot Server Live!"));
-
-setInterval(() => {
-  let renderUrl = process.env.RENDER_EXTERNAL_URL;
-  if (renderUrl) fetch(renderUrl).catch(() => {});
-}, 300000);
 
 // ============================================================
 // ✅ CUSTOM API — MacroDroid UTR Injection
@@ -992,6 +940,8 @@ app.get("/miniapp/verify", (req, res) => res.sendFile(path.join(__dirname, "publ
 app.get("/miniapp/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 app.get("/miniapp/history", (req, res) => res.sendFile(path.join(__dirname, "public", "history.html")));
 
+console.log("✅ Receipt + Gateway + Mini App Routes Loaded");
+
 // ============================================================
 // 📱 MINI APP — USER APIs
 // ============================================================
@@ -1076,7 +1026,6 @@ app.get("/miniapp/api/payment-methods/:userId", async (req, res) => {
     const userId = parseInt(req.params.userId, 10);
     const user = await User.findOne({ userId });
     if (!user) return res.json({ success: false, error: "User not found" });
-
     const methods = [
       { name: "Wallet", icon: "👛", value: user.walletAccount || "Not Set" },
       { name: "UPI", icon: "⚡", value: user.upiId || "Not Set" },
@@ -1108,7 +1057,6 @@ app.get("/miniapp/api/check-user/:userId", async (req, res) => {
     const userId = parseInt(req.params.userId, 10);
     const user = await User.findOne({ userId });
     if (!user) return res.json({ success: false, error: "User not found" });
-
     let photoUrl = null;
     try {
       let photos = await bot.api.getUserProfilePhotos(userId, { limit: 1 });
@@ -1118,7 +1066,6 @@ app.get("/miniapp/api/check-user/:userId", async (req, res) => {
         photoUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
       }
     } catch (e) { }
-
     res.json({
       success: true,
       user: {
@@ -1131,8 +1078,6 @@ app.get("/miniapp/api/check-user/:userId", async (req, res) => {
     });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
-
-console.log("✅ Part 3 of 8 Loaded — Receipt + APIs + Gateway + Mini App Routes");
 
 // ============================================================
 // ⚡ QUICK PAY API (Mini App)
@@ -1168,7 +1113,6 @@ app.post("/miniapp/api/quick-pay", async (req, res) => {
     }
 
     let wasNegative = sender.balance < amt;
-
     sender.balance -= amt;
     receiver.balance += receiverAmount;
     await sender.save();
@@ -1209,7 +1153,6 @@ app.post("/miniapp/api/update-payment", async (req, res) => {
     const uid = parseInt(userId, 10);
     const allowed = ["walletAccount", "upiId", "bankAccNo", "bankIfsc", "amazonEmail", "redeemCodeAddr", "gatewayName", "gatewayUpi"];
     if (!allowed.includes(field)) return res.json({ success: false, error: "Invalid field" });
-
     const update = {};
     update[field] = value;
     await User.findOneAndUpdate({ userId: uid }, update);
@@ -1224,11 +1167,8 @@ app.get("/miniapp/api/gateways", async (req, res) => {
   try {
     const type = req.query.type || "deposit";
     let gateways;
-    if (type === "all") {
-      gateways = await Gateway.find({ isActive: true });
-    } else {
-      gateways = await Gateway.find({ isActive: true, type: { $in: [type, "both"] } });
-    }
+    if (type === "all") gateways = await Gateway.find({ isActive: true });
+    else gateways = await Gateway.find({ isActive: true, type: { $in: [type, "both"] } });
     res.json({ success: true, gateways });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
@@ -1296,6 +1236,8 @@ app.post("/miniapp/api/gateway/pay", async (req, res) => {
   }
 });
 
+console.log("✅ User APIs + Quick Pay + Gateway Loaded");
+
 // ============================================================
 // 🚀 WITHDRAW API (Mini App) — Auto Gateway
 // ============================================================
@@ -1357,7 +1299,6 @@ app.post("/miniapp/api/withdraw", async (req, res) => {
 
     let approvedCount = await Withdrawal.countDocuments({ userId: uid, status: "Approved" });
     let userWithdrawalCount = approvedCount + 1;
-
     const withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
 
     if (gatewayForMethod) {
@@ -1752,13 +1693,12 @@ app.get("/miniapp/api/user/:userId/history", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-console.log("✅ Part 4 of 8 Loaded — Quick Pay, Withdraw, Task, UPI, Verify APIs");
+console.log("✅ Withdraw + Task + UPI + Verify + History APIs Loaded");
 
 // ============================================================
 // 👑 MINI APP ADMIN APIs
 // ============================================================
 
-// ---------- PENDING WITHDRAWALS ----------
 app.get("/miniapp/api/admin/pending-withdrawals", async (req, res) => {
   try {
     const wds = await Withdrawal.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
@@ -1776,21 +1716,14 @@ app.post("/miniapp/api/admin/approve-wd/:id", async (req, res) => {
     wd.approvedBy = "MiniApp Admin";
     wd.approvedAt = new Date();
     await wd.save();
-
-    await LiveFund.findOneAndUpdate(
-      { key: "main_fund" },
-      { $inc: { usedFund: wd.amount } },
-      { upsert: true }
-    );
-
-    let accountType = wd.method;
+    await LiveFund.findOneAndUpdate({ key: "main_fund" }, { $inc: { usedFund: wd.amount } }, { upsert: true });
     try {
       await bot.api.sendMessage(wd.userId,
         `🎁Your Withdrawal of Rs.${wd.amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
         `🏦 Destination ==> ${wd.details}\n` +
         `🚀Transaction ID ==> ${txnNumber}\n` +
         `🗓 Date ==> ${formatDateTime(wd.approvedAt)}\n\n` +
-        `✅Please Check Your ${accountType} Account!`);
+        `✅Please Check Your ${wd.method} Account!`);
     } catch (e) {}
     res.json({ success: true });
   } catch (e) { res.json({ success: false, error: e.message }); }
@@ -1816,7 +1749,6 @@ app.post("/miniapp/api/admin/reject-wd/:id", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- PENDING ADD FUNDS ----------
 app.get("/miniapp/api/admin/pending-addfunds", async (req, res) => {
   try {
     const afs = await AddFund.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
@@ -1860,7 +1792,6 @@ app.post("/miniapp/api/admin/reject-af/:id", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- PENDING TASK SUBMISSIONS ----------
 app.get("/miniapp/api/admin/pending-submissions", async (req, res) => {
   try {
     const subs = await TaskSubmission.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
@@ -1903,7 +1834,6 @@ app.post("/miniapp/api/admin/reject-sub/:id", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- PENDING UPI PAYMENTS ----------
 app.get("/miniapp/api/admin/pending-upi", async (req, res) => {
   try {
     const pending = await UPIPayment.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(50);
@@ -1951,7 +1881,6 @@ app.post("/miniapp/api/admin/reject-upi/:id", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- ALL USERS ----------
 app.get("/miniapp/api/admin/all-users", async (req, res) => {
   try {
     const users = await User.find({}).sort({ balance: -1 }).limit(100);
@@ -2005,7 +1934,6 @@ app.get("/miniapp/api/admin/user-balance-history/:userId", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- BALANCE MANAGEMENT ----------
 app.post("/miniapp/api/admin/remove-balance", async (req, res) => {
   try {
     const { userId, amount } = req.body;
@@ -2061,7 +1989,6 @@ app.post("/miniapp/api/admin/send-message", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ---------- GATEWAY ADMIN ----------
 app.get("/miniapp/api/admin/gateways", async (req, res) => {
   try {
     const gateways = await Gateway.find({}).sort({ createdAt: -1 });
@@ -2100,6 +2027,8 @@ app.post("/miniapp/api/admin/gateway/delete/:name", async (req, res) => {
     res.json({ success: true });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
+
+console.log("✅ Admin APIs Loaded");
 
 // ============================================================
 // ⚙️ SETTINGS APIs
@@ -2166,9 +2095,6 @@ app.post("/miniapp/api/admin/broadcast", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 👑 ADMIN LIST / LOGS APIs
-// ============================================================
 app.get("/miniapp/api/admin/list", async (req, res) => {
   try {
     const ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
@@ -2265,9 +2191,6 @@ app.post("/miniapp/api/admin/transfer-owner", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 📊 ADMIN LOGS API
-// ============================================================
 app.get("/miniapp/api/admin/logs", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 50;
@@ -2276,9 +2199,6 @@ app.get("/miniapp/api/admin/logs", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 🌐 STATEMENTS API
-// ============================================================
 app.get("/miniapp/api/admin/statements", async (req, res) => {
   try {
     const filter = req.query.filter || "all";
@@ -2331,9 +2251,6 @@ app.get("/miniapp/api/admin/owner-info", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 💰 LIVE FUND APIs
-// ============================================================
 app.get("/miniapp/api/admin/live-fund", async (req, res) => {
   try {
     let fund = await LiveFund.findOne({ key: "main_fund" });
@@ -2367,9 +2284,6 @@ app.post("/miniapp/api/admin/live-fund/toggle", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 📊 WITHDRAW SETTINGS APIs
-// ============================================================
 app.get("/miniapp/api/admin/withdraw-settings", async (req, res) => {
   try {
     let settings = await WithdrawSettings.find({});
@@ -2409,9 +2323,6 @@ app.post("/miniapp/api/admin/withdraw-settings/update", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 🆕 NEW USERS API
-// ============================================================
 app.get("/miniapp/api/admin/new-users", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 50;
@@ -2425,9 +2336,6 @@ app.get("/miniapp/api/admin/new-users", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 🔴 LIVE BALANCE TRACKER API
-// ============================================================
 app.get("/miniapp/api/admin/live-balance", async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 0;
@@ -2446,22 +2354,16 @@ app.get("/miniapp/api/admin/live-balance", async (req, res) => {
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 📊 USERS WITHDRAW WEBSITE API (NEW)
-// ============================================================
 app.get("/miniapp/api/admin/users-withdraw-website", async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 0;
     const perPage = 10;
-
-    // Aggregate: user + withdraw count
     const userWithdraws = await Withdrawal.aggregate([
       { $group: { _id: "$userId", count: { $sum: 1 }, totalAmount: { $sum: "$amount" } } },
       { $sort: { count: -1 } },
       { $skip: page * perPage },
       { $limit: perPage }
     ]);
-
     let results = [];
     for (let uw of userWithdraws) {
       let u = await User.findOne({ userId: uw._id });
@@ -2474,26 +2376,18 @@ app.get("/miniapp/api/admin/users-withdraw-website", async (req, res) => {
         balance: u?.balance || 0
       });
     }
-
     const totalUsers = await Withdrawal.distinct("userId").then(arr => arr.length);
     const totalWithdraws = await Withdrawal.countDocuments({});
     const totalAmountArr = await Withdrawal.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]);
-
     res.json({
-      success: true,
-      users: results,
-      totalUsers,
-      totalWithdraws,
+      success: true, users: results,
+      totalUsers, totalWithdraws,
       totalAmount: totalAmountArr[0]?.total || 0,
-      page,
-      totalPages: Math.ceil(totalUsers / perPage)
+      page, totalPages: Math.ceil(totalUsers / perPage)
     });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-// ============================================================
-// 💬 SUPPORT APIs (NEW)
-// ============================================================
 app.get("/miniapp/api/admin/support/messages", async (req, res) => {
   try {
     const messages = await SupportMessage.aggregate([
@@ -2518,7 +2412,6 @@ app.get("/miniapp/api/admin/support/chat/:userId", async (req, res) => {
   try {
     const uid = parseInt(req.params.userId, 10);
     const messages = await SupportMessage.find({ userId: uid }).sort({ createdAt: 1 }).limit(100);
-    // Mark as read
     await SupportMessage.updateMany({ userId: uid, fromAdmin: false, isRead: false }, { $set: { isRead: true } });
     res.json({ success: true, messages });
   } catch (e) { res.json({ success: false, error: e.message }); }
@@ -2530,7 +2423,6 @@ app.post("/miniapp/api/admin/support/reply", async (req, res) => {
     const uid = parseInt(userId, 10);
     if (!message || message.trim() === "") return res.json({ success: false, error: "Empty message" });
     let u = await User.findOne({ userId: uid });
-
     await SupportMessage.create({
       userId: uid,
       userName: u?.firstName || "User",
@@ -2540,18 +2432,16 @@ app.post("/miniapp/api/admin/support/reply", async (req, res) => {
       isRead: true,
       replied: true
     });
-
     try {
       await bot.api.sendMessage(uid,
         `💬 *Support Message from Admin*\n\n${message.trim()}`,
         { parse_mode: "Markdown" });
     } catch (e) {}
-
     res.json({ success: true });
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
 
-console.log("✅ Part 5 of 8 Loaded — Admin APIs (Mini App)");
+console.log("✅ Settings + Admin Features APIs Loaded");
 
 // ============================================================
 // 🚀 /START COMMAND
@@ -2609,14 +2499,12 @@ bot.command("start", async (ctx) => {
       return ctx.reply("⚠️ *You must join our channels to use this bot!*", { reply_markup: keyboard, parse_mode: "Markdown" });
     }
 
-    // ✅ Custom Start Message (Fully Customizable)
     let startWelcome = await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
     let startEarnText = await getConfig("start_earn_text", "How to Earn:");
     let startClickText = await getConfig("start_click_text", "(((CLICK HERE )))");
     let startChannelLink = await getConfig("start_channel_link", "https://t.me/yourchannel");
     let startFont = await getConfig("start_font_style", "normal");
 
-    // Apply font
     let fWelcome = startWelcome;
     let fEarn = startEarnText;
     let fClick = startClickText;
@@ -2624,10 +2512,6 @@ bot.command("start", async (ctx) => {
       fWelcome = toSmallCaps(startWelcome);
       fEarn = toSmallCaps(startEarnText);
       fClick = toSmallCaps(startClickText);
-    } else if (startFont === "bold") {
-      fWelcome = startWelcome;
-    } else if (startFont === "italic") {
-      fWelcome = startWelcome;
     }
 
     let welcomeText =
@@ -2693,7 +2577,9 @@ bot.on("message:text", async (ctx, next) => {
   let userId = ctx.from.id;
   let state = userState[userId];
 
-  // ✅ Broadcast state FIRST (before any routing)
+  // ✅ Skip /commands FIRST — IMPORTANT!
+  if (text.startsWith("/")) return next();
+
   if (state === "BROADCAST_WAIT_MSG" && (await isAdmin(userId))) {
     delete userState[userId];
     global.broadcastCache = global.broadcastCache || {};
@@ -2706,7 +2592,7 @@ bot.on("message:text", async (ctx, next) => {
       `📢 *Broadcast Preview*\n\n━━━━━━━━━━━━━━━━━━━━\n\n${text}\n\n━━━━━━━━━━━━━━━━━━━━\n\n👥 Recipients: ${totalUsers}\n\nConfirm?`,
       { parse_mode: "Markdown", reply_markup: kb }
     );
-    return; // ✅ Stop — don't go to button routing
+    return;
   }
 
   if (state) {
@@ -2716,7 +2602,6 @@ bot.on("message:text", async (ctx, next) => {
       return;
     }
 
-    // Gateway user setup
     if (state === "GATEWAY_WAIT_NAME") {
       delete userState[userId];
       let name = text.trim();
@@ -2743,7 +2628,6 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // UPI Deposit — Amount
     if (state === "UPI_WAIT_AMOUNT") {
       delete userState[userId];
       let amt = parseFloat(text);
@@ -2766,7 +2650,6 @@ bot.on("message:text", async (ctx, next) => {
       );
     }
 
-    // UPI Deposit — UTR
     if (state && state.startsWith("UPI_WAIT_UTR_")) {
       let parts = state.replace("UPI_WAIT_UTR_", "").split("_");
       let orderId = parts[0];
@@ -2848,7 +2731,6 @@ bot.on("message:text", async (ctx, next) => {
       }
     }
 
-    // Withdraw — Add methods
     if (state === "WD_ADD_UPI") {
       delete userState[userId];
       let upi = text.trim();
@@ -2897,7 +2779,6 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(`🚀 Withdraw via ${gwName}`, `wd_gw_${gwName}`).row().text("🔙 Main Menu", "back_to_balance") });
     }
 
-    // Withdraw amount
     if (state.startsWith("WD_AMT_")) {
       let method = state.replace("WD_AMT_", "");
       delete userState[userId];
@@ -2945,7 +2826,6 @@ bot.on("message:text", async (ctx, next) => {
       );
     }
 
-    // Quick Pay
     if (state === "QP_WAIT_USERID") {
       let targetId = parseInt(text.trim(), 10);
       if (isNaN(targetId)) return ctx.reply("❌ Invalid User ID!");
@@ -2997,7 +2877,6 @@ bot.on("message:text", async (ctx, next) => {
       });
     }
 
-    // Gift Code Redeem
     if (state === "WAITING_FOR_GIFT_REDEEM") {
       delete userState[userId];
       let gift = await GiftCode.findOneAndUpdate(
@@ -3013,7 +2892,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`🎉 Gift redeemed! Added ₹${gift.amount}.`);
     }
 
-    // Payment methods
     if (state === "SET_WALLET_ACC") {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { walletAccount: text.trim() });
@@ -3046,7 +2924,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Redeem: \`${text.trim()}\``, { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // User settings
     if (state === "USET_WAIT_WALLET") {
       delete userState[userId];
       await User.findOneAndUpdate({ userId }, { walletAccount: text.trim() });
@@ -3078,7 +2955,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`✅ Renamed to: ${text.trim()}`, { reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // Task Refer
     if (state.startsWith("TASK_REFER_")) {
       let taskId = state.replace("TASK_REFER_", "");
       delete userState[userId];
@@ -3105,7 +2981,6 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // Support Live Chat
     if (state === "SUPPORT_WAIT_MSG") {
       delete userState[userId];
       let user = await getUser(userId);
@@ -3117,7 +2992,6 @@ bot.on("message:text", async (ctx, next) => {
         `✅ MESSAGE SENT!\n\n📨 Your message has been sent to admin.\n\n⏳ Please wait for reply.`,
         { reply_markup: new InlineKeyboard().text("🏠 Main Menu", "back_to_balance") }
       );
-      // Notify owner
       try {
         let kb = new InlineKeyboard().text("📩 Reply to User", `support_reply_${userId}`);
         await bot.api.sendMessage(MAIN_OWNER_ID,
@@ -3128,9 +3002,7 @@ bot.on("message:text", async (ctx, next) => {
     }
   }
 
-  // ============================================================
   // 🔀 BUTTON ROUTING
-  // ============================================================
   let user = await getUser(userId);
   let layout = await getCurrentKeyboardLayoutForUser(userId);
   let findKeyByName = (name) => {
@@ -3143,7 +3015,6 @@ bot.on("message:text", async (ctx, next) => {
     try {
       let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
       let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
-
       let msg =
         `${welcomeText}\n\n` +
         `<blockquote>` +
@@ -3151,12 +3022,9 @@ bot.on("message:text", async (ctx, next) => {
         `${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}` +
         `</blockquote>\n\n` +
         `<blockquote>${footerText}</blockquote>`;
-
       let buttons = [];
       let autoUPIEnabled = await getConfig("auto_upi_enabled", true);
-      if (autoUPIEnabled) {
-        buttons.push([{ text: "➕ Add Fund", callback_data: "add_fund_btn" }]);
-      }
+      if (autoUPIEnabled) buttons.push([{ text: "➕ Add Fund", callback_data: "add_fund_btn" }]);
       buttons.push([
         { text: "📊 Balance Statement", callback_data: "balance_statement" },
         { text: "💬 Customer Support", callback_data: "customer_support" }
@@ -3166,21 +3034,15 @@ bot.on("message:text", async (ctx, next) => {
         { text: "💰 Live Fund", callback_data: "live_fund" }
       ]);
       buttons.push([{ text: "⚙️ Settings", callback_data: "user_settings" }]);
-
       try {
-        return await ctx.reply(msg, {
-          reply_markup: await buildStyledKb(buttons, userId),
-          parse_mode: "HTML"
-        });
+        return await ctx.reply(msg, { reply_markup: await buildStyledKb(buttons, userId), parse_mode: "HTML" });
       } catch (htmlErr) {
         let plainMsg =
           `${welcomeText}\n\n` +
           `${DEFAULT_BALANCE_TEXT.walletId} ${userId}\n` +
           `${DEFAULT_BALANCE_TEXT.balance} ₹${user.balance.toFixed(2)}\n\n` +
           footerText;
-        return await ctx.reply(plainMsg, {
-          reply_markup: await buildStyledKb(buttons, userId)
-        });
+        return await ctx.reply(plainMsg, { reply_markup: await buildStyledKb(buttons, userId) });
       }
     } catch (err) {
       return ctx.reply(`❌ Error: ${err.message}`);
@@ -3194,10 +3056,7 @@ bot.on("message:text", async (ctx, next) => {
       tasks.forEach(t => {
         taskButtons.push([{ text: `${t.title} (₹${t.reward})`, callback_data: `do_task_${t.taskId}` }]);
       });
-      return ctx.reply("📋 *Available Tasks:*", {
-        reply_markup: await buildStyledKb(taskButtons, userId),
-        parse_mode: "Markdown"
-      });
+      return ctx.reply("📋 *Available Tasks:*", { reply_markup: await buildStyledKb(taskButtons, userId), parse_mode: "Markdown" });
     } catch (e) {
       return ctx.reply("❌ Error loading tasks. Please try again.");
     }
@@ -3256,7 +3115,6 @@ bot.on("message:text", async (ctx, next) => {
     });
   }
   else {
-    // Gift code check
     let gift = await GiftCode.findOneAndUpdate(
       { code: text, type: "redeem", usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } },
       { $push: { usedUsers: userId } },
@@ -3269,7 +3127,6 @@ bot.on("message:text", async (ctx, next) => {
       return ctx.reply(`🎉 Added ₹${gift.amount}!`);
     }
 
-    // ✅ Unknown Command
     return ctx.reply(
       `❓ I didn't understand that.\n\nPlease /start the bot again.`,
       { reply_markup: await buildKeyboardFromLayout(userId) }
@@ -3284,7 +3141,6 @@ bot.on("message:photo", async (ctx) => {
   let userId = ctx.from.id;
   let state = userState[userId];
 
-  // Broadcast photo
   if (state === "BROADCAST_WAIT_MSG" && (await isAdmin(userId))) {
     let photo = ctx.message.photo[ctx.message.photo.length - 1];
     let caption = ctx.message.caption || "";
@@ -3337,7 +3193,7 @@ bot.on("message:photo", async (ctx) => {
   }
 });
 
-console.log("✅ Part 6 of 8 Loaded — Bot Commands + User Callbacks");
+console.log("✅ Bot Commands + User Text Handler Loaded");
 
 // ============================================================
 // 🎯 BALANCE CALLBACKS
@@ -3417,9 +3273,6 @@ bot.callbackQuery("balance_statement", async (ctx) => {
   await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ============================================================
-// 💬 CUSTOMER SUPPORT — User Side
-// ============================================================
 bot.callbackQuery("customer_support", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   let text =
@@ -3444,7 +3297,6 @@ bot.callbackQuery("support_direct_owner", async (ctx) => {
   }
   if (!ownerLink) ownerLink = ownerId.toString();
   let finalLink = convertOwnerLink(ownerLink);
-
   let text =
     `👤 DIRECT OWNER\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -3475,9 +3327,6 @@ bot.callbackQuery("support_cancel", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.", { reply_markup: new InlineKeyboard().text("🔙 Back", "customer_support") }).catch(() => {});
 });
 
-// ============================================================
-// 💬 SUPPORT — Admin Reply
-// ============================================================
 bot.callbackQuery(/^support_reply_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3489,22 +3338,17 @@ bot.callbackQuery(/^support_reply_/, async (ctx) => {
   );
 });
 
-// ============================================================
-// 💰 LIVE FUND (User View)
-// ============================================================
 bot.callbackQuery("live_fund", async (ctx) => {
   await ctx.answerCallbackQuery("💰 Loading...");
   let users = await User.find({});
   let totalBalance = 0;
   users.forEach(u => { totalBalance += u.balance; });
-
   let liveFund = await LiveFund.findOne({ key: "main_fund" });
   let fundText = "";
   if (liveFund && liveFund.isActive) {
     let running = (liveFund.totalFund || 0) - (liveFund.usedFund || 0);
     fundText = `\n\n💠 *Live Fund:*\n💰 Set Fund: ₹${(liveFund.totalFund || 0).toFixed(2)}\n📉 Running: ₹${running.toFixed(2)}\n📊 Used: ₹${(liveFund.usedFund || 0).toFixed(2)}`;
   }
-
   let msg = `💰 *Live Fund Report*\n\n👥 Users: \`${users.length}\`\n💵 Total: \`₹${totalBalance.toFixed(2)}\`${fundText}`;
   let kb = await buildStyledKb([
     [{ text: "🔄 Refresh", callback_data: "live_fund" }],
@@ -3554,7 +3398,6 @@ bot.callbackQuery(/^do_task_/, async (ctx) => {
     return ctx.answerCallbackQuery({ text: "❌ Already completed!", show_alert: true });
   }
   await ctx.answerCallbackQuery();
-
   let taskType = task.taskType || "photo";
   if (taskType === "refer") {
     userState[userId] = `TASK_REFER_${taskId}`;
@@ -3739,6 +3582,8 @@ bot.callbackQuery("qp_confirm", async (ctx) => {
       { parse_mode: "Markdown" });
   } catch (e) {}
 });
+
+console.log("✅ User Callbacks + Tasks + Quick Pay Loaded");
 
 // ============================================================
 // ⚙️ USER SETTINGS
@@ -4085,8 +3930,10 @@ bot.callbackQuery("set_bank", async (ctx) => {
   await ctx.reply(`🏦 *Send Account Number*`, { parse_mode: "Markdown", reply_markup: new Keyboard().text("❌ Cancel").resized() });
 });
 
+console.log("✅ User Settings + Withdraw Callbacks Loaded");
+
 // ============================================================
-// 🏧 WITHDRAWAL CONFIRM — Auto Gateway (Out of A)
+// 🏧 WITHDRAWAL CONFIRM — Auto Gateway
 // ============================================================
 bot.callbackQuery(/^conf_wd_/, async (ctx) => {
   let dataParts = ctx.callbackQuery.data.replace("conf_wd_", "").split("_");
@@ -4110,11 +3957,9 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
 
   let approvedCount = await Withdrawal.countDocuments({ userId, status: "Approved" });
   let userWithdrawalCount = approvedCount + 1;
-
   let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
   let gatewayForMethod = await Gateway.findOne({ name: method, isActive: true });
 
-  // Auto UPI Gateway — ഏതെങ്കിലും active gateway
   if (!gatewayForMethod) {
     gatewayForMethod = await Gateway.findOne({ isActive: true, type: { $in: ["withdraw", "both"] } });
   }
@@ -4143,7 +3988,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
 
       await LiveFund.findOneAndUpdate({ key: "main_fund" }, { $inc: { usedFund: amount } }, { upsert: true });
 
-      // ✅ User Success Message
       let successText =
         `✅ *WITHDRAW SUBMITTED*\n\n` +
         `💰 *Your Withdraw Amount:* ₹${amount}\n\n` +
@@ -4156,7 +4000,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
       }
       await ctx.editMessageText(successText, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
 
-      // ✅ Admin Channel Statement (Full Format)
       let payoutChannel = await getConfig("payout_channel", null);
       if (payoutChannel) {
         try {
@@ -4164,7 +4007,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
           let maskedAddr = halfMaskDetails(method, details);
           let botUsername = (await ctx.api.getMe()).username;
           let gatewayRespDisplay = result.data && result.data.message ? result.data.message : "Success";
-
           let statementMsg =
             `✅ New Withdrawal Processed ✅\n\n` +
             `🟢 User : ${userId}\n` +
@@ -4173,12 +4015,10 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
             `⛔ Address : ${maskedAddr}\n\n` +
             `💡 Bot: @${botUsername}\n\n` +
             `⚠️ ${gatewayForMethod.name} ${method === "UPI" ? "UPI" : "Wallet"} Response: ${gatewayRespDisplay}`;
-
           await bot.api.sendMessage(payoutChannel, statementMsg);
         } catch (e) { console.log("payout channel err:", e.message); }
       }
 
-      // ✅ User direct message
       try {
         await ctx.api.sendMessage(userId,
           `🎁Your Withdrawal of Rs.${amount.toFixed(2)} is Successfully Processed!🔥🔥\n\n` +
@@ -4188,7 +4028,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
       } catch (e) {}
       return;
     } else {
-      // ❌ Failed → Refund
       user.balance += amount;
       user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amount);
       await user.save();
@@ -4201,7 +4040,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
         `💵 Amount Refunded`;
       await ctx.editMessageText(failText, { parse_mode: "Markdown" }).catch(() => {});
 
-      // Admin Channel Failed Statement
       let payoutChannel = await getConfig("payout_channel", null);
       if (payoutChannel) {
         try {
@@ -4222,7 +4060,6 @@ bot.callbackQuery(/^conf_wd_/, async (ctx) => {
     }
   }
 
-  // No gateway → Manual approve
   await Withdrawal.create({
     withdrawalId, userId, userWithdrawalCount,
     amount, method, details
@@ -4307,7 +4144,6 @@ bot.callbackQuery(/^conf_gw_wd_/, async (ctx) => {
     }
     await ctx.editMessageText(successText, { parse_mode: "Markdown", reply_markup: kb }).catch(() => {});
 
-    // Admin Channel Statement
     let payoutChannel = await getConfig("payout_channel", null);
     if (payoutChannel) {
       try {
@@ -4369,10 +4205,8 @@ bot.callbackQuery("canc_wd", async (ctx) => {
   await ctx.editMessageText("❌ Cancelled.").catch(() => {});
 });
 
-console.log("✅ Part 7 of 8 Loaded — User Callbacks + Tasks + Withdraw + Settings");
-
 // ============================================================
-// 🚀 /ADMIN COMMAND & PANEL (Full Redesign)
+// 🚀 /ADMIN COMMAND & PANEL
 // ============================================================
 bot.command("admin", async (ctx) => {
   let userId = ctx.from.id;
@@ -4507,8 +4341,10 @@ bot.callbackQuery("admin", async (ctx) => {
 
 bot.callbackQuery("noop", async (ctx) => ctx.answerCallbackQuery());
 
+console.log("✅ Withdraw Confirm + Admin Panel Loaded");
+
 // ============================================================
-// 📊 STATUS CALLBACK (4 Sub-buttons)
+// 📊 STATUS CALLBACK
 // ============================================================
 bot.callbackQuery("adm_status", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
@@ -4523,7 +4359,7 @@ bot.callbackQuery("adm_status", async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ---------- 🔴 LIVE BALANCE TRACKER (Fixed) ----------
+// ---------- LIVE BALANCE TRACKER ----------
 bot.callbackQuery("status_live_tracker", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4545,7 +4381,6 @@ async function renderLiveBalanceTracker(ctx, page = 0) {
   let totalBalanceArr = await User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]);
   let totalBalance = totalBalanceArr[0]?.total || 0;
 
-  // Top 3
   let top3 = await User.find({}).sort({ balance: -1 }).limit(3);
   let top3Text = "";
   let medals = ["🥇", "🥈", "🥉"];
@@ -4590,7 +4425,6 @@ bot.callbackQuery(/^status_lb_page_/, async (ctx) => {
   await renderLiveBalanceTracker(ctx, page);
 });
 
-// Name click → Direct Profile Open
 bot.callbackQuery(/^livebd_name_/, async (ctx) => {
   let uid = parseInt(ctx.callbackQuery.data.replace("livebd_name_", ""), 10);
   try {
@@ -4606,13 +4440,11 @@ bot.callbackQuery(/^livebd_name_/, async (ctx) => {
   }
 });
 
-// ID click → Copy
 bot.callbackQuery(/^livebd_copy_/, async (ctx) => {
   let uid = ctx.callbackQuery.data.replace("livebd_copy_", "");
   await ctx.answerCallbackQuery({ text: `🆔 ${uid}`, show_alert: true });
 });
 
-// Balance click → Full User Details
 bot.callbackQuery(/^livebd_bal_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4651,9 +4483,7 @@ bot.callbackQuery(/^livebd_bal_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ============================================================
-// 👥 USERS LIST
-// ============================================================
+// ---------- USERS LIST ----------
 bot.callbackQuery("status_users_list", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4735,9 +4565,7 @@ bot.callbackQuery(/^userslist_view_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ============================================================
-// 💰 LIVE FUND (Admin)
-// ============================================================
+// ---------- LIVE FUND ----------
 bot.callbackQuery("status_live_fund", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4822,9 +4650,7 @@ bot.callbackQuery("livefund_payouts", async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", "status_live_fund"), parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ============================================================
-// 📊 USERS WITHDRAW WEBSITE (NEW)
-// ============================================================
+// ---------- USERS WITHDRAW WEBSITE ----------
 bot.callbackQuery("status_users_withdraw_website", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4924,9 +4750,7 @@ bot.callbackQuery(/^userwd_view_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: new InlineKeyboard().text("🔙 Back", "status_users_withdraw_website"), parse_mode: "Markdown" }).catch(() => {});
 });
 
-// ============================================================
-// 🆕 NEW USERS
-// ============================================================
+// ---------- NEW USERS ----------
 bot.callbackQuery("adm_new_users", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -5009,10 +4833,10 @@ bot.callbackQuery(/^newuser_detail_/, async (ctx) => {
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
 });
 
-console.log("✅ Part 8A Loaded — Admin Panel + Status + New Users");
+console.log("✅ Status + Users List + Live Fund + New Users Loaded");
 
 // ============================================================
-// 🎨 CUSTOMIZE YOUR THEME (2 Sub-buttons)
+// 🎨 CUSTOMIZE YOUR THEME
 // ============================================================
 bot.callbackQuery("adm_customize_theme", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
@@ -5211,9 +5035,6 @@ bot.callbackQuery("start_reset_yes", async (ctx) => {
   await renderStartSetup(ctx);
 });
 
-console.log("✅ Part 8B-1 Loaded — Customize Theme + Start Setup");
-
-
 // ============================================================
 // 🎨 ADMIN PANEL CUSTOMIZING
 // ============================================================
@@ -5392,11 +5213,9 @@ bot.callbackQuery("admpanel_update_yes", async (ctx) => {
   let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
   let messageSendEnabled = await getConfig("admin_panel_msg_send", true);
   let updateMsg = await getConfig("admin_panel_update_msg", "🎨 Admin Panel Updated!\nYour panel has been updated.");
-
   let sent = 0, failed = 0;
   let allIds = [ownerId, ...admins.map(a => a.userId)];
   let uniqueIds = [...new Set(allIds)];
-
   for (let id of uniqueIds) {
     try {
       if (messageSendEnabled) {
@@ -5407,12 +5226,13 @@ bot.callbackQuery("admpanel_update_yes", async (ctx) => {
     } catch (e) { failed++; }
   }
   let timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
-
   await ctx.editMessageText(
     `✅ *Update Complete!*\n\n✅ Success: ${sent}\n❌ Failed: ${failed}\n👥 Total: ${uniqueIds.length}\n\n⏱️ Time: ${timeTaken}s`,
     { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_panel_custom"), parse_mode: "Markdown" }
   ).catch(() => {});
 });
+
+console.log("✅ Customize Theme + Start Setup + Admin Panel Customizing Loaded");
 
 // ============================================================
 // ⌨️ KEYBOARD CUSTOMIZING
@@ -5638,8 +5458,6 @@ bot.callbackQuery("kbmsg_edit", async (ctx) => {
   await ctx.editMessageText("📝 Send new update message:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "kbpanel_msg_toggle") }).catch(() => {});
 });
 
-console.log("✅ Part 8B-2 Loaded — Admin Panel + Keyboard Customizing");
-
 // ============================================================
 // 🚀 FINAL BOT STARTUP
 // ============================================================
@@ -5699,14 +5517,12 @@ mongoose.connect(MONGO_URI)
     await getConfig("admin_panel_msg_send", true);
     await getConfig("admin_panel_update_msg", "🎨 Admin Panel Updated!\nYour panel has been updated.");
 
-    // Start Command Defaults
     await getConfig("start_welcome", "🏡 Welcome To Task Payment Bot!");
     await getConfig("start_earn_text", "How to Earn:");
     await getConfig("start_click_text", "(((CLICK HERE )))");
     await getConfig("start_channel_link", "https://t.me/yourchannel");
     await getConfig("start_font_style", "normal");
 
-    // Channels
     await getConfig("withdraw_request_channel_link", "https://t.me/yourchannel");
     await getConfig("payout_channel_link", "https://t.me/payoutchannel");
     await getConfig("broadcast_channel_link", "https://t.me/broadcastchannel");
@@ -5755,11 +5571,9 @@ let serverStarted = false;
 
 if (!serverStarted) {
   serverStarted = true;
-
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`🌐 Server running on port ${PORT} on 0.0.0.0`);
   });
-
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`❌ Port ${PORT} already in use. Retrying in 2s...`);
@@ -5771,21 +5585,13 @@ if (!serverStarted) {
       console.error('❌ Server error:', err);
     }
   });
-
   process.on('SIGTERM', () => {
     console.log('🛑 SIGTERM received. Closing server...');
-    server.close(() => {
-      console.log('✅ Server closed');
-      process.exit(0);
-    });
+    server.close(() => { console.log('✅ Server closed'); process.exit(0); });
   });
-
   process.on('SIGINT', () => {
     console.log('🛑 SIGINT received. Closing server...');
-    server.close(() => {
-      console.log('✅ Server closed');
-      process.exit(0);
-    });
+    server.close(() => { console.log('✅ Server closed'); process.exit(0); });
   });
 }
 
@@ -5793,101 +5599,6 @@ setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => {});
 }, 300000);
-// ============================================================
-console.log("✅ bot.js loaded — Complete bot with all features");
-console.log("✅ All Mini App APIs loaded!");
-
-// ============================================================
-// 🔧 FIX: /commands Skip + Admin Panel Buttons + Unknown Command
-// ============================================================
-bot.command("admin", async (ctx) => {
-  let userId = ctx.from.id;
-  let disabled = await isAdminDisabled(userId);
-  if (disabled) {
-    let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
-    let ownerUser = await User.findOne({ userId: ownerId });
-    let ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
-    return ctx.reply(
-      `❌ ADMIN ACCESS DISABLED\n\n` +
-      `Your admin permissions have been disabled by the Owner.\n\n` +
-      `📞 Contact Owner: ${ownerName}\n🆔 Owner ID: ${ownerId}`,
-      { reply_markup: new InlineKeyboard().text("🏠 Back to Main Menu", "back_to_balance") }
-    );
-  }
-  if (!(await isAdmin(userId))) return ctx.reply("❌ Not an admin!");
-  await sendAdminPanel(ctx, false);
-});
-
-bot.on("message:text", async (ctx, next) => {
-  let text = ctx.message.text.trim();
-  let userId = ctx.from.id;
-  let state = userState[userId];
-
-  // ✅ Skip /commands — IMPORTANT!
-  if (text.startsWith("/")) return next();
-
-  // Skip if state active (Part 6 handles)
-  if (state) return next();
-
-  // ✅ Admin Panel Button Check
-  try {
-    let adminPanelLayout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
-    let adminBtn = adminPanelLayout.find(b => b.name === text);
-    if (adminBtn && adminBtn.key) {
-      const fakeUpdate = {
-        update_id: Date.now() + Math.floor(Math.random() * 1000),
-        callback_query: {
-          id: "adminbtn_" + Date.now(),
-          from: ctx.from,
-          chat_instance: "adminbtn",
-          data: adminBtn.key,
-          message: ctx.message
-        }
-      };
-      await bot.handleUpdate(fakeUpdate);
-      return;
-    }
-  } catch (e) {
-    console.error("Admin btn err:", e.message);
-  }
-
-  // Gift Code Check
-  try {
-    let user = await getUser(userId);
-    let gift = await GiftCode.findOneAndUpdate(
-      { code: text, type: "redeem", usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } },
-      { $push: { usedUsers: userId } },
-      { new: true }
-    );
-    if (gift) {
-      user.balance += gift.amount;
-      await user.save();
-      await logBalanceHistory(userId, `Gift Redeemed (${gift.code})`, gift.amount);
-      await ctx.reply(`🎉 Added ₹${gift.amount}!`);
-      return;
-    }
-  } catch (e) {}
-
-  // Unknown Command (only unknown text)
-  try {
-    return ctx.reply(
-      `❓ I didn't understand that.\n\nPlease /start the bot again.`,
-      { reply_markup: await buildKeyboardFromLayout(userId) }
-    );
-  } catch (e) {
-    return ctx.reply(`❓ I didn't understand that.\n\nPlease /start the bot again.`);
-  }
-});
-
-console.log("✅ Fix loaded: /commands + Admin Buttons + Unknown Command");
-
-// Auto-ping every 5 minutes
-setInterval(() => {
-  let renderUrl = process.env.RENDER_EXTERNAL_URL;
-  if (renderUrl) fetch(renderUrl).catch(() => {});
-}, 300000);
-
-// ✅ ഇവിടെ Paste ചെയ്യൂ
 
 // ============================================================
 // ✅ END OF FILE
