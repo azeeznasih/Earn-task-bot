@@ -99,8 +99,7 @@ const userSchema = new mongoose.Schema({
   gatewayUpi: { type: String, default: "" },
   withdrawnTotal: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false },
-  referredBy: { type: Number, default: null },
-  referralCount: { type: Number, default: 0 },
+  referredBy: { type: String, default: "Auto Started" },
   createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.models.User || mongoose.model("User", userSchema);
