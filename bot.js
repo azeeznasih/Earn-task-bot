@@ -5796,3 +5796,101 @@ setInterval(() => {
 // ============================================================
 console.log("✅ bot.js loaded — Complete bot with all features");
 console.log("✅ All Mini App APIs loaded!");
+
+// ============================================================
+// 🔧 FIX: /commands Skip + Admin Panel Buttons + Unknown Command
+// ============================================================
+bot.command("admin", async (ctx) => {
+  let userId = ctx.from.id;
+  let disabled = await isAdminDisabled(userId);
+  if (disabled) {
+    let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+    let ownerUser = await User.findOne({ userId: ownerId });
+    let ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
+    return ctx.reply(
+      `❌ ADMIN ACCESS DISABLED\n\n` +
+      `Your admin permissions have been disabled by the Owner.\n\n` +
+      `📞 Contact Owner: ${ownerName}\n🆔 Owner ID: ${ownerId}`,
+      { reply_markup: new InlineKeyboard().text("🏠 Back to Main Menu", "back_to_balance") }
+    );
+  }
+  if (!(await isAdmin(userId))) return ctx.reply("❌ Not an admin!");
+  await sendAdminPanel(ctx, false);
+});
+
+bot.on("message:text", async (ctx, next) => {
+  let text = ctx.message.text.trim();
+  let userId = ctx.from.id;
+  let state = userState[userId];
+
+  // ✅ Skip /commands — IMPORTANT!
+  if (text.startsWith("/")) return next();
+
+  // Skip if state active (Part 6 handles)
+  if (state) return next();
+
+  // ✅ Admin Panel Button Check
+  try {
+    let adminPanelLayout = await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+    let adminBtn = adminPanelLayout.find(b => b.name === text);
+    if (adminBtn && adminBtn.key) {
+      const fakeUpdate = {
+        update_id: Date.now() + Math.floor(Math.random() * 1000),
+        callback_query: {
+          id: "adminbtn_" + Date.now(),
+          from: ctx.from,
+          chat_instance: "adminbtn",
+          data: adminBtn.key,
+          message: ctx.message
+        }
+      };
+      await bot.handleUpdate(fakeUpdate);
+      return;
+    }
+  } catch (e) {
+    console.error("Admin btn err:", e.message);
+  }
+
+  // Gift Code Check
+  try {
+    let user = await getUser(userId);
+    let gift = await GiftCode.findOneAndUpdate(
+      { code: text, type: "redeem", usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } },
+      { $push: { usedUsers: userId } },
+      { new: true }
+    );
+    if (gift) {
+      user.balance += gift.amount;
+      await user.save();
+      await logBalanceHistory(userId, `Gift Redeemed (${gift.code})`, gift.amount);
+      await ctx.reply(`🎉 Added ₹${gift.amount}!`);
+      return;
+    }
+  } catch (e) {}
+
+  // Unknown Command (only unknown text)
+  try {
+    return ctx.reply(
+      `❓ I didn't understand that.\n\nPlease /start the bot again.`,
+      { reply_markup: await buildKeyboardFromLayout(userId) }
+    );
+  } catch (e) {
+    return ctx.reply(`❓ I didn't understand that.\n\nPlease /start the bot again.`);
+  }
+});
+
+console.log("✅ Fix loaded: /commands + Admin Buttons + Unknown Command");
+
+// Auto-ping every 5 minutes
+setInterval(() => {
+  let renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) fetch(renderUrl).catch(() => {});
+}, 300000);
+
+// ✅ ഇവിടെ Paste ചെയ്യൂ
+
+// ============================================================
+// ✅ END OF FILE
+// ============================================================
+console.log("✅ bot.js loaded — Complete bot with all features");
+console.log("✅ All Mini App APIs loaded!");
