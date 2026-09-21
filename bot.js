@@ -3,7 +3,7 @@
 // Complete Bot - All Features
 // ============================================================
 require("dotenv").config();
-const { Bot, Keyboard, InlineKeyboard, InputFile } = require("grammy");
+const { Bot, Keyboard, InlineKeyboard } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
 const path = require("path");
@@ -56,6 +56,31 @@ if (!BOT_TOKEN || !MONGO_URI) {
 
 const bot = new Bot(BOT_TOKEN);
 const userState = {};
+
+// ============================================================
+// 🛠️ SAFE EDIT + SAFE ANSWER HELPERS
+// ============================================================
+async function safeEdit(ctx, text, kb, parseMode = "Markdown") {
+  try {
+    await ctx.editMessageText(text, { reply_markup: kb, parse_mode: parseMode });
+  } catch (e) {
+    const msg = e.message || "";
+    if (msg.includes("message is not modified")) return;
+    if (msg.includes("query is too old") ||
+        msg.includes("message to edit not found") ||
+        msg.includes("message can't be edited")) {
+      try { await ctx.reply(text, { reply_markup: kb, parse_mode: parseMode }); } catch (e2) {}
+    } else {
+      console.error("safeEdit:", msg);
+    }
+  }
+}
+
+async function safeAnswer(ctx, text = "", alert = false) {
+  try {
+    await ctx.answerCallbackQuery({ text, show_alert: alert });
+  } catch (e) {}
+}
 
 // ============================================================
 // 🔄 RERENDER HELPER
@@ -319,11 +344,12 @@ const configSchema = new mongoose.Schema({
 });
 const Config = mongoose.models.Config || mongoose.model("Config", configSchema);
 
-// ✅ NEW GATEWAY SCHEMA (MongoDB-adapted)
+// ✅ NEW GATEWAY SCHEMA (MongoDB-adapted) — FIXED: type field added
 const gatewaySchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   url: { type: String, required: true },
+  type: { type: String, default: "wallet" },
   status: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -3131,19 +3157,262 @@ bot.on("message:text", async (ctx, next) => {
         { parse_mode: "Markdown", reply_markup: await buildKeyboardFromLayout(userId) });
     }
 
-    // ✅ AMZ ADMIN ENTER CODE (VARIATION)
-    if (state && state.startsWith("AMZ_ADMIN_CONFIRM_")) {
-      // handled by send handler
-      return;
+    // ✅ VERIFY MANUAL ID
+    if (state === "VERIFY_MANUAL_ID" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let uid = parseInt(text.trim(), 10);
+      if (isNaN(uid)) return ctx.reply("❌ Invalid User ID!");
+      await Verification.findOneAndUpdate(
+        { userId: uid },
+        { verified: true, reason: "", verifiedAt: new Date() },
+        { upsert: true }
+      );
+      try {
+        await ctx.api.sendMessage(uid, `✅ *You are now verified!*`, { parse_mode: "Markdown" });
+      } catch (e) {}
+      return ctx.reply(`✅ User \`${uid}\` verified!`, {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_verify_user")
+      });
     }
 
-    // ✅ RDM ADMIN ENTER CODE (VARIATION)
-    if (state && state.startsWith("RDM_ADMIN_CONFIRM_")) {
-      return;
+    // ✅ VERIFY RESET ID
+    if (state === "VERIFY_RESET_ID" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let uid = parseInt(text.trim(), 10);
+      if (isNaN(uid)) return ctx.reply("❌ Invalid User ID!");
+      await Verification.findOneAndUpdate(
+        { userId: uid },
+        { verified: false, reason: "Reset by admin", deviceHash: "" },
+        { upsert: true }
+      );
+      return ctx.reply(`✅ User \`${uid}\` reset to unverified!`, {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_verify_user")
+      });
     }
 
-    // ✅ GATEWAY ADMIN INPUT — handled in Part 3
-    // ✅ CONTINUE TO MAIN MENU HANDLERS
+    // ✅ ADDFUND UPI
+    if (state === "ADDFUND_SET_UPI" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let upi = text.trim();
+      if (!upi.includes("@") || upi.length < 5) {
+        return ctx.reply("❌ Invalid UPI format!");
+      }
+      await setConfig("auto_upi_id", upi);
+      return ctx.reply(`✅ UPI ID set: \`${upi}\``, {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+      });
+    }
+
+    // ✅ ADDFUND MIN
+    if (state === "ADDFUND_SET_MIN" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid amount!");
+      await setConfig("auto_upi_min", amt);
+      return ctx.reply(`✅ Min: ₹${amt}`, {
+        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+      });
+    }
+
+    // ✅ ADDFUND MAX
+    if (state === "ADDFUND_SET_MAX" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid amount!");
+      await setConfig("auto_upi_max", amt);
+      return ctx.reply(`✅ Max: ₹${amt}`, {
+        reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+      });
+    }
+
+    // ✅ RDM SET MIN
+    if (state === "RDM_SET_MIN" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
+      await setConfig("redeem_min_amount", amt);
+      return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_redeem") });
+    }
+
+    // ✅ AMZ SET MIN
+    if (state === "AMZ_SET_MIN" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let amt = parseFloat(text);
+      if (isNaN(amt) || amt < 0) return ctx.reply("❌ Invalid!");
+      await setConfig("amazon_min_amount", amt);
+      return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "adm_amazon") });
+    }
+
+    // ✅ GC EDIT NAME
+    if (state && state.startsWith("GC_EDIT_NAME_") && (await isAdmin(userId))) {
+      let oldCode = state.replace("GC_EDIT_NAME_", "");
+      delete userState[userId];
+      let newCode = text.trim().toUpperCase().replace(/\s+/g, "");
+      if (!newCode || newCode.length < 2 || newCode.length > 30) return ctx.reply("❌ Code name must be 2-30 chars!");
+      let existing = await GiftCode.findOne({ code: newCode, type: "redeem" });
+      if (existing) return ctx.reply(`❌ Code \`${newCode}\` already exists!`, { parse_mode: "Markdown" });
+      await GiftCode.updateOne({ code: oldCode, type: "redeem" }, { code: newCode });
+      return ctx.reply(`✅ *Code Name Updated!*\n\n🆔 New: \`${newCode}\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${newCode}`) });
+    }
+
+    // ✅ GC EDIT AMOUNT
+    if (state && state.startsWith("GC_EDIT_AMOUNT_") && (await isAdmin(userId))) {
+      let code = state.replace("GC_EDIT_AMOUNT_", "");
+      delete userState[userId];
+      let amount = parseFloat(text);
+      if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid amount!");
+      await GiftCode.updateOne({ code, type: "redeem" }, { amount });
+      return ctx.reply(`✅ *Amount Updated!*\n\n💰 New: ₹${amount}`, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`) });
+    }
+
+    // ✅ GC EDIT MAX
+    if (state && state.startsWith("GC_EDIT_MAX_") && (await isAdmin(userId))) {
+      let code = state.replace("GC_EDIT_MAX_", "");
+      delete userState[userId];
+      let maxUses = parseInt(text, 10);
+      if (isNaN(maxUses) || maxUses < 0) return ctx.reply("❌ Invalid!");
+      let finalMax = maxUses === 0 ? 999999 : maxUses;
+      await GiftCode.updateOne({ code, type: "redeem" }, { maxUses: finalMax });
+      let display = maxUses === 0 ? "Unlimited" : finalMax;
+      return ctx.reply(`✅ *Max Uses Updated!*\n\n👥 New: ${display}`, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", `gc_view_${code}`) });
+    }
+
+    // ✅ OWNER NAME EDIT
+    if (state === "EDIT_OWNER_NAME" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let newName = text.trim();
+      if (!newName || newName.length < 2 || newName.length > 30) return ctx.reply("❌ Name must be 2-30 characters!");
+      await setConfig("owner_display_name", newName);
+      return ctx.reply(`✅ *Owner Name Updated!*\n\n👤 New Name: \`${newName}\``, { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_webname_edit") });
+    }
+
+    // ✅ OWNER LINK EDIT
+    if (state === "EDIT_OWNER_LINK" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let newLink = text.trim();
+      if (!newLink || newLink.length < 2) return ctx.reply("❌ Invalid link!");
+      await setConfig("owner_display_link", newLink);
+      let currentName = await getConfig("owner_display_name", "azeeznasi");
+      return ctx.reply(
+        `✅ *Owner Link Updated!*\n\n🔗 New Link: \`${newLink}\`\n\n📍 Will appear as: Provided by ${currentName}`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "adm_webname_edit") }
+      );
+    }
+
+    // ✅ GATEWAY NAME
+    if (state === "WAITING_GW_NAME" && (await isAdmin(userId))) {
+      if (!text || text.length < 2 || text.length > 30) {
+        return ctx.reply("❌ Name must be 2-30 characters!\n\nTry again:");
+      }
+      let existing = await Gateway.findOne({ name: text });
+      if (existing) return ctx.reply("❌ Gateway name already exists! Try another.");
+      userState[userId + "_TEMP"] = { name: text };
+      userState[userId] = "WAITING_GW_TYPE";
+      let kb = new InlineKeyboard()
+        .text("💳 UPI", "gw_type_upi")
+        .text("📱 Wallet Number", "gw_type_wallet");
+      return ctx.reply(`📲 *Step 2: Select Type*\n\nName: *${text}*`, { parse_mode: "Markdown", reply_markup: kb });
+    }
+
+    // ✅ GATEWAY URL
+    if (state === "WAITING_GW_URL" && (await isAdmin(userId))) {
+      let temp = userState[userId + "_TEMP"] || {};
+      if (!temp.name || !temp.type) {
+        delete userState[userId];
+        delete userState[userId + "_TEMP"];
+        return ctx.reply("❌ Session expired. Start again.");
+      }
+      if (!text.startsWith("http://") && !text.startsWith("https://")) {
+        return ctx.reply("❌ Invalid URL. Must start with http:// or https://");
+      }
+      if (!text.includes("{number}") || !text.includes("{amount}")) {
+        return ctx.reply("❌ URL must include `{number}` and `{amount}` placeholders.", { parse_mode: "Markdown" });
+      }
+      let gwKey = "gw_" + Date.now();
+      await Gateway.create({
+        key: gwKey,
+        name: temp.name,
+        url: text,
+        type: temp.type,
+        status: true
+      });
+      delete userState[userId];
+      delete userState[userId + "_TEMP"];
+      await logAdminAction(userId, ctx.from.first_name || "Admin", "Gateway Added", `${temp.name} (${temp.type})`, 0, null);
+      return ctx.reply(
+        `✅ *New Gateway Added!*\n\n📛 Name: *${temp.name}*\n📊 Type: *${temp.type.toUpperCase()}*\n🌐 URL: \`${text.substring(0, 60)}...\``,
+        {
+          parse_mode: "Markdown",
+          reply_markup: new InlineKeyboard().text("🔙 Back to Gateway Manager", "adm_gateway_menu")
+        }
+      );
+    }
+
+    // ✅ SUBMISSION CHANNEL
+    if (state === "SET_SUBCHAN" && (await isAdmin(userId))) {
+      delete userState[userId];
+      let channelInput = text.trim();
+      if (!channelInput.startsWith("@") && !/^-?\d+$/.test(channelInput)) {
+        return ctx.reply("❌ Invalid! Send @channel or -100xxxxx", { parse_mode: "Markdown" });
+      }
+      let chatInfo = null;
+      try {
+        chatInfo = await ctx.api.getChat(channelInput);
+        let botInfo = await ctx.api.getMe();
+        let botMember = await ctx.api.getChatMember(channelInput, botInfo.id);
+        if (!["administrator", "creator"].includes(botMember.status)) {
+          return ctx.reply(`❌ Bot is not admin in this channel!`, { reply_markup: new InlineKeyboard().text("🔙 Back", "set_submission_channel") });
+        }
+      } catch (e) {
+        return ctx.reply(`❌ Cannot access channel: ${e.message}`, { reply_markup: new InlineKeyboard().text("🔙 Back", "set_submission_channel") });
+      }
+      let channelId = chatInfo.id.toString();
+      let channelName = chatInfo.title || channelInput;
+      await setConfig("default_submission_channel", channelInput);
+      await setConfig("default_submission_channel_id", channelId);
+      return ctx.reply(
+        `✅ *Channel Set!*\n\n📢 ${channelName}\n🆔 \`${channelId}\`\n\nAll task submissions will go here.`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", "set_submission_channel") }
+      );
+    }
+
+    // ✅ TASK CHANNEL
+    if (state && state.startsWith("TASK_CHANNEL_") && (await isAdmin(userId))) {
+      let tId = state.replace("TASK_CHANNEL_", "");
+      delete userState[userId];
+      let channelInput = text.trim();
+      if (!channelInput.startsWith("@") && !/^-?\d+$/.test(channelInput)) {
+        return ctx.reply("❌ Invalid! Send @channel or -100xxxxx");
+      }
+      try {
+        let chatInfo = await ctx.api.getChat(channelInput);
+        let botInfo = await ctx.api.getMe();
+        let botMember = await ctx.api.getChatMember(channelInput, botInfo.id);
+        if (!["administrator", "creator"].includes(botMember.status)) {
+          return ctx.reply("❌ Bot is not admin!");
+        }
+      } catch (e) {
+        return ctx.reply(`❌ Cannot access: ${e.message}`);
+      }
+      await Task.updateOne({ taskId: tId }, { submissionChannel: channelInput });
+      return ctx.reply(
+        `✅ *Channel Set!*\n\n📢 ${channelInput}`,
+        { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Back", `edit_task_${tId}`) }
+      );
+    }
+
+    // ✅ TASK EDIT DESC
+    if (state && state.startsWith("TASK_EDIT_DESC_") && (await isAdmin(userId))) {
+      let taskId = state.replace("TASK_EDIT_DESC_", "");
+      delete userState[userId];
+      await Task.updateOne({ taskId }, { description: text });
+      return ctx.reply(`✅ Description updated!`, { reply_markup: new InlineKeyboard().text("🔙 Back", `edit_task_${taskId}`) });
+    }
+
+    return;
   }
 
   // ============================================================
@@ -3158,7 +3427,7 @@ bot.on("message:text", async (ctx, next) => {
   let matchedKey = findKeyByName(text);
 
   // ✅ BALANCE
-  if (matchedKey === "btn_balance" || /balance/i.test(text)) {
+  if (matchedKey === "btn_balance") {
     try {
       let welcomeText = await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
       let footerText = await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
@@ -3193,18 +3462,19 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ✅ TASKS
-  else if (matchedKey === "btn_tasks" || /task/i.test(text)) {
+  else if (matchedKey === "btn_tasks") {
     try {
       let allTasks = await Task.find({}).sort({ order: 1, createdAt: 1 });
       if (!allTasks || allTasks.length === 0) {
         return ctx.reply(`⚠️ No tasks available right now. Please check back later!`);
       }
+      let isAdminUser = await isAdmin(userId);
       let availableTasks = [];
       let expiredCount = 0;
 
       for (let t of allTasks) {
-        if (t.completedUsers.includes(userId)) continue;
-        if (t.timeLimitEnabled && t.timeLimitMinutes > 0) {
+        if (!isAdminUser && t.completedUsers.includes(userId)) continue;
+        if (!isAdminUser && t.timeLimitEnabled && t.timeLimitMinutes > 0) {
           let timer = await TaskTimer.findOne({ userId, taskId: t.taskId });
           if (timer && (timer.status === "expired" || new Date() > timer.expiresAt)) {
             if (timer.status !== "expired") {
@@ -3227,8 +3497,7 @@ bot.on("message:text", async (ctx, next) => {
         let row = [];
         let t1 = availableTasks[i];
         let badge1 = t1.timeLimitEnabled && t1.timeLimitMinutes > 0
-          ? ` ⏱️${formatMinutes(t1.timeLimitMinutes)}`
-          : "";
+          ? ` ⏱️${formatMinutes(t1.timeLimitMinutes)}` : "";
         row.push({
           text: `${t1.title} (₹${t1.reward})${badge1}`,
           callback_data: `do_task_${t1.taskId}`
@@ -3236,8 +3505,7 @@ bot.on("message:text", async (ctx, next) => {
         if (i + 1 < availableTasks.length) {
           let t2 = availableTasks[i + 1];
           let badge2 = t2.timeLimitEnabled && t2.timeLimitMinutes > 0
-            ? ` ⏱️${formatMinutes(t2.timeLimitMinutes)}`
-            : "";
+            ? ` ⏱️${formatMinutes(t2.timeLimitMinutes)}` : "";
           row.push({
             text: `${t2.title} (₹${t2.reward})${badge2}`,
             callback_data: `do_task_${t2.taskId}`
@@ -3262,12 +3530,7 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ✅ GIFT CODE
-  else if (matchedKey === "btn_gift" || /gift/i.test(text)) {
-    let activeCodes = await GiftCode.countDocuments({
-      type: "redeem",
-      usedUsers: { $ne: userId }
-    });
-
+  else if (matchedKey === "btn_gift") {
     let headerText =
       `🔍 You don't have any active Gift Codes.\n\n` +
       `Create your first one now!`;
@@ -3280,7 +3543,7 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ✅ QUICK PAY
-  else if (matchedKey === "btn_quickpay" || /quick.*pay/i.test(text)) {
+  else if (matchedKey === "btn_quickpay") {
     userState[userId] = "QP_WAIT_USERID";
     return ctx.reply(`💸 *Quick Pay*\n\n📱 Send Receiver User ID:`, {
       parse_mode: "Markdown",
@@ -3289,7 +3552,7 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ✅ PAYOUT METHOD
-  else if (matchedKey === "btn_payout" || /payout.*method/i.test(text)) {
+  else if (matchedKey === "btn_payout") {
     let activeGateways = await Gateway.find({ status: true }).sort({ createdAt: 1 });
     let fmt = (val) => (val && val !== "Not Set" && String(val).trim() !== "") ? `\`${val}\`` : `\`Not Set\``;
 
@@ -3326,7 +3589,7 @@ bot.on("message:text", async (ctx, next) => {
   }
 
   // ✅ WITHDRAW
-  else if (matchedKey === "btn_withdraw" || /withdraw/i.test(text)) {
+  else if (matchedKey === "btn_withdraw") {
     let activeGateways = await Gateway.find({ status: true }).sort({ createdAt: 1 });
     let buttons = [];
 
@@ -3424,7 +3687,6 @@ bot.on("message:photo", async (ctx) => {
 
   // ✅ TASK FORWARD
   else if (state && state.startsWith("WAITING_TASK_FORWARD_")) {
-    // handled by forward handler
     return;
   }
 
@@ -3754,7 +4016,6 @@ bot.callbackQuery("gift_create", async (ctx) => {
     });
   }
 
-  // Get next order
   let maxOrderTask = await Task.findOne({}).sort({ order: -1 });
   let nextOrder = (maxOrderTask?.order || 0) + 1;
 
@@ -3768,7 +4029,8 @@ bot.callbackQuery("gift_create", async (ctx) => {
       link: "",
       description: "",
       order: nextOrder
-    }
+    },
+    substep: null
   };
 
   await renderNewTaskForm(ctx);
@@ -3787,7 +4049,6 @@ async function renderNewTaskForm(ctx) {
   let rewardIcon = d.reward > 0 ? "✅" : "⚪";
   let limitIcon = (d.userLimit !== null && d.userLimit !== undefined && d.userLimit !== 0) ? "✅" : (d.userLimit === 0 ? "✅" : "⚪");
 
-  // For task form
   let titleIcon = d.title ? "✅" : "⚪";
   let linkIcon = d.link ? "✅" : "⚪";
 
@@ -3812,7 +4073,6 @@ async function renderNewTaskForm(ctx) {
   }
 }
 
-// Task ID button
 bot.callbackQuery("ntf_edit_id", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3854,7 +4114,6 @@ bot.callbackQuery("ntf_back_to_form", async (ctx) => {
   await renderNewTaskForm(ctx);
 });
 
-// Title
 bot.callbackQuery("ntf_edit_title", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3890,7 +4149,6 @@ bot.callbackQuery("ntf_clear_title", async (ctx) => {
   await rerender(ctx, "ntf_edit_title");
 });
 
-// Reward
 bot.callbackQuery("ntf_edit_reward", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3926,7 +4184,6 @@ bot.callbackQuery("ntf_clear_reward", async (ctx) => {
   await rerender(ctx, "ntf_edit_reward");
 });
 
-// Link
 bot.callbackQuery("ntf_edit_link", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3962,7 +4219,6 @@ bot.callbackQuery("ntf_clear_link", async (ctx) => {
   await rerender(ctx, "ntf_edit_link");
 });
 
-// Description
 bot.callbackQuery("ntf_edit_desc", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3998,7 +4254,6 @@ bot.callbackQuery("ntf_clear_desc", async (ctx) => {
   await rerender(ctx, "ntf_edit_desc");
 });
 
-// Create task
 bot.callbackQuery("ntf_create", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
@@ -5078,7 +5333,8 @@ bot.callbackQuery("adm_redeem_add", async (ctx) => {
       code: "",
       reward: 0,
       userLimit: null
-    }
+    },
+    substep: null
   };
 
   await renderCreateGiftForm(ctx);
@@ -5318,77 +5574,74 @@ bot.callbackQuery("adm_bal_reset_yes", async (ctx) => {
 // ============================================================
 async function renderTaskManager(ctx) {
   let tasks = await Task.find({}).sort({ order: 1, createdAt: 1 });
-  let keyboard = new InlineKeyboard();
+  let displayMode = await getConfig("task_display_mode", "new");
+
+  let text = `💡 *Manage Tasks*\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `📊 Total: ${tasks.length} task${tasks.length !== 1 ? 's' : ''}\n`;
+  text += `📐 Display: ${displayMode === "new" ? "🟢 New (2-Column)" : "🔵 Old (1-Column)"}\n\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   if (tasks.length === 0) {
-    let kb = new InlineKeyboard()
-      .text("➕ New Task", "adm_create_task").row()
-      .text("📢 Set Submission Channel", "set_submission_channel").row()
-      .text("🔙 Back", "admin");
-
-    let emptyText = `💡 *Manage Tasks*`;
-
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText(emptyText, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-    } else {
-      await ctx.reply(emptyText, { reply_markup: kb, parse_mode: "Markdown" });
-    }
-    return;
-  }
-
-  let header =
-    `💡 *Manage Tasks*\n\n━━━━━━━━━━━━━━━━━━━━\n\n📊 Total: ${tasks.length} task${tasks.length > 1 ? 's' : ''}\n\n━━━━━━━━━━━━━━━━━━━━`;
-
-  if (ctx.callbackQuery) {
-    await ctx.editMessageText(header, { parse_mode: "Markdown" }).catch(() => {});
+    text += `📭 No tasks yet.\n\nTap "➕ Add New Task" below to create one.`;
   } else {
-    await ctx.reply(header, { parse_mode: "Markdown" });
+    text += `👇 Click a task to view/edit:`;
   }
 
-  for (let i = 0; i < tasks.length; i++) {
-    let t = tasks[i];
-    let rank = i + 1;
-    let timeBadge = "";
-    if (t.timeLimitEnabled && t.timeLimitMinutes > 0) {
-      timeBadge = ` | ⏱️ ${formatMinutes(t.timeLimitMinutes)}`;
+  let kb = new InlineKeyboard();
+
+  if (tasks.length > 0) {
+    if (displayMode === "new") {
+      for (let i = 0; i < tasks.length; i += 2) {
+        let t1 = tasks[i];
+        let rank1 = i + 1;
+        let icon1 = t1.timeLimitEnabled ? "⏱️" : "📋";
+        kb.text(`${rank1}. ${icon1} ${t1.title.substring(0, 10)} ₹${t1.reward}`,
+          `view_task_${t1.taskId}`);
+        if (i + 1 < tasks.length) {
+          let t2 = tasks[i + 1];
+          let rank2 = i + 2;
+          let icon2 = t2.timeLimitEnabled ? "⏱️" : "📋";
+          kb.text(`${rank2}. ${icon2} ${t2.title.substring(0, 10)} ₹${t2.reward}`,
+            `view_task_${t2.taskId}`);
+        }
+        kb.row();
+      }
+    } else {
+      for (let i = 0; i < tasks.length; i++) {
+        let t = tasks[i];
+        let rank = i + 1;
+        let icon = t.timeLimitEnabled ? "⏱️" : "📋";
+        kb.text(`${rank}. ${icon} ${t.title} — ₹${t.reward} | 👥 ${t.completedUsers?.length || 0} done`,
+          `view_task_${t.taskId}`).row();
+      }
     }
-
-    let taskMsg =
-      `${rank}️⃣ *${t.title}*\n` +
-      `💰 ₹${t.reward} | 👥 ${t.completedUsers?.length || 0} done${timeBadge}`;
-
-    let taskKb = new InlineKeyboard()
-      .text("👁️ View", `view_task_${t.taskId}`)
-      .text("✏️ Edit", `edit_task_${t.taskId}`)
-      .text("🗑️", `del_task_${t.taskId}`)
-      .row()
-      .text("⬆️ Move Up", `task_move_up_${t.taskId}`)
-      .text("⬇️ Move Down", `task_move_down_${t.taskId}`);
-
-    try {
-      await ctx.api.sendMessage(ctx.from.id, taskMsg, {
-        parse_mode: "Markdown",
-        reply_markup: taskKb
-      });
-    } catch (e) {}
   }
 
-  let bottomKb = new InlineKeyboard()
-    .text("➕ New Task", "adm_create_task").row()
-    .text("📢 Set Submission Channel", "set_submission_channel").row()
-    .text("🔙 Back", "admin");
+  let toggleText = displayMode === "new"
+    ? "📐 Switch to Old Display"
+    : "📐 Switch to New Display";
+  kb.text(toggleText, "adm_task_toggle_display").row();
 
-  try {
-    await ctx.api.sendMessage(ctx.from.id,
-      `━━━━━━━━━━━━━━━━━━━━\n\n👆 *Task Controls Above*`,
-      { parse_mode: "Markdown", reply_markup: bottomKb }
-    );
-  } catch (e) {}
+  kb.text("➕ Add New Task", "adm_create_task").row();
+  kb.text("📢 Set Submission Channel", "set_submission_channel").row();
+  kb.text("🔙 Back to Admin", "admin");
+
+  await safeEdit(ctx, text, kb);
 }
 
 bot.callbackQuery("adm_tasks_manager", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
+  await safeAnswer(ctx);
   if (!(await isAdmin(ctx.from.id))) return;
+  await renderTaskManager(ctx);
+});
+
+bot.callbackQuery("adm_task_toggle_display", async (ctx) => {
+  await safeAnswer(ctx, "📐 Switching...");
+  if (!(await isAdmin(ctx.from.id))) return;
+  let current = await getConfig("task_display_mode", "new");
+  let newMode = current === "new" ? "old" : "new";
+  await setConfig("task_display_mode", newMode);
   await renderTaskManager(ctx);
 });
 
@@ -5410,7 +5663,8 @@ bot.callbackQuery("adm_create_task", async (ctx) => {
         link: "",
         description: "",
         order: nextOrder
-      }
+      },
+      substep: null
     };
   }
 
@@ -6658,7 +6912,8 @@ async function renderPermissionsPanel(ctx) {
     let u = await User.findOne({ userId: a.userId });
     let name = u ? (u.firstName || "User") : "Unknown";
     let status = a.isActive ? "🟢" : "🔴";
-    kb.text(`${status} ${name} — ${a.userId}`, `adm_perm_toggle_${a.userId}`).row();
+    kb.text(`${status} ${name} — ${a.userId}`, `adm_perm_toggle_${a.userId}`)
+      .text("🗑️", `adm_perm_remove_${a.userId}`).row();
   }
   kb.text("➕ Add New Admin", "admin_add").row();
   kb.text("🔙 Back", "admin");
@@ -6676,6 +6931,22 @@ bot.callbackQuery(/^adm_perm_toggle_/, async (ctx) => {
   await admin.save();
   await logAdminAction(ctx.from.id, ctx.from.first_name || "Owner", admin.isActive ? "Admin Enabled" : "Admin Disabled", `${adminId}`, 0, adminId);
   await ctx.answerCallbackQuery({ text: admin.isActive ? "🟢 Enabled" : "🔴 Disabled" });
+  await renderPermissionsPanel(ctx);
+});
+
+bot.callbackQuery(/^adm_perm_remove_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isOwner(ctx.from.id))) return safeAnswer(ctx, "Owner only!", true);
+  let adminId = parseInt(ctx.callbackQuery.data.replace("adm_perm_remove_", ""), 10);
+  let admin = await BotAdmin.findOne({ userId: adminId });
+  if (!admin) {
+    await safeAnswer(ctx, "❌ Admin not found!");
+    return renderPermissionsPanel(ctx);
+  }
+  await BotAdmin.deleteOne({ userId: adminId });
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Owner",
+    "Admin Removed", `${adminId}`, 0, adminId);
+  await safeAnswer(ctx, "🗑️ Admin removed!");
   await renderPermissionsPanel(ctx);
 });
 
@@ -6907,14 +7178,28 @@ bot.callbackQuery("adm_reset_all_confirm", async (ctx) => {
 // ============================================================
 // ⚡ CHANNELS
 // ============================================================
-bot.callbackQuery("adm_manage_channels", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
+async function renderChannelsPanel(ctx) {
   let channels = await Channel.find({ isActive: true });
-  let text = `⚡ *Manage Channels*\n\n📊 Total: ${channels.length}\n\n`;
-  channels.forEach((ch, i) => { text += `${i + 1}. 📢 ${ch.displayName || ch.channelId}\n🔗 ${ch.inviteLink}\n\n`; });
-  let kb = new InlineKeyboard().text("➕ Add Channel", "adm_add_channel").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(text || "No channels", { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  let text = `⚡ *Manage Channels*\n\n📊 Total: ${channels.length}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  let kb = new InlineKeyboard();
+  if (channels.length === 0) {
+    text += `📭 No channels yet.`;
+  } else {
+    for (let ch of channels) {
+      text += `📢 ${ch.displayName || ch.channelId}\n🔗 ${ch.inviteLink}\n\n`;
+      kb.text(`🗑️ Remove ${(ch.displayName || ch.channelId).substring(0, 12)}`,
+        `ch_del_${ch.channelId}`).row();
+    }
+  }
+  kb.row({ text: "➕ Add Channel", callback_data: "adm_add_channel" });
+  kb.row({ text: "🔙 Back to Admin", callback_data: "admin" });
+  await safeEdit(ctx, text, kb);
+}
+
+bot.callbackQuery("adm_manage_channels", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderChannelsPanel(ctx);
 });
 
 bot.callbackQuery("adm_add_channel", async (ctx) => {
@@ -6925,6 +7210,38 @@ bot.callbackQuery("adm_add_channel", async (ctx) => {
     `📢 *Add Channel*\n\nFormat: <code>ChannelID | InviteLink</code>\n\nExample:\n<code>@mychannel | https://t.me/mychannel</code>`,
     { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_manage_channels") }
   );
+});
+
+bot.callbackQuery(/^ch_del_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let chId = ctx.callbackQuery.data.replace("ch_del_", "");
+  let ch = await Channel.findOne({ channelId: chId });
+  if (!ch) {
+    return safeEdit(ctx, "❌ Channel not found!",
+      new InlineKeyboard().text("🔙 Back", "adm_manage_channels"));
+  }
+  let text =
+    `⚠️ Remove Channel?\n\n📢 ${ch.displayName || ch.channelId}\n🔗 ${ch.inviteLink}\n\n⚠️ Cannot be undone.`;
+  let kb = new InlineKeyboard()
+    .text("✅ Yes, Remove", `ch_del_confirm_${ch.channelId}`)
+    .text("❌ Cancel", "adm_manage_channels");
+  await safeEdit(ctx, text, kb);
+});
+
+bot.callbackQuery(/^ch_del_confirm_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let chId = ctx.callbackQuery.data.replace("ch_del_confirm_", "");
+  let ch = await Channel.findOne({ channelId: chId });
+  if (!ch) {
+    await safeAnswer(ctx, "❌ Already deleted!");
+    return renderChannelsPanel(ctx);
+  }
+  await Channel.deleteOne({ channelId: chId });
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin",
+    "Channel Deleted", ch.displayName || chId, 0, null);
+  await safeAnswer(ctx, "🗑️ Channel removed!");
+  await renderChannelsPanel(ctx);
 });
 
 // ============================================================
@@ -7402,13 +7719,18 @@ bot.callbackQuery(/^gw_del_(.+)$/, async (ctx) => {
 });
 
 bot.callbackQuery(/^gw_delconfirm_(.+)$/, async (ctx) => {
-  ctx.answerCallbackQuery({ text: "🗑️ Deleted!" });
-  if (!(await isAdmin(ctx.from.id))) return;
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
   let gwKey = ctx.match[1];
   let gw = await Gateway.findOne({ key: gwKey });
-  if (gw) await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Gateway Deleted", gw.name, 0, null);
+  if (!gw) {
+    await safeAnswer(ctx, "❌ Already deleted!");
+    return renderGatewayManager(ctx);
+  }
   await Gateway.deleteOne({ key: gwKey });
-  await rerender(ctx, "adm_gateway_menu");
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin",
+    "Gateway Deleted", gw.name, 0, null);
+  await safeAnswer(ctx, "🗑️ Deleted permanently!");
+  await renderGatewayManager(ctx);
 });
 
 // ============================================================
@@ -7603,43 +7925,73 @@ bot.on("message:text", async (ctx, next) => {
     );
   }
 
+  if (state === "VERIFY_MANUAL_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let uid = parseInt(text.trim(), 10);
+    if (isNaN(uid)) return ctx.reply("❌ Invalid User ID!");
+    await Verification.findOneAndUpdate(
+      { userId: uid },
+      { verified: true, reason: "", verifiedAt: new Date() },
+      { upsert: true }
+    );
+    try {
+      await ctx.api.sendMessage(uid, `✅ *You are now verified!*`, { parse_mode: "Markdown" });
+    } catch (e) {}
+    return ctx.reply(`✅ User \`${uid}\` verified!`, {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_verify_user")
+    });
+  }
+
+  if (state === "VERIFY_RESET_ID" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let uid = parseInt(text.trim(), 10);
+    if (isNaN(uid)) return ctx.reply("❌ Invalid User ID!");
+    await Verification.findOneAndUpdate(
+      { userId: uid },
+      { verified: false, reason: "Reset by admin", deviceHash: "" },
+      { upsert: true }
+    );
+    return ctx.reply(`✅ User \`${uid}\` reset to unverified!`, {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_verify_user")
+    });
+  }
+
+  if (state === "ADDFUND_SET_UPI" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let upi = text.trim();
+    if (!upi.includes("@") || upi.length < 5) {
+      return ctx.reply("❌ Invalid UPI format!");
+    }
+    await setConfig("auto_upi_id", upi);
+    return ctx.reply(`✅ UPI ID set: \`${upi}\``, {
+      parse_mode: "Markdown",
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+    });
+  }
+
+  if (state === "ADDFUND_SET_MIN" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid amount!");
+    await setConfig("auto_upi_min", amt);
+    return ctx.reply(`✅ Min: ₹${amt}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+    });
+  }
+
+  if (state === "ADDFUND_SET_MAX" && (await isAdmin(userId))) {
+    delete userState[userId];
+    let amt = parseFloat(text);
+    if (isNaN(amt) || amt <= 0) return ctx.reply("❌ Invalid amount!");
+    await setConfig("auto_upi_max", amt);
+    return ctx.reply(`✅ Max: ₹${amt}`, {
+      reply_markup: new InlineKeyboard().text("🔙 Back", "adm_addfund_menu")
+    });
+  }
+
   return next();
-});
-
-// ============================================================
-// 📊 RECENT ADMIN ACTIONS
-// ============================================================
-bot.callbackQuery("adm_recent_actions", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let logs = await AdminLog.find({}).sort({ createdAt: -1 }).limit(15);
-  let text = `🚀 *Recent Admin Actions*\n\n`;
-  if (logs.length === 0) text += "📭 No actions yet.";
-  else logs.forEach((log, i) => {
-    let dateStr = new Date(log.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    text += `${i + 1}. 👤 *${log.adminName}*\n   📌 ${log.action}${log.details ? `: ${log.details}` : ''}\n   🕐 ${dateStr}\n\n`;
-  });
-  let kb = new InlineKeyboard().text("🔄 Refresh", "adm_recent_actions").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-// ============================================================
-// 🔔 NEW USER NOTIFICATION
-// ============================================================
-bot.callbackQuery("adm_user_notif", async (ctx) => {
-  ctx.answerCallbackQuery().catch(() => {});
-  if (!(await isAdmin(ctx.from.id))) return;
-  let enabled = await getConfig("new_user_notif", true);
-  let kb = new InlineKeyboard().text(enabled ? "🔕 Turn OFF" : "🔔 Turn ON", "adm_toggle_notif").row().text("🔙 Back", "admin");
-  await ctx.editMessageText(`🔔 *New User Notification*\n\n📊 ${enabled ? "🟢 ON" : "🔴 OFF"}`, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
-});
-
-bot.callbackQuery("adm_toggle_notif", async (ctx) => {
-  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
-  let cur = await getConfig("new_user_notif", true);
-  await setConfig("new_user_notif", !cur);
-  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
-  await rerender(ctx, "adm_user_notif");
 });
 
 // ============================================================
@@ -7685,6 +8037,481 @@ bot.callbackQuery("kbpanel_reset", async (ctx) => {
   if (!(await isAdmin(ctx.from.id))) return;
   await setConfig("keyboard_layout", JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT)));
   await rerender(ctx, "adm_keyboard_custom");
+});
+
+// ============================================================
+// 📊 RECENT ADMIN ACTIONS
+// ============================================================
+bot.callbackQuery("adm_recent_actions", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let logs = await AdminLog.find({}).sort({ createdAt: -1 }).limit(15);
+  let text = `🚀 *Recent Admin Actions*\n\n`;
+  if (logs.length === 0) text += "📭 No actions yet.";
+  else logs.forEach((log, i) => {
+    let dateStr = new Date(log.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    text += `${i + 1}. 👤 *${log.adminName}*\n   📌 ${log.action}${log.details ? `: ${log.details}` : ''}\n   🕐 ${dateStr}\n\n`;
+  });
+  let kb = new InlineKeyboard().text("🔄 Refresh", "adm_recent_actions").row().text("🔙 Back", "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+// ============================================================
+// 🔔 NEW USER NOTIFICATION
+// ============================================================
+bot.callbackQuery("adm_user_notif", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  let enabled = await getConfig("new_user_notif", true);
+  let kb = new InlineKeyboard().text(enabled ? "🔕 Turn OFF" : "🔔 Turn ON", "adm_toggle_notif").row().text("🔙 Back", "admin");
+  await ctx.editMessageText(`🔔 *New User Notification*\n\n📊 ${enabled ? "🟢 ON" : "🔴 OFF"}`, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+});
+
+bot.callbackQuery("adm_toggle_notif", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let cur = await getConfig("new_user_notif", true);
+  await setConfig("new_user_notif", !cur);
+  await ctx.answerCallbackQuery({ text: !cur ? "🟢 ON" : "🔴 OFF" });
+  await rerender(ctx, "adm_user_notif");
+});
+
+// ============================================================
+// 🆕 NEW USERS PANEL
+// ============================================================
+async function renderNewUsers(ctx, filter = "today", page = 0) {
+  let perPage = 10;
+  let now = new Date();
+  let startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+
+  let query = {};
+  let title = "";
+
+  if (filter === "today") {
+    query.startTime = { $gte: startOfToday };
+    title = "Today";
+  } else if (filter === "yesterday") {
+    query.startTime = { $gte: startOfYesterday, $lt: startOfToday };
+    title = "Yesterday";
+  } else {
+    title = "All Users";
+  }
+
+  let totalUsers = await NewUserLog.countDocuments(query);
+  let totalPages = Math.ceil(totalUsers / perPage);
+  if (page < 0) page = 0;
+  if (page >= totalPages) page = Math.max(0, totalPages - 1);
+
+  let users = await NewUserLog.find(query)
+    .sort({ startTime: -1 })
+    .skip(page * perPage)
+    .limit(perPage);
+
+  let text =
+    `🆕 New Users — ${title}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📊 Total: ${totalUsers}\n` +
+    `📄 Page: ${page + 1}/${totalPages || 1}\n\n` +
+    `👇 Click a user to view profile:`;
+
+  let kb = new InlineKeyboard();
+
+  if (users.length === 0) {
+    text += `\n\n📭 No users found.`;
+  } else {
+    for (let i = 0; i < users.length; i += 2) {
+      let u1 = users[i];
+      let name1 = (u1.firstName || "User").substring(0, 10);
+      kb.text(`👤 ${name1}`, `newu_view_${u1.userId}`);
+      if (i + 1 < users.length) {
+        let u2 = users[i + 1];
+        let name2 = (u2.firstName || "User").substring(0, 10);
+        kb.text(`👤 ${name2}`, `newu_view_${u2.userId}`);
+      }
+      kb.row();
+    }
+  }
+
+  let navRow = [];
+  if (page > 0) navRow.push({ text: "⬅️", callback_data: `newu_page_${filter}_${page - 1}` });
+  navRow.push({ text: "🔄", callback_data: `newu_page_${filter}_${page}` });
+  if (page < totalPages - 1) navRow.push({ text: "➡️", callback_data: `newu_page_${filter}_${page + 1}` });
+  if (navRow.length > 0) kb.row(...navRow);
+
+  kb.row(
+    { text: filter === "today" ? "✅ Today" : "📅 Today", callback_data: `newu_filter_today` },
+    { text: filter === "yesterday" ? "✅ Yesterday" : "📅 Yesterday", callback_data: `newu_filter_yesterday` },
+    { text: filter === "all" ? "✅ All" : "📅 All", callback_data: `newu_filter_all` }
+  );
+
+  kb.row({ text: "🔙 Back to Admin", callback_data: "admin" });
+
+  await safeEdit(ctx, text, kb);
+}
+
+bot.callbackQuery("adm_new_users", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderNewUsers(ctx, "today", 0);
+});
+
+bot.callbackQuery(/^newu_filter_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let filter = ctx.callbackQuery.data.replace("newu_filter_", "");
+  await renderNewUsers(ctx, filter, 0);
+});
+
+bot.callbackQuery(/^newu_page_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let parts = ctx.callbackQuery.data.replace("newu_page_", "").split("_");
+  let page = parseInt(parts.pop(), 10);
+  let filter = parts.join("_");
+  await renderNewUsers(ctx, filter, page);
+});
+
+bot.callbackQuery(/^newu_view_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("newu_view_", ""), 10);
+  let u = await NewUserLog.findOne({ userId: uid });
+  if (!u) {
+    return safeEdit(ctx, "❌ User not found!",
+      new InlineKeyboard().text("🔙 Back", "adm_new_users"));
+  }
+  let text =
+    `👤 User Details\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `Name: ${u.firstName || "Unknown"}\n` +
+    `User ID: ${u.userId}\n` +
+    `Username: ${u.username ? "@" + u.username : "None"}\n` +
+    `Started: ${formatDateTime(u.startTime)}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━`;
+
+  let kb = new InlineKeyboard();
+  kb.url("💬 Open Profile", `tg://user?id=${u.userId}`).row();
+  kb.text("🔙 Back to List", "adm_new_users");
+  await safeEdit(ctx, text, kb);
+});
+
+// ============================================================
+// ✅ VERIFY USER PANEL
+// ============================================================
+bot.callbackQuery("adm_verify_user", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+
+  let verifyEnabled = await getConfig("verification_enabled", false);
+  let totalVerified = await Verification.countDocuments({ verified: true });
+  let totalUnverified = await Verification.countDocuments({ verified: false });
+  let totalDevices = await Verification.countDocuments({ deviceHash: { $ne: "" } });
+
+  let text =
+    `✅ Verify User\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📊 Verification Mode: ${verifyEnabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
+    `✅ Verified Users: ${totalVerified}\n` +
+    `❌ Unverified: ${totalUnverified}\n` +
+    `📱 Devices: ${totalDevices}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n👇 Choose action:`;
+
+  let kb = new InlineKeyboard()
+    .text("🔍 Manual Verify (by ID)", "verify_manual_byid").row()
+    .text("📋 List Unverified", "verify_list_unverified").row()
+    .text("🔄 Reset User", "verify_reset_user").row()
+    .text(verifyEnabled ? "🔴 Turn OFF" : "🟢 Turn ON", "verify_toggle").row()
+    .text("🔙 Back", "admin");
+
+  await safeEdit(ctx, text, kb);
+});
+
+bot.callbackQuery("verify_manual_byid", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "VERIFY_MANUAL_ID";
+  await safeEdit(ctx,
+    `🔍 Manual Verify\n\nSend User ID to verify:`,
+    new InlineKeyboard().text("🔙 Cancel", "adm_verify_user")
+  );
+});
+
+bot.callbackQuery("verify_list_unverified", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let unverified = await Verification.find({ verified: false })
+    .sort({ userId: -1 }).limit(20);
+  let text = `📋 Unverified Users\n\n📊 Showing: ${unverified.length}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  let kb = new InlineKeyboard();
+  if (unverified.length === 0) {
+    text += `📭 No unverified users.`;
+  } else {
+    for (let u of unverified) {
+      let user = await User.findOne({ userId: u.userId });
+      let name = user?.firstName || "User";
+      let reason = u.reason || "Not verified";
+      text += `👤 ${name} — \`${u.userId}\`\n   ⚠️ ${reason.substring(0, 40)}\n\n`;
+      kb.text(`✅ Verify ${name.substring(0, 8)}`, `verify_do_${u.userId}`).row();
+    }
+  }
+  kb.row({ text: "🔙 Back", callback_data: "adm_verify_user" });
+  await safeEdit(ctx, text, kb);
+});
+
+bot.callbackQuery(/^verify_do_/, async (ctx) => {
+  await safeAnswer(ctx, "✅ Verified!");
+  if (!(await isAdmin(ctx.from.id))) return;
+  let uid = parseInt(ctx.callbackQuery.data.replace("verify_do_", ""), 10);
+  await Verification.findOneAndUpdate(
+    { userId: uid },
+    { verified: true, reason: "", verifiedAt: new Date() },
+    { upsert: true }
+  );
+  try {
+    await ctx.api.sendMessage(uid, `✅ *You are now verified!*\n\nYou can use the bot normally.`, { parse_mode: "Markdown" });
+  } catch (e) {}
+  await renderNewUsers(ctx, "today", 0);
+});
+
+bot.callbackQuery("verify_reset_user", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "VERIFY_RESET_ID";
+  await safeEdit(ctx,
+    `🔄 Reset User Verification\n\nSend User ID to reset:`,
+    new InlineKeyboard().text("🔙 Cancel", "adm_verify_user")
+  );
+});
+
+// ============================================================
+// 💳 MANAGE ADD FUND PANEL
+// ============================================================
+async function renderAddFundMenu(ctx) {
+  let autoUPIEnabled = await getConfig("auto_upi_enabled", true);
+  let upiId = await getConfig("auto_upi_id", "Not Set");
+  let minAmt = await getConfig("auto_upi_min", 5);
+  let maxAmt = await getConfig("auto_upi_max", 200);
+  let autoVerify = await getConfig("auto_verify_enabled", true);
+  let manualVerify = await getConfig("manual_verify_enabled", true);
+  let pendingCount = await UPIPayment.countDocuments({ status: "Pending" });
+  let receivedUnused = await ReceivedPayment.countDocuments({ status: "UNUSED" });
+
+  let text =
+    `💳 Manage Add Fund\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `💠 Auto UPI: ${autoUPIEnabled ? "🟢 ON" : "🔴 OFF"}\n` +
+    `📱 UPI ID: \`${upiId}\`\n` +
+    `💰 Range: ₹${minAmt} - ₹${maxAmt}\n\n` +
+    `🤖 Auto Verify: ${autoVerify ? "🟢" : "🔴"}\n` +
+    `✋ Manual Verify: ${manualVerify ? "🟢" : "🔴"}\n\n` +
+    `⏳ Pending: ${pendingCount}\n` +
+    `📥 Received (Unused): ${receivedUnused}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━`;
+
+  let kb = new InlineKeyboard()
+    .text("📱 Set UPI ID", "addfund_set_upi").row()
+    .text("💰 Set Min", "addfund_set_min")
+    .text("💰 Set Max", "addfund_set_max").row()
+    .text(autoVerify ? "🔴 Auto OFF" : "🟢 Auto ON", "addfund_toggle_auto").row()
+    .text(manualVerify ? "🔴 Manual OFF" : "🟢 Manual ON", "addfund_toggle_manual").row()
+    .text("⏳ Pending Requests", "addfund_pending_list").row()
+    .text("📥 Received UTRs", "addfund_received_list").row()
+    .text(autoUPIEnabled ? "🔴 Turn OFF UPI" : "🟢 Turn ON UPI", "addfund_toggle_upi").row()
+    .text("🔙 Back", "admin");
+
+  await safeEdit(ctx, text, kb);
+}
+
+bot.callbackQuery("adm_addfund_menu", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderAddFundMenu(ctx);
+});
+
+bot.callbackQuery("addfund_set_upi", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "ADDFUND_SET_UPI";
+  await safeEdit(ctx, `📱 Send new UPI ID:\n\nExample: yourname@upi`,
+    new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
+});
+
+bot.callbackQuery("addfund_set_min", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "ADDFUND_SET_MIN";
+  await safeEdit(ctx, `💰 Send minimum amount:`,
+    new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
+});
+
+bot.callbackQuery("addfund_set_max", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "ADDFUND_SET_MAX";
+  await safeEdit(ctx, `💰 Send maximum amount:`,
+    new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
+});
+
+bot.callbackQuery("addfund_toggle_auto", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let cur = await getConfig("auto_verify_enabled", true);
+  await setConfig("auto_verify_enabled", !cur);
+  await safeAnswer(ctx, !cur ? "🟢 Auto ON" : "🔴 Auto OFF");
+  await renderAddFundMenu(ctx);
+});
+
+bot.callbackQuery("addfund_toggle_manual", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let cur = await getConfig("manual_verify_enabled", true);
+  await setConfig("manual_verify_enabled", !cur);
+  await safeAnswer(ctx, !cur ? "🟢 Manual ON" : "🔴 Manual OFF");
+  await renderAddFundMenu(ctx);
+});
+
+bot.callbackQuery("addfund_toggle_upi", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let cur = await getConfig("auto_upi_enabled", true);
+  await setConfig("auto_upi_enabled", !cur);
+  await safeAnswer(ctx, !cur ? "🟢 UPI ON" : "🔴 UPI OFF");
+  await renderAddFundMenu(ctx);
+});
+
+bot.callbackQuery("addfund_pending_list", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let pending = await UPIPayment.find({ status: "Pending" }).sort({ createdAt: -1 }).limit(20);
+  let text = `⏳ Pending Add Fund Requests\n\n📊 Total: ${pending.length}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  let kb = new InlineKeyboard();
+  if (pending.length === 0) {
+    text += `📭 No pending requests.`;
+  } else {
+    for (let p of pending) {
+      text += `👤 \`${p.userId}\` — ₹${p.amount}\n   UTR: \`${p.utr}\`\n   🕐 ${formatDateTime(p.createdAt)}\n\n`;
+      kb.text(`✅ Approve ₹${p.amount}`, `upi_app_${p.orderId}`)
+        .text(`❌ Reject`, `upi_rej_${p.orderId}`).row();
+    }
+  }
+  kb.row({ text: "🔙 Back", callback_data: "adm_addfund_menu" });
+  await safeEdit(ctx, text, kb);
+});
+
+bot.callbackQuery("addfund_received_list", async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let received = await ReceivedPayment.find({ status: "UNUSED" })
+    .sort({ createdAt: -1 }).limit(20);
+  let text = `📥 Received UTRs (Unused)\n\n📊 Total: ${received.length}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  if (received.length === 0) {
+    text += `📭 No unused UTRs.`;
+  } else {
+    for (let r of received) {
+      text += `UTR: \`${r.utr}\`\n💰 ₹${r.amount}\n🕐 ${formatDateTime(r.createdAt)}\n\n`;
+    }
+  }
+  await safeEdit(ctx, text, new InlineKeyboard().text("🔙 Back", "adm_addfund_menu"));
+});
+
+// ============================================================
+// ✅ UPI APPROVE / REJECT (from Manual Pending)
+// ============================================================
+bot.callbackQuery(/^upi_app_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let orderId = ctx.callbackQuery.data.replace("upi_app_", "");
+  let payment = await UPIPayment.findOne({ orderId });
+  if (!payment || payment.status !== "Pending") {
+    return ctx.answerCallbackQuery({ text: "Already processed!", show_alert: true });
+  }
+  payment.status = "Approved";
+  payment.verifiedAt = new Date();
+  payment.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
+  await payment.save();
+  let user = await getUser(payment.userId);
+  user.balance += payment.amount;
+  await user.save();
+  await logBalanceHistory(payment.userId, `UPI Deposit (Manual Approved) ₹${payment.amount}`, payment.amount);
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "UPI Approved", `₹${payment.amount} to ${payment.userId}`, payment.amount, payment.userId);
+  await ctx.answerCallbackQuery({ text: "✅ Approved!" });
+  try {
+    await ctx.api.sendMessage(payment.userId,
+      `✅ *Deposit Approved!*\n\n💰 Amount: ₹${payment.amount}\n💵 New Balance: ₹${user.balance.toFixed(2)}`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (e) {}
+  try {
+    await ctx.editMessageText(`✅ Approved — ₹${payment.amount} to \`${payment.userId}\``, { parse_mode: "Markdown" });
+  } catch (e) {}
+});
+
+bot.callbackQuery(/^upi_rej_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let orderId = ctx.callbackQuery.data.replace("upi_rej_", "");
+  let payment = await UPIPayment.findOne({ orderId });
+  if (!payment || payment.status !== "Pending") {
+    return ctx.answerCallbackQuery({ text: "Already processed!", show_alert: true });
+  }
+  payment.status = "Rejected";
+  payment.verifiedAt = new Date();
+  payment.approvedBy = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || "Admin");
+  await payment.save();
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "UPI Rejected", `₹${payment.amount} from ${payment.userId}`, payment.amount, payment.userId);
+  await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
+  try {
+    await ctx.api.sendMessage(payment.userId,
+      `❌ *Deposit Rejected*\n\n💰 Amount: ₹${payment.amount}\n\nContact support if this is an error.`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (e) {}
+  try {
+    await ctx.editMessageText(`❌ Rejected — ₹${payment.amount} from \`${payment.userId}\``, { parse_mode: "Markdown" });
+  } catch (e) {}
+});
+
+// ============================================================
+// 📧 AMAZON CODE DELETE
+// ============================================================
+bot.callbackQuery(/^amz_code_del_/, async (ctx) => {
+  await safeAnswer(ctx);
+  if (!(await isAdmin(ctx.from.id))) return;
+  let code = ctx.callbackQuery.data.replace("amz_code_del_", "");
+  let gc = await GiftCode.findOne({ code, type: "amazon" });
+  if (!gc) {
+    return safeEdit(ctx, "❌ Code not found!",
+      new InlineKeyboard().text("🔙 Back", "adm_amazon"));
+  }
+  let text =
+    `⚠️ Delete Amazon Code?\n\n📧 ${gc.code}\n💰 ₹${gc.amount}\n👥 ${gc.usedUsers.length}/${gc.maxUses} used\n\n⚠️ Cannot be undone.`;
+  let kb = new InlineKeyboard()
+    .text("✅ Yes, Delete", `amz_code_del_confirm_${gc.code}`)
+    .text("❌ Cancel", "adm_amazon");
+  await safeEdit(ctx, text, kb);
+});
+
+bot.callbackQuery(/^amz_code_del_confirm_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let code = ctx.callbackQuery.data.replace("amz_code_del_confirm_", "");
+  await GiftCode.deleteOne({ code, type: "amazon" });
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin",
+    "Amazon Code Deleted", code, 0, null);
+  await safeAnswer(ctx, "🗑️ Deleted permanently!");
+  await rerender(ctx, "adm_amazon");
+});
+
+// ============================================================
+// 🔗 GATEWAY MANUAL DELETE
+// ============================================================
+bot.callbackQuery(/^gw_delconfirm_(.+)$/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return safeAnswer(ctx, "Unauthorized", true);
+  let gwKey = ctx.match[1];
+  let gw = await Gateway.findOne({ key: gwKey });
+  if (!gw) {
+    await safeAnswer(ctx, "❌ Already deleted!");
+    return renderGatewayManager(ctx);
+  }
+  await Gateway.deleteOne({ key: gwKey });
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin",
+    "Gateway Deleted", gw.name, 0, null);
+  await safeAnswer(ctx, "🗑️ Deleted permanently!");
+  await renderGatewayManager(ctx);
 });
 
 // ============================================================
@@ -7752,6 +8579,7 @@ mongoose.connect(MONGO_URI)
     await getConfig("owner_display_name", "azeeznasi");
     await getConfig("owner_display_link", "azeeznasi");
     await getConfig("redeem_claim_message", "🎉 You have successfully claimed ₹{amount}!");
+    await getConfig("task_display_mode", "new");
 
     let fund = await LiveFund.findOne({ key: "main_fund" });
     if (!fund) await LiveFund.create({ key: "main_fund" });
@@ -7832,4 +8660,3 @@ setInterval(() => {
 
 console.log("✅ bot.js loaded — Complete bot with all features");
 console.log("✅ New Gateway System active!");
-
