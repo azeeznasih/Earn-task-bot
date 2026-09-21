@@ -6163,8 +6163,23 @@ console.log("✅ Dynamic Gateway System active!");
 console.log("✅ Auto Withdrawal via Gateway!");
 
 // ============================================================
-// 🆕 MISSING HANDLERS — Manage Add Fund + Verify User + Complete Customize
+// 🔧 SAFE EDIT OR REPLY — Gateway Manager-ന് ആവശ്യം
 // ============================================================
+async function safeEditOrReply(ctx, text, reply_markup) {
+  try {
+    if (ctx.callbackQuery) {
+      await ctx.editMessageText(text, { reply_markup, parse_mode: "Markdown" });
+    } else {
+      await ctx.reply(text, { reply_markup, parse_mode: "Markdown" });
+    }
+  } catch (e) {
+    try {
+      await ctx.reply(text, { reply_markup, parse_mode: "Markdown" });
+    } catch (e2) {
+      console.error("safeEditOrReply error:", e2.message);
+    }
+  }
+}
 
 // ============================================================
 // 💳 MANAGE ADD FUND (Admin)
@@ -6212,7 +6227,7 @@ bot.callbackQuery("adm_addfund_menu", async (ctx) => {
     .text("📈 Set Max", "admfund_set_max").row()
     .text("🔙 Back to Admin", "admin");
 
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  await safeEditOrReply(ctx, text, kb);
 });
 
 bot.callbackQuery("admfund_toggle_autoupi", async (ctx) => {
@@ -6243,21 +6258,21 @@ bot.callbackQuery("admfund_set_upiid", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "ADMFUND_WAIT_UPIID";
-  await ctx.editMessageText("✏️ Send new UPI ID:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu") }).catch(() => {});
+  await safeEditOrReply(ctx, "✏️ Send new UPI ID:", new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
 });
 
 bot.callbackQuery("admfund_set_min", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "ADMFUND_WAIT_MIN";
-  await ctx.editMessageText("📉 Send minimum amount:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu") }).catch(() => {});
+  await safeEditOrReply(ctx, "📉 Send minimum amount:", new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
 });
 
 bot.callbackQuery("admfund_set_max", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "ADMFUND_WAIT_MAX";
-  await ctx.editMessageText("📈 Send maximum amount:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu") }).catch(() => {});
+  await safeEditOrReply(ctx, "📈 Send maximum amount:", new InlineKeyboard().text("🔙 Cancel", "adm_addfund_menu"));
 });
 
 bot.callbackQuery("admfund_pending_upi", async (ctx) => {
@@ -6272,7 +6287,7 @@ bot.callbackQuery("admfund_pending_upi", async (ctx) => {
     });
   }
   let kb = new InlineKeyboard().text("🔙 Back", "adm_addfund_menu");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  await safeEditOrReply(ctx, text, kb);
 });
 
 bot.callbackQuery("admfund_upi_history", async (ctx) => {
@@ -6288,7 +6303,7 @@ bot.callbackQuery("admfund_upi_history", async (ctx) => {
     });
   }
   let kb = new InlineKeyboard().text("🔙 Back", "adm_addfund_menu");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  await safeEditOrReply(ctx, text, kb);
 });
 
 // ============================================================
@@ -6316,21 +6331,21 @@ bot.callbackQuery("adm_verify_user", async (ctx) => {
     .text("🔄 Reset User Verification", "admverify_reset").row()
     .text("🔙 Back to Admin", "admin");
 
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  await safeEditOrReply(ctx, text, kb);
 });
 
 bot.callbackQuery("admverify_specific", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "ADMVERIFY_WAIT_USERID";
-  await ctx.editMessageText("👤 Send User ID to verify:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_verify_user") }).catch(() => {});
+  await safeEditOrReply(ctx, "👤 Send User ID to verify:", new InlineKeyboard().text("🔙 Cancel", "adm_verify_user"));
 });
 
 bot.callbackQuery("admverify_reset", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => {});
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "ADMVERIFY_WAIT_RESET";
-  await ctx.editMessageText("🔄 Send User ID to reset verification:", { reply_markup: new InlineKeyboard().text("🔙 Cancel", "adm_verify_user") }).catch(() => {});
+  await safeEditOrReply(ctx, "🔄 Send User ID to reset verification:", new InlineKeyboard().text("🔙 Cancel", "adm_verify_user"));
 });
 
 bot.callbackQuery("admverify_list", async (ctx) => {
@@ -6346,11 +6361,48 @@ bot.callbackQuery("admverify_list", async (ctx) => {
     }
   }
   let kb = new InlineKeyboard().text("🔙 Back", "adm_verify_user");
-  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "Markdown" }).catch(() => {});
+  await safeEditOrReply(ctx, text, kb);
 });
 
 // ============================================================
-// 📝 MISSING TEXT HANDLERS
+// 🌐 GATEWAY MANAGER (Complete — Fix)
+// ============================================================
+async function renderGatewayManager(ctx) {
+  try {
+    let gateways = await Gateway.find({}).sort({ createdAt: -1 });
+    let text = `🌐 *Gateway Manager*\n\nListed below are your custom payment gateways:\n\n`;
+    const kb = new InlineKeyboard();
+
+    if (gateways.length === 0) {
+      text += `<i>No gateways added yet.</i>`;
+    } else {
+      gateways.forEach((gw) => {
+        let statusIcon = gw.isActive ? "🟢 ON" : "🔴 OFF";
+        let typeIcon = gw.type === "upi" ? "⚡" : "👛";
+        text += `• *${gw.name}* (${gw.type.toUpperCase()}) - ${statusIcon}\n`;
+        kb.text(`${typeIcon} ${gw.name} (${statusIcon})`, `gw_manage_${gw.name}`).row();
+      });
+    }
+
+    kb.row().text("➕ Add New Gateway", "gw_add_start").row().text("↩️ Back", "adm_gateway_menu");
+    await safeEditOrReply(ctx, text, kb);
+  } catch (e) {
+    console.error("renderGatewayManager error:", e.message);
+    try {
+      await ctx.reply(`❌ Error: ${e.message}`);
+    } catch (e2) {}
+  }
+}
+
+// Gateway Wallet handler — re-add with fix
+bot.callbackQuery("gateway_wallet", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => {});
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderGatewayManager(ctx);
+});
+
+// ============================================================
+// 📝 MISSING TEXT HANDLERS (Admin Add Fund + Verify User)
 // ============================================================
 bot.on("message:text", async (ctx, next) => {
   let userId = ctx.from.id;
