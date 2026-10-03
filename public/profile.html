@@ -6,33 +6,91 @@
 <title>Profile</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   PROFILE PAGE — Complete Styles + SCROLL FIX
+   PROFILE PAGE — Additional Styles
    ═══════════════════════════════════════════════════════ */
 
-/* ───── 🔓 SCROLL FIX (CRITICAL — at TOP) ───── */
-html {
-  height: auto !important;
-  min-height: 100% !important;
-  max-height: none !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  position: relative !important;
-  -webkit-overflow-scrolling: touch !important;
+.profile-page {
+  padding: 20px 0 130px;
+  min-height: 100vh;
 }
 
-body {
-  height: auto !important;
-  min-height: 100vh !important;
-  max-height: none !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  position: relative !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto !important;
-  touch-action: pan-y !important;
-  padding-bottom: 200px !important;
+/* ───── TOPBAR ───── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 20px;
+  margin-bottom: 4px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon .icon {
+  width: 18px;
+  height: 18px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.4));
+}
+
+.logo-text {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.3));
+}
+
+/* ───── PAGE HEADER ───── */
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #00ff88;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+  margin-bottom: 4px;
+}
+
+.page-title .icon {
+  width: 24px;
+  height: 24px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
+
+.page-sub {
+  color: #00cc6a;
+  opacity: 0.55;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 34px;
 }
 
 /* ───── PROFILE CARD ───── */
@@ -44,34 +102,31 @@ body {
   animation: cardSlideIn 0.4s ease backwards;
 }
 
-/* ───── AVATAR ───── */
 .profile-avatar {
   width: 92px;
   height: 92px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.08);
-  border: 2.5px solid rgba(0, 255, 136, 0.45);
+  background: rgba(0, 255, 136, 0.06);
+  border: 2.5px solid rgba(0, 255, 136, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
   overflow: hidden;
   cursor: pointer;
   box-shadow:
-    0 0 24px rgba(0, 255, 136, 0.35),
-    0 0 60px rgba(0, 255, 136, 0.12),
-    inset 0 0 20px rgba(0, 255, 136, 0.08);
+    0 0 20px rgba(0, 255, 136, 0.25),
+    0 0 50px rgba(0, 255, 136, 0.08),
+    inset 0 0 18px rgba(0, 255, 136, 0.06);
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-avatar:active {
   transform: scale(0.94);
   box-shadow:
-    0 0 40px rgba(0, 255, 136, 0.6),
-    0 0 80px rgba(0, 255, 136, 0.2);
+    0 0 30px rgba(0, 255, 136, 0.4),
+    0 0 60px rgba(0, 255, 136, 0.15);
 }
 
 .profile-avatar img {
@@ -80,6 +135,13 @@ body {
   object-fit: cover;
   border-radius: 50%;
   display: block;
+}
+
+.profile-avatar .icon {
+  width: 40px;
+  height: 40px;
+  stroke: #00ff88;
+  opacity: 0.75;
 }
 
 .profile-avatar::after {
@@ -92,34 +154,51 @@ body {
   background: #00ff88;
   border: 2.5px solid #000000;
   border-radius: 50%;
-  box-shadow: 0 0 12px #00ff88;
+  box-shadow: 0 0 10px #00ff88;
   z-index: 3;
 }
 
-/* ───── PROFILE ID + USERNAME ───── */
+.profile-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00ff88;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
 .profile-id,
 .profile-username {
-  display: inline-block;
-  padding: 5px 12px;
-  background: rgba(0, 255, 136, 0.07);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 20px;
   font-size: 11.5px;
   font-weight: 700;
-  color: #00ff88;
+  color: #00cc6a;
   margin: 4px 3px 0;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: 'SF Mono', 'Courier New', monospace;
 }
 
+.profile-id .icon,
+.profile-username .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
 .profile-id:active,
 .profile-username:active {
-  background: rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.15);
   transform: scale(0.96);
 }
 
-/* ───── PROFILE STATS ───── */
+/* ───── STATS ───── */
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -128,10 +207,9 @@ body {
 }
 
 .profile-stat-card {
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.10);
   border-radius: 16px;
   padding: 16px 12px;
   text-align: center;
@@ -142,69 +220,156 @@ body {
 
 .profile-stat-card:active {
   transform: scale(0.97);
-  border-color: rgba(0, 255, 136, 0.4);
+  border-color: rgba(0, 255, 136, 0.30);
 }
 
 .profile-stat-icon {
-  font-size: 22px;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.profile-stat-icon .icon {
+  width: 22px;
+  height: 22px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .profile-stat-value {
   font-size: 17px;
   font-weight: 800;
   color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
   letter-spacing: -0.3px;
 }
 
 .profile-stat-label {
   font-size: 10px;
-  color: #00ff88;
-  opacity: 0.65;
+  color: #00cc6a;
+  opacity: 0.55;
   letter-spacing: 1px;
   font-weight: 700;
-  margin-top: 3px;
+  margin-top: 4px;
   text-transform: uppercase;
+}
+
+/* ───── DETAILS CARD ───── */
+.details-card {
+  border-radius: 20px;
+  padding: 8px 18px;
+  margin-bottom: 14px;
+  animation: cardSlideIn 0.4s ease backwards;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+  font-size: 13px;
+  gap: 10px;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: #00cc6a;
+  opacity: 0.6;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.detail-label .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
+}
+
+.detail-value {
+  color: #00ff88;
+  font-weight: 800;
+  max-width: 55%;
+  text-align: right;
+  word-break: break-all;
+  font-size: 12.5px;
 }
 
 /* ───── REFERRAL CARD ───── */
 .referral-card {
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.22);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 20px;
   padding: 18px;
   margin-bottom: 14px;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(0, 255, 136, 0.1);
+    inset 0 1px 0 rgba(0, 255, 136, 0.06);
   animation: cardSlideIn 0.4s ease backwards;
   position: relative;
   overflow: hidden;
 }
 
 .referral-card::before {
-  content: '🎁';
+  content: '';
   position: absolute;
-  top: -8px;
-  right: -8px;
-  font-size: 80px;
-  opacity: 0.06;
-  transform: rotate(-15deg);
+  top: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.08), transparent);
+  border-radius: 50%;
   pointer-events: none;
+}
+
+.referral-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.referral-header .icon {
+  width: 16px;
+  height: 16px;
+  stroke: #00ff88;
+}
+
+.referral-title {
+  font-size: 12px;
+  color: #00cc6a;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.referral-desc {
+  color: #00cc6a;
+  opacity: 0.55;
+  font-size: 12px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .referral-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px dashed rgba(0, 255, 136, 0.35);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(0, 255, 136, 0.25);
   border-radius: 12px;
   padding: 12px 14px;
-  margin-top: 10px;
+  margin-bottom: 10px;
   position: relative;
   z-index: 2;
 }
@@ -231,8 +396,16 @@ body {
   cursor: pointer;
   font-family: inherit;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.35);
-  transition: transform 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.referral-copy-btn .icon {
+  stroke: #000000;
+  width: 12px;
+  height: 12px;
 }
 
 .referral-copy-btn:active {
@@ -241,7 +414,6 @@ body {
 
 .share-btn {
   width: 100%;
-  margin-top: 10px;
   background: linear-gradient(135deg, #00aaff, #0088cc);
   color: #ffffff;
   border: none;
@@ -251,10 +423,20 @@ body {
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  box-shadow: 0 6px 20px rgba(0, 170, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 170, 255, 0.3);
   transition: transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   position: relative;
   z-index: 2;
+}
+
+.share-btn .icon {
+  stroke: #ffffff;
+  width: 16px;
+  height: 16px;
 }
 
 .share-btn:active {
@@ -263,10 +445,9 @@ body {
 
 /* ───── PAYMENT CARD ───── */
 .payment-card {
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.10);
   border-radius: 20px;
   padding: 18px;
   margin-bottom: 14px;
@@ -274,95 +455,78 @@ body {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
+.section-title {
+  font-size: 11px;
+  color: #00cc6a;
+  opacity: 0.65;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.section-title .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
+}
+
 .payment-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 .payment-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0, 255, 136, 0.04);
+  background: rgba(0, 255, 136, 0.03);
   padding: 13px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.07);
+  gap: 10px;
 }
 
 .payment-item span:first-child {
   font-weight: 700;
   font-size: 12.5px;
-  color: #00ff88;
+  color: #00cc6a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.payment-item span:first-child .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
 }
 
 .payment-item span:last-child {
-  color: #00ff88;
+  color: #00cc6a;
   font-size: 11.5px;
   max-width: 55%;
   text-align: right;
   word-break: break-all;
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
-/* ───── HISTORY / GLASS BUTTON ───── */
-.history-btn,
-.glass-btn {
-  width: 100%;
-  background: rgba(0, 255, 136, 0.08);
-  color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  padding: 13px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 12.5px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.history-btn:active,
-.glass-btn:active {
-  background: rgba(0, 255, 136, 0.18);
-  transform: scale(0.97);
-}
-
-/* ───── UPLOAD BUTTON ───── */
-.upload-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000000;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 6px 20px rgba(0, 255, 136, 0.35);
-  margin-bottom: 10px;
-}
-
-.upload-btn:active {
-  transform: scale(0.97);
-}
-
-/* ───── MENU BUTTONS (inline history, support, how to) ───── */
+/* ───── MENU BUTTONS ───── */
 .menu-btn {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+  display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  color: #00cc6a;
   padding: 16px;
   border-radius: 16px;
   font-size: 14px;
@@ -375,36 +539,45 @@ body {
 }
 
 .menu-btn:active {
-  background: rgba(0, 255, 136, 0.12);
-  border-color: rgba(0, 255, 136, 0.4);
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.25);
   transform: translateX(4px);
 }
 
 .menu-btn .menu-icon {
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.menu-btn .menu-icon .icon {
+  width: 18px;
+  height: 18px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.3));
 }
 
 .menu-btn .menu-text {
   flex: 1;
-  color: #00ff88;
+  color: #00cc6a;
 }
 
 .menu-btn .menu-arrow {
-  color: #00ff88;
-  opacity: 0.5;
-  font-size: 22px;
+  display: flex;
+  align-items: center;
+  opacity: 0.4;
 }
 
-/* ───── ADMIN PANEL ───── */
-.admin-panel-card {
-  margin-top: 6px;
-  margin-bottom: 14px;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+.menu-btn .menu-arrow .icon {
+  width: 16px;
+  height: 16px;
+  stroke: #00cc6a;
 }
 
+/* ───── ADMIN PANEL BUTTON ───── */
 .admin-panel-btn {
   width: 100%;
   background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
@@ -415,170 +588,25 @@ body {
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.3);
   transition: transform 0.15s;
   font-family: inherit;
   letter-spacing: 0.5px;
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+  display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-panel-btn .icon {
+  stroke: #ffffff;
+  width: 18px;
+  height: 18px;
 }
 
 .admin-panel-btn:active {
   transform: scale(0.97);
-}
-
-/* ───── ADMIN MENU BUTTON (inside modal) ───── */
-.admin-menu-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: rgba(0, 20, 10, 0.6);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  color: #00ff88;
-  padding: 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-bottom: 8px;
-  font-family: inherit;
-  text-align: left;
-  transition: all 0.2s;
-}
-
-.admin-menu-btn:active {
-  background: rgba(0, 255, 136, 0.12);
-  border-color: rgba(0, 255, 136, 0.35);
-  transform: scale(0.98);
-}
-
-.admin-menu-btn .menu-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.admin-menu-btn .menu-text {
-  flex: 1;
-  color: #00ff88;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.admin-menu-btn .menu-arrow {
-  color: #00ff88;
-  opacity: 0.5;
-  font-size: 18px;
-}
-
-/* ───── HISTORY ITEM (inside modal) ───── */
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 20, 10, 0.5);
-  border: 1px solid rgba(0, 255, 136, 0.12);
-  border-left: 3px solid #00ff88;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-}
-
-.history-item-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.history-item-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #00ff88;
-}
-
-.history-item-date {
-  font-size: 10.5px;
-  color: #00ff88;
-  opacity: 0.6;
-  margin-top: 3px;
-}
-
-.history-item-amount {
-  font-size: 14px;
-  font-weight: 800;
-  flex-shrink: 0;
-  margin-left: 10px;
-}
-
-.history-item-amount.positive {
-  color: #00ff88;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-}
-
-.history-item-amount.negative {
-  color: #ff6464;
-  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
-}
-
-/* ───── EMPTY STATE ───── */
-.empty-state {
-  text-align: center;
-  padding: 30px 20px;
-  color: #00ff88;
-  opacity: 0.7;
-}
-
-.empty-state .icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-}
-
-/* ───── BOTTOM NAV — ALWAYS FIXED AT BOTTOM ───── */
-.bottom-nav,
-.glass-nav {
-  position: fixed !important;
-  bottom: 18px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 99999 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: flex !important;
-  pointer-events: auto !important;
-  max-width: 448px !important;
-  width: calc(100% - 32px) !important;
-}
-
-/* ───── APP CONTAINER — ALLOW FULL SCROLL ───── */
-.app {
-  overflow: visible !important;
-  max-height: none !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  padding-bottom: 220px !important;
-  position: relative !important;
-}
-
-/* Bottom spacer — extra space after last content */
-.app::after {
-  content: '';
-  display: block;
-  height: 120px;
-  width: 100%;
-  pointer-events: none;
-}
-
-/* ───── IPHONE FRAME — ALLOW OVERFLOW ───── */
-.iphone-frame {
-  min-height: 100vh !important;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
-  position: relative !important;
 }
 
 /* ───── PHOTO MODAL ───── */
@@ -588,8 +616,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 99999;
+  z-index: 100001;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -605,8 +632,8 @@ body {
   max-width: 100%;
   max-height: 85vh;
   border-radius: 20px;
-  border: 3px solid #00ff88;
-  box-shadow: 0 0 60px rgba(0, 255, 136, 0.6);
+  border: 2px solid rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 50px rgba(0, 255, 136, 0.35);
 }
 
 @keyframes zoomIn {
@@ -614,243 +641,488 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* ───── iOS SAFARI FIX ───── */
-@supports (-webkit-touch-callout: none) {
-  html, body {
-    height: auto !important;
-    min-height: -webkit-fill-available !important;
-  }
-  .app {
-    min-height: -webkit-fill-available !important;
-  }
+/* ───── INPUT MODAL (for prompt() replacement) ───── */
+.input-modal-label {
+  font-size: 12px;
+  color: #00cc6a;
+  opacity: 0.65;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: block;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
-/* ───── TELEGRAM WEBAPP VIEWPORT FIX ───── */
-body.telegram-miniapp {
-  min-height: 100vh !important;
-  max-height: none !important;
+.input-modal-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #00ff88;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+}
+
+.input-modal-input:focus {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.15);
+}
+
+.input-modal-input::placeholder {
+  color: #00cc6a;
+  opacity: 0.35;
+}
+
+.input-modal-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.input-modal-cancel,
+.input-modal-save {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.input-modal-cancel {
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff6464;
+  border: 1px solid rgba(255, 100, 100, 0.25);
+}
+
+.input-modal-cancel .icon {
+  stroke: #ff6464;
+  width: 15px;
+  height: 15px;
+}
+
+.input-modal-save {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
+}
+
+.input-modal-save .icon {
+  stroke: #000000;
+  width: 15px;
+  height: 15px;
+}
+
+.input-modal-cancel:active,
+.input-modal-save:active {
+  transform: scale(0.97);
+}
+
+/* ───── HOW TO EARN LIST ───── */
+.howto-list {
+  margin-top: 14px;
+  line-height: 1.7;
+}
+
+.howto-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+}
+
+.howto-item:last-child {
+  border-bottom: none;
+}
+
+.howto-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #00ff88;
+  flex-shrink: 0;
+}
+
+.howto-content {
+  flex: 1;
+  font-size: 12.5px;
+  color: #00cc6a;
+  opacity: 0.85;
+}
+
+.howto-content b {
+  color: #00ff88;
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.howto-content b .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00ff88;
 }
 </style>
 </head>
 <body>
 
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
-
 <div class="iphone-frame">
-  <div class="iphone-notch"></div>
-
   <div class="app">
 
+    <!-- Topbar -->
     <header class="topbar">
       <div class="logo">
-        <span class="logo-icon">⚡</span>
+        <div class="logo-icon">
+          <i data-lucide="zap"></i>
+        </div>
         <span class="logo-text" id="appLogo">TASK EARN BOT</span>
       </div>
     </header>
 
+    <!-- Page Header -->
     <div class="page-header">
-      <div class="page-title">👤 Profile</div>
+      <div class="page-title">
+        <i data-lucide="user-circle"></i>
+        <span>Profile</span>
+      </div>
       <p class="page-sub">Your account details</p>
     </div>
 
-    <!-- ═══ PROFILE CARD ═══ -->
+    <!-- PROFILE CARD -->
     <div class="profile-card glass">
       <div class="profile-avatar" id="profileAvatar" onclick="enlargePhoto()">
-        <span id="profileAvatarFallback">👤</span>
-        <img id="profileAvatarImg" src="" alt="" style="display:none;">
+        <i data-lucide="user" id="profileAvatarFallback"></i>
+        <img id="profileAvatarImg" src="" alt="" style="display:none;" onerror="handlePhotoError()">
       </div>
       <div class="profile-name" id="profileName">Loading...</div>
       <div class="profile-id" id="profileId" onclick="copyUserId()">
-        ID: - 📋
+        <i data-lucide="hash"></i>
+        <span>ID: -</span>
+        <i data-lucide="copy"></i>
       </div>
       <div class="profile-username" id="profileUsername" onclick="copyUsername()">
-        @- 📋
+        <i data-lucide="at-sign"></i>
+        <span>@-</span>
+        <i data-lucide="copy"></i>
       </div>
     </div>
 
-    <!-- ═══ STATS ═══ -->
+    <!-- STATS -->
     <div class="profile-stats">
       <div class="profile-stat-card">
-        <div class="profile-stat-icon">💰</div>
+        <div class="profile-stat-icon">
+          <i data-lucide="wallet"></i>
+        </div>
         <div class="profile-stat-value" id="pBalance">₹0.00</div>
         <div class="profile-stat-label">BALANCE</div>
       </div>
       <div class="profile-stat-card">
-        <div class="profile-stat-icon">🏧</div>
+        <div class="profile-stat-icon">
+          <i data-lucide="banknote"></i>
+        </div>
         <div class="profile-stat-value" id="pWithdrawn">₹0.00</div>
         <div class="profile-stat-label">WITHDRAWN</div>
       </div>
       <div class="profile-stat-card">
-        <div class="profile-stat-icon">📋</div>
+        <div class="profile-stat-icon">
+          <i data-lucide="clipboard-check"></i>
+        </div>
         <div class="profile-stat-value" id="pTasks">0</div>
         <div class="profile-stat-label">TASKS DONE</div>
       </div>
       <div class="profile-stat-card">
-        <div class="profile-stat-icon">👥</div>
+        <div class="profile-stat-icon">
+          <i data-lucide="users"></i>
+        </div>
         <div class="profile-stat-value" id="pReferrals">0</div>
         <div class="profile-stat-label">REFERRALS</div>
       </div>
     </div>
 
-    <!-- ═══ DETAILS CARD ═══ -->
+    <!-- DETAILS CARD -->
     <div class="details-card glass">
       <div class="detail-row">
-        <span class="detail-label">🎴 Linked Account</span>
+        <span class="detail-label">
+          <i data-lucide="link"></i>
+          <span>Linked Account</span>
+        </span>
         <span class="detail-value" id="pLinked">Not Linked</span>
       </div>
       <div class="detail-row">
-        <span class="detail-label">👩‍💻 Referred By</span>
+        <span class="detail-label">
+          <i data-lucide="user-plus"></i>
+          <span>Referred By</span>
+        </span>
         <span class="detail-value" id="pReferred">Auto Started</span>
       </div>
       <div class="detail-row">
-        <span class="detail-label">📅 Joined</span>
+        <span class="detail-label">
+          <i data-lucide="calendar"></i>
+          <span>Joined</span>
+        </span>
         <span class="detail-value" id="pJoined">-</span>
       </div>
       <div class="detail-row">
-        <span class="detail-label">🟢 Status</span>
+        <span class="detail-label">
+          <i data-lucide="activity"></i>
+          <span>Status</span>
+        </span>
         <span class="detail-value" id="pStatus">Active</span>
       </div>
     </div>
 
-    <!-- ═══ REFERRAL CARD ═══ -->
+    <!-- REFERRAL CARD -->
     <div class="referral-card">
-      <div class="section-title">🎁 YOUR REFERRAL LINK</div>
-      <div style="color: #00ff88; opacity: 0.7; font-size: 12px; margin-top: 8px; font-weight: 600;">
+      <div class="referral-header">
+        <i data-lucide="gift" class="icon"></i>
+        <span class="referral-title">Your Referral Link</span>
+      </div>
+      <div class="referral-desc">
         Share this link and earn rewards!
       </div>
       <div class="referral-row">
         <div class="referral-code" id="referralCode">Loading...</div>
-        <button class="referral-copy-btn" onclick="copyReferral()">📋 COPY</button>
+        <button class="referral-copy-btn" onclick="copyReferral()">
+          <i data-lucide="copy" class="icon"></i>
+          <span>COPY</span>
+        </button>
       </div>
       <button class="share-btn" onclick="shareReferral()">
-        📤 Share Referral Link
+        <i data-lucide="share-2"></i>
+        <span>Share Referral Link</span>
       </button>
     </div>
 
-    <!-- ═══ PAYMENT METHODS ═══ -->
-    <div class="payment-card glass">
-      <div class="section-title">💳 PAYMENT METHODS</div>
-      <div id="paymentList" class="payment-list">Loading...</div>
-      <button class="history-btn glass-btn" onclick="openPaymentMethods()" style="margin-top:12px;">
-        ✏️ Edit Payment Methods
+    <!-- PAYMENT METHODS -->
+    <div class="payment-card">
+      <div class="section-title">
+        <i data-lucide="credit-card"></i>
+        <span>Payment Methods</span>
+      </div>
+      <div id="paymentList" class="payment-list">
+        <div class="loading">Loading...</div>
+      </div>
+      <button class="menu-btn" onclick="openPaymentMethods()" style="margin-bottom:0;justify-content:center;">
+        <span class="menu-icon"><i data-lucide="pencil"></i></span>
+        <span class="menu-text">Edit Payment Methods</span>
       </button>
     </div>
 
-    <!-- ═══ MENU BUTTONS ═══ -->
+    <!-- MENU BUTTONS -->
     <button class="menu-btn" onclick="openPaymentHistory()">
-      <span class="menu-icon">📜</span>
+      <span class="menu-icon"><i data-lucide="scroll-text"></i></span>
       <span class="menu-text">Payment History</span>
-      <span class="menu-arrow">›</span>
+      <span class="menu-arrow"><i data-lucide="chevron-right"></i></span>
     </button>
 
     <button class="menu-btn" onclick="openSupport()">
-      <span class="menu-icon">💬</span>
+      <span class="menu-icon"><i data-lucide="message-circle"></i></span>
       <span class="menu-text">Contact Support</span>
-      <span class="menu-arrow">›</span>
+      <span class="menu-arrow"><i data-lucide="chevron-right"></i></span>
     </button>
 
     <button class="menu-btn" onclick="openHowTo()">
-      <span class="menu-icon">📚</span>
+      <span class="menu-icon"><i data-lucide="book-open"></i></span>
       <span class="menu-text">How To Earn</span>
-      <span class="menu-arrow">›</span>
+      <span class="menu-arrow"><i data-lucide="chevron-right"></i></span>
     </button>
 
-    <!-- ═══ ADMIN PANEL (Admin only) ═══ -->
-    <div class="admin-panel-card" id="adminPanelCard" style="display:none;">
+    <!-- ADMIN PANEL (hidden by default) -->
+    <div id="adminPanelCard" style="display:none;">
       <button class="admin-panel-btn" onclick="openAdminPanel()">
-        👑 Admin Panel
+        <i data-lucide="crown"></i>
+        <span>Admin Panel</span>
       </button>
     </div>
 
-    <!-- ═══ BOTTOM NAV — ALWAYS FIXED ═══ -->
+    <!-- BOTTOM NAV -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label" id="nav-home">HOME</span>
+        <span class="nav-icon"><i data-lucide="home"></i></span>
+        <span class="nav-label">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label" id="nav-task">TASK</span>
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
+        <span class="nav-label">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label" id="nav-pay">PAY</span>
+        <span class="nav-icon"><i data-lucide="send"></i></span>
+        <span class="nav-label">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item active">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label" id="nav-profile">PROFILE</span>
+        <span class="nav-icon"><i data-lucide="user"></i></span>
+        <span class="nav-label">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
-<!-- ═══ PHOTO MODAL ═══ -->
+<!-- PHOTO MODAL -->
 <div class="photo-modal" id="photoModal" onclick="closePhotoModal()">
   <img id="enlargedPhoto" src="" alt="">
 </div>
 
-<!-- ═══ HISTORY MODAL ═══ -->
+<!-- HISTORY MODAL -->
 <div class="modal" id="historyModal">
   <div class="modal-content glass">
-    <h3>📜 Payment History</h3>
+    <h3>
+      <i data-lucide="scroll-text"></i>
+      <span>Payment History</span>
+    </h3>
     <div id="historyContent" style="max-height:60vh; overflow-y:auto;">Loading...</div>
-    <button onclick="closeHistory()" class="cancel-btn">Close</button>
+    <button onclick="closeHistory()" class="cancel-btn">
+      <i data-lucide="x"></i>
+      <span>Close</span>
+    </button>
   </div>
 </div>
 
-<!-- ═══ PAYMENT METHODS MODAL ═══ -->
+<!-- PAYMENT METHODS MODAL -->
 <div class="modal" id="paymentModal">
   <div class="modal-content glass">
-    <h3>💳 Update Payment Method</h3>
+    <h3>
+      <i data-lucide="credit-card"></i>
+      <span>Update Payment Method</span>
+    </h3>
     <div id="paymentUpdateList"></div>
-    <button onclick="closePaymentModal()" class="cancel-btn">Close</button>
+    <button onclick="closePaymentModal()" class="cancel-btn">
+      <i data-lucide="x"></i>
+      <span>Close</span>
+    </button>
   </div>
 </div>
 
-<!-- ═══ SUPPORT MODAL ═══ -->
+<!-- CUSTOM INPUT MODAL (Replaces prompt()) -->
+<div class="modal" id="inputModal">
+  <div class="modal-content glass">
+    <h3 id="inputModalTitle">
+      <i data-lucide="pencil"></i>
+      <span>Enter Value</span>
+    </h3>
+    <p id="inputModalDesc">Please enter a value below</p>
+    <label class="input-modal-label" id="inputModalLabel">Value</label>
+    <input
+      type="text"
+      id="inputModalValue"
+      class="input-modal-input"
+      placeholder="Enter..."
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    >
+    <div class="input-modal-buttons">
+      <button class="input-modal-cancel" onclick="closeInputModal()">
+        <i data-lucide="x"></i>
+        <span>Cancel</span>
+      </button>
+      <button class="input-modal-save" onclick="saveInputModal()">
+        <i data-lucide="check"></i>
+        <span>Save</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPORT MODAL -->
 <div class="modal" id="supportModal">
   <div class="modal-content glass" style="text-align: center;">
-    <h3>💬 Contact Support</h3>
-    <p style="color: #00ff88; opacity: 0.7; font-size: 13px; margin: 12px 0;">
+    <h3 style="justify-content:center;">
+      <i data-lucide="message-circle"></i>
+      <span>Contact Support</span>
+    </h3>
+    <p style="color: #00cc6a; opacity: 0.7; font-size: 13px; margin: 12px 0; text-align: center;">
       Need help? Reach out to us!
     </p>
-    <button class="upload-btn" onclick="gotoSupport()">💬 Open Support Chat</button>
-    <button onclick="closeSupport()" class="cancel-btn">Close</button>
+    <button class="btn-primary" onclick="gotoSupport()">
+      <i data-lucide="send"></i>
+      <span>Open Support Chat</span>
+    </button>
+    <button onclick="closeSupport()" class="cancel-btn">
+      <i data-lucide="x"></i>
+      <span>Close</span>
+    </button>
   </div>
 </div>
 
-<!-- ═══ HOW TO EARN MODAL ═══ -->
+<!-- HOW TO EARN MODAL -->
 <div class="modal" id="howToModal">
   <div class="modal-content glass">
-    <h3>📚 How To Earn</h3>
-    <div style="margin-top: 14px; line-height: 1.8; font-size: 13px; color: #00ff88; opacity: 0.9;">
-      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">1. 📋 Complete Tasks</b><br>
-      Go to Tasks → Choose a task → Complete → Submit screenshot</p>
+    <h3>
+      <i data-lucide="book-open"></i>
+      <span>How To Earn</span>
+    </h3>
 
-      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">2. 🎁 Refer Friends</b><br>
-      Share your referral link → Get rewards for each friend who joins</p>
-
-      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">3. 💰 Withdraw Money</b><br>
-      Reach minimum balance → Withdraw via Wallet/UPI/Bank/Amazon/Redeem</p>
-
-      <p style="margin-bottom: 12px;"><b style="color: #00ff88;">4. 💸 Quick Pay</b><br>
-      Send money to other users instantly via their User ID</p>
-
-      <p><b style="color: #00ff88;">5. 🎉 Daily Bonuses</b><br>
-      Keep an eye on the bot for special bonus offers!</p>
+    <div class="howto-list">
+      <div class="howto-item">
+        <div class="howto-num">1</div>
+        <div class="howto-content">
+          <b><i data-lucide="clipboard-list"></i> Complete Tasks</b>
+          Go to Tasks → Choose a task → Complete → Submit proof.
+        </div>
+      </div>
+      <div class="howto-item">
+        <div class="howto-num">2</div>
+        <div class="howto-content">
+          <b><i data-lucide="gift"></i> Refer Friends</b>
+          Share your referral link → Get rewards for each friend who joins.
+        </div>
+      </div>
+      <div class="howto-item">
+        <div class="howto-num">3</div>
+        <div class="howto-content">
+          <b><i data-lucide="banknote"></i> Withdraw Money</b>
+          Reach minimum balance → Withdraw via UPI/Bank/Wallet.
+        </div>
+      </div>
+      <div class="howto-item">
+        <div class="howto-num">4</div>
+        <div class="howto-content">
+          <b><i data-lucide="send"></i> Quick Pay</b>
+          Send money to other users instantly via their User ID.
+        </div>
+      </div>
+      <div class="howto-item">
+        <div class="howto-num">5</div>
+        <div class="howto-content">
+          <b><i data-lucide="gift"></i> Gift Codes</b>
+          Redeem gift codes to add bonus balance.
+        </div>
+      </div>
     </div>
-    <button onclick="closeHowTo()" class="cancel-btn">Close</button>
+
+    <button onclick="closeHowTo()" class="cancel-btn" style="margin-top:16px;">
+      <i data-lucide="x"></i>
+      <span>Close</span>
+    </button>
   </div>
 </div>
 
 <script>
 // ============================================================
-// 👤 PROFILE PAGE — Complete Logic
+// 👤 PROFILE PAGE LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -859,11 +1131,7 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
-
-  // ✅ Enable vertical swipes
-  try {
-    if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
-  } catch (e) {}
+  try { if (tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -871,24 +1139,31 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let currentUser = null;
 let currentPhotoUrl = null;
 let appConfig = {};
+let pendingPaymentField = null;
 
 // ============================================================
-// 🔓 FORCE SCROLL ENABLE
+// 🎯 ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
+
+// ============================================================
+// 🔓 FORCE SCROLL
 // ============================================================
 function forceScrollEnable() {
-  // Body
   document.body.style.overflow = 'auto';
   document.body.style.height = 'auto';
   document.body.style.maxHeight = 'none';
   document.body.style.position = 'relative';
   document.body.style.paddingBottom = '200px';
 
-  // HTML
   document.documentElement.style.overflow = 'auto';
   document.documentElement.style.height = 'auto';
   document.documentElement.style.maxHeight = 'none';
 
-  // App
   const app = document.querySelector('.app');
   if (app) {
     app.style.overflow = 'visible';
@@ -896,28 +1171,12 @@ function forceScrollEnable() {
     app.style.maxHeight = 'none';
     app.style.paddingBottom = '220px';
   }
-
-  // Frame
-  const frame = document.querySelector('.iphone-frame');
-  if (frame) {
-    frame.style.overflow = 'visible';
-    frame.style.height = 'auto';
-    frame.style.maxHeight = 'none';
-  }
 }
 
-// Run immediately
 forceScrollEnable();
 setTimeout(forceScrollEnable, 100);
 setTimeout(forceScrollEnable, 500);
 setTimeout(forceScrollEnable, 1500);
-
-// Watch for scroll lock attempts
-setInterval(() => {
-  if (document.body.style.overflow === 'hidden') {
-    document.body.style.overflow = 'auto';
-  }
-}, 800);
 
 // ============================================================
 // 🎨 UTILITIES
@@ -971,19 +1230,8 @@ async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
   if (res.success && res.config) {
     appConfig = res.config;
-
     const logo = document.getElementById('appLogo');
-    if (logo && appConfig.appLogo) logo.textContent = appConfig.appLogo;
-
-    const navHome = document.getElementById('nav-home');
-    const navTask = document.getElementById('nav-task');
-    const navPay = document.getElementById('nav-pay');
-    const navProfile = document.getElementById('nav-profile');
-
-    if (navHome && appConfig.btn_home) navHome.textContent = appConfig.btn_home;
-    if (navTask && appConfig.btn_task) navTask.textContent = appConfig.btn_task;
-    if (navPay && appConfig.btn_pay) navPay.textContent = appConfig.btn_pay;
-    if (navProfile && appConfig.btn_profile) navProfile.textContent = appConfig.btn_profile;
+    if (logo && appConfig.appLogo) logo.textContent = appConfig.appLogo.toUpperCase();
   }
 }
 
@@ -1002,17 +1250,22 @@ async function loadUser() {
 
   currentUser = data.user;
 
+  // Profile
   document.getElementById('profileName').textContent = data.user.firstName || 'User';
-  document.getElementById('profileId').innerHTML = `ID: ${data.user.userId} 📋`;
-  document.getElementById('profileUsername').innerHTML = data.user.username
-    ? `@${data.user.username} 📋`
-    : '@- (Not set)';
 
+  const idSpan = document.getElementById('profileId').querySelector('span');
+  if (idSpan) idSpan.textContent = 'ID: ' + data.user.userId;
+
+  const unSpan = document.getElementById('profileUsername').querySelector('span');
+  if (unSpan) unSpan.textContent = data.user.username ? '@' + data.user.username : '@- (Not set)';
+
+  // Stats
   document.getElementById('pBalance').textContent = '₹' + (data.user.balance || 0).toFixed(2);
   document.getElementById('pWithdrawn').textContent = '₹' + (data.user.withdrawnTotal || 0).toFixed(2);
-  document.getElementById('pTasks').textContent = data.user.totalTasks || 0;
-  document.getElementById('pReferrals').textContent = data.user.totalReferrals || 0;
+  document.getElementById('pTasks').textContent = data.user.totalTasks !== undefined ? data.user.totalTasks : 'N/A';
+  document.getElementById('pReferrals').textContent = data.user.totalReferrals !== undefined ? data.user.totalReferrals : 'N/A';
 
+  // Details
   document.getElementById('pLinked').textContent = data.user.linkedInfo || 'Not Linked';
   document.getElementById('pReferred').textContent = data.user.referredBy || 'Auto Started';
 
@@ -1023,8 +1276,9 @@ async function loadUser() {
     document.getElementById('pJoined').textContent = joinedDate;
   }
 
-  document.getElementById('pStatus').textContent = data.user.isBanned ? '🚫 Banned' : '🟢 Active';
+  document.getElementById('pStatus').textContent = data.user.isBanned ? 'Banned' : 'Active';
 
+  // Referral link
   const botUsername = appConfig.botUsername || 'TaskEarnBot';
   document.getElementById('referralCode').textContent = `t.me/${botUsername}?start=ref_${userId}`;
 
@@ -1032,7 +1286,6 @@ async function loadUser() {
   await loadPaymentMethods();
   await checkAdmin();
 
-  // Re-apply scroll fix after content loads
   setTimeout(forceScrollEnable, 200);
 }
 
@@ -1049,8 +1302,18 @@ async function loadProfilePhoto() {
     const img = document.getElementById('profileAvatarImg');
     img.src = data.photoUrl;
     img.style.display = 'block';
-    document.getElementById('profileAvatarFallback').style.display = 'none';
+    const fallback = document.getElementById('profileAvatarFallback');
+    if (fallback) fallback.style.display = 'none';
   }
+}
+
+function handlePhotoError() {
+  // Telegram photo URL expired
+  const img = document.getElementById('profileAvatarImg');
+  img.style.display = 'none';
+  const fallback = document.getElementById('profileAvatarFallback');
+  if (fallback) fallback.style.display = 'block';
+  currentPhotoUrl = null;
 }
 
 function enlargePhoto() {
@@ -1068,17 +1331,14 @@ function closePhotoModal() {
 }
 
 // ============================================================
-// 📋 COPY FUNCTIONS
+// 📋 COPY
 // ============================================================
 function copyUserId() {
   if (!userId) return;
   navigator.clipboard.writeText(userId.toString()).then(() => {
-    showToast('✅ ID copied!');
+    showToast('ID copied!');
     haptic('success');
-  }).catch(() => {
-    showToast('❌ Copy failed');
-    haptic('error');
-  });
+  }).catch(() => showToast('Copy failed'));
 }
 
 function copyUsername() {
@@ -1087,7 +1347,7 @@ function copyUsername() {
     return;
   }
   navigator.clipboard.writeText('@' + currentUser.username).then(() => {
-    showToast('✅ Username copied!');
+    showToast('Username copied!');
     haptic('success');
   });
 }
@@ -1095,14 +1355,10 @@ function copyUsername() {
 function copyReferral() {
   const link = document.getElementById('referralCode').textContent;
   if (!link) return;
-
   navigator.clipboard.writeText('https://' + link).then(() => {
-    showToast('✅ Referral link copied!');
+    showToast('Referral link copied!');
     haptic('success');
-  }).catch(() => {
-    showToast('❌ Copy failed');
-    haptic('error');
-  });
+  }).catch(() => showToast('Copy failed'));
 }
 
 function shareReferral() {
@@ -1134,13 +1390,23 @@ async function loadPaymentMethods() {
   let html = '';
   data.methods.forEach(m => {
     let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
+    // Map emoji icons to Lucide
+    const iconMap = {
+      '👛': 'wallet',
+      '⚡': 'zap',
+      '🏦': 'landmark',
+      '📧': 'mail',
+      '🎁': 'gift'
+    };
+    const iconName = iconMap[m.icon] || 'circle';
     html += `<div class="payment-item">
-      <span>${m.icon} ${m.name}</span>
+      <span><i data-lucide="${iconName}"></i> ${escapeHtml(m.name)}</span>
       <span>${escapeHtml(display)}</span>
     </div>`;
   });
 
   listEl.innerHTML = html;
+  renderIcons();
 }
 
 // ============================================================
@@ -1151,26 +1417,27 @@ function openPaymentMethods() {
 
   const listEl = document.getElementById('paymentUpdateList');
   const fields = [
-    { key: 'walletAccount', name: '🌐 Wallet ID', value: currentUser.walletAccount },
-    { key: 'upiId', name: '⚡ UPI ID', value: currentUser.upiId },
-    { key: 'bankAccNo', name: '🏦 Bank Account', value: currentUser.bankAccNo },
-    { key: 'bankIfsc', name: '🏦 IFSC Code', value: currentUser.bankIfsc },
-    { key: 'amazonEmail', name: '📧 Amazon Email', value: currentUser.amazonEmail },
-    { key: 'redeemCodeAddr', name: '🎁 Redeem Code', value: currentUser.redeemCodeAddr }
+    { key: 'walletAccount', icon: 'wallet', name: 'Wallet ID', value: currentUser.walletAccount },
+    { key: 'upiId', icon: 'zap', name: 'UPI ID', value: currentUser.upiId },
+    { key: 'bankAccNo', icon: 'landmark', name: 'Bank Account', value: currentUser.bankAccNo },
+    { key: 'bankIfsc', icon: 'hash', name: 'IFSC Code', value: currentUser.bankIfsc },
+    { key: 'amazonEmail', icon: 'mail', name: 'Amazon Email', value: currentUser.amazonEmail },
+    { key: 'redeemCodeAddr', icon: 'gift', name: 'Redeem Code', value: currentUser.redeemCodeAddr }
   ];
 
   let html = '';
   fields.forEach(f => {
     let display = (f.value && f.value !== 'Not Set') ? f.value : 'Not Set';
-    html += `<button class="admin-menu-btn" onclick="updatePaymentMethod('${f.key}')">
-      <span class="menu-icon">${f.name.split(' ')[0]}</span>
-      <span class="menu-text">${f.name.split(' ').slice(1).join(' ')} — ${escapeHtml(display)}</span>
-      <span class="menu-arrow">›</span>
+    html += `<button class="menu-btn" onclick="openPaymentEdit('${f.key}', '${escapeHtml(f.name)}')">
+      <span class="menu-icon"><i data-lucide="${f.icon}"></i></span>
+      <span class="menu-text">${escapeHtml(f.name)} — ${escapeHtml(display)}</span>
+      <span class="menu-arrow"><i data-lucide="chevron-right"></i></span>
     </button>`;
   });
 
   listEl.innerHTML = html;
   document.getElementById('paymentModal').classList.add('active');
+  renderIcons();
   haptic('light');
 }
 
@@ -1178,28 +1445,79 @@ function closePaymentModal() {
   document.getElementById('paymentModal').classList.remove('active');
 }
 
-async function updatePaymentMethod(field) {
-  const value = prompt(`Enter new value for ${field}:`);
-  if (!value || !value.trim()) return;
+// ============================================================
+// 📝 OPEN PAYMENT EDIT (uses custom input modal)
+// ============================================================
+function openPaymentEdit(field, name) {
+  pendingPaymentField = field;
 
-  const data = await apiCall('/miniapp/api/update-payment', {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: userId,
-      field: field,
-      value: value.trim()
-    })
-  });
+  closePaymentModal();
 
-  if (data.success) {
-    showToast('✅ Updated!');
-    haptic('success');
-    await loadUser();
-    closePaymentModal();
-  } else {
-    showToast(`❌ ${data.error || 'Failed'}`);
+  document.getElementById('inputModalTitle').querySelector('span').textContent = 'Edit ' + name;
+  document.getElementById('inputModalDesc').textContent = 'Enter new value for ' + name;
+  document.getElementById('inputModalLabel').textContent = name;
+  document.getElementById('inputModalValue').value = '';
+  document.getElementById('inputModalValue').placeholder = 'Enter ' + name + '...';
+  document.getElementById('inputModalValue').type = 'text';
+
+  document.getElementById('inputModal').classList.add('active');
+  renderIcons();
+  setTimeout(() => document.getElementById('inputModalValue').focus(), 300);
+}
+
+// ============================================================
+// 💾 SAVE INPUT MODAL
+// ============================================================
+async function saveInputModal() {
+  const input = document.getElementById('inputModalValue');
+  const value = input.value.trim();
+
+  if (!value) {
+    showToast('Please enter a value');
     haptic('error');
+    return;
   }
+
+  if (!pendingPaymentField) {
+    closeInputModal();
+    return;
+  }
+
+  const field = pendingPaymentField;
+  const saveBtn = document.querySelector('.input-modal-save');
+  const originalHtml = saveBtn.innerHTML;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = 'Saving...';
+
+  try {
+    const data = await apiCall('/miniapp/api/update-payment', {
+      method: 'POST',
+      body: JSON.stringify({ userId, field, value })
+    });
+
+    if (data.success) {
+      showToast('Updated!');
+      haptic('success');
+      closeInputModal();
+      await loadUser();
+    } else {
+      showToast(data.error || 'Failed');
+      haptic('error');
+    }
+  } catch (e) {
+    showToast('Network error');
+    haptic('error');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = originalHtml;
+    renderIcons();
+  }
+}
+
+function closeInputModal() {
+  document.getElementById('inputModal').classList.remove('active');
+  document.getElementById('inputModalValue').value = '';
+  pendingPaymentField = null;
 }
 
 // ============================================================
@@ -1207,8 +1525,9 @@ async function updatePaymentMethod(field) {
 // ============================================================
 async function openPaymentHistory() {
   const historyEl = document.getElementById('historyContent');
-  historyEl.innerHTML = '<div class="loading">⏳ Loading...</div>';
+  historyEl.innerHTML = '<div class="loading">Loading...</div>';
   document.getElementById('historyModal').classList.add('active');
+  renderIcons();
   haptic('light');
 
   if (!userId) return;
@@ -1218,18 +1537,20 @@ async function openPaymentHistory() {
   if (!data.success || !data.history || data.history.length === 0) {
     historyEl.innerHTML = `
       <div class="empty-state">
-        <div class="icon">📭</div>
-        <div>No transactions yet</div>
+        <i data-lucide="inbox" style="width:48px;height:48px;stroke:#00cc6a;opacity:0.4;"></i>
+        <div style="margin-top:10px;">No transactions yet</div>
       </div>
     `;
+    renderIcons();
     return;
   }
 
   let html = '';
   data.history.forEach(h => {
     const isPos = h.amount >= 0;
-    const sign = isPos ? '+' : '';
+    const sign = isPos ? '+' : '-';
     const cls = isPos ? 'positive' : 'negative';
+    const iconName = isPos ? 'trending-up' : 'trending-down';
     const date = new Date(h.createdAt).toLocaleString('en-IN', {
       day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
@@ -1237,16 +1558,22 @@ async function openPaymentHistory() {
 
     html += `
       <div class="history-item">
-        <div class="history-item-left">
-          <div class="history-item-title">${escapeHtml(h.action)}</div>
-          <div class="history-item-date">${date}</div>
+        <div style="flex:1;display:flex;gap:10px;align-items:center;">
+          <div class="activity-icon" style="width:36px;height:36px;">
+            <i data-lucide="${iconName}"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="history-item-title" style="font-size:13px;font-weight:700;color:#00ff88;">${escapeHtml(h.action)}</div>
+            <div class="history-item-date" style="font-size:10.5px;color:#00cc6a;opacity:0.6;margin-top:2px;">${date}</div>
+          </div>
         </div>
-        <div class="history-item-amount ${cls}">${sign}₹${Math.abs(h.amount).toFixed(2)}</div>
+        <div class="history-item-amount ${cls}" style="font-size:14px;font-weight:800;margin-left:10px;color:${isPos ? '#00ff88' : '#ff6464'};">${sign}₹${Math.abs(h.amount).toFixed(2)}</div>
       </div>
     `;
   });
 
   historyEl.innerHTML = html;
+  renderIcons();
 }
 
 function closeHistory() {
@@ -1258,6 +1585,7 @@ function closeHistory() {
 // ============================================================
 function openSupport() {
   document.getElementById('supportModal').classList.add('active');
+  renderIcons();
   haptic('light');
 }
 
@@ -1266,11 +1594,15 @@ function closeSupport() {
 }
 
 async function gotoSupport() {
-  const res = await apiCall('/miniapp/api/config');
-  let supportId = res?.config?.supportUsername;
+  let supportId = appConfig.supportUsername;
 
   if (!supportId) {
-    showToast('❌ Support not set');
+    const res = await apiCall('/miniapp/api/config');
+    supportId = res?.config?.supportUsername;
+  }
+
+  if (!supportId || supportId === 'Not Set') {
+    showToast('Support not set');
     return;
   }
 
@@ -1290,6 +1622,7 @@ async function gotoSupport() {
 // ============================================================
 function openHowTo() {
   document.getElementById('howToModal').classList.add('active');
+  renderIcons();
   haptic('light');
 }
 
@@ -1298,7 +1631,7 @@ function closeHowTo() {
 }
 
 // ============================================================
-// 👑 ADMIN CHECK + PANEL
+// 👑 ADMIN CHECK
 // ============================================================
 async function checkAdmin() {
   if (!userId) return;
@@ -1318,14 +1651,14 @@ function openAdminPanel() {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Re-enforce scroll
   forceScrollEnable();
+  renderIcons();
 
   if (!userId) {
     document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#00ff88;">
-        <h2>⚠️ Open from Telegram</h2>
-        <p style="opacity: 0.7; margin-top: 20px;">This Mini App works only inside Telegram.</p>
+      <div style="padding:50px;text-align:center;color:#00cc6a;">
+        <h2 style="color:#ff6464;">Open from Telegram</h2>
+        <p style="opacity: 0.6; margin-top: 20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
@@ -1334,12 +1667,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadConfig();
   await loadUser();
 
-  // Final scroll enforce
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
   setTimeout(forceScrollEnable, 300);
   setTimeout(forceScrollEnable, 800);
 });
 
-// Close modals on backdrop
+// Modal backdrop clicks
 document.getElementById('historyModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'historyModal') closeHistory();
 });
@@ -1352,6 +1686,14 @@ document.getElementById('supportModal')?.addEventListener('click', (e) => {
 document.getElementById('howToModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'howToModal') closeHowTo();
 });
+document.getElementById('inputModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'inputModal') closeInputModal();
+});
+
+// Enter key for input modal
+document.getElementById('inputModalValue')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') saveInputModal();
+});
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 
@@ -1362,7 +1704,9 @@ window.copyReferral = copyReferral;
 window.shareReferral = shareReferral;
 window.openPaymentMethods = openPaymentMethods;
 window.closePaymentModal = closePaymentModal;
-window.updatePaymentMethod = updatePaymentMethod;
+window.openPaymentEdit = openPaymentEdit;
+window.saveInputModal = saveInputModal;
+window.closeInputModal = closeInputModal;
 window.openPaymentHistory = openPaymentHistory;
 window.closeHistory = closeHistory;
 window.openSupport = openSupport;
@@ -1373,6 +1717,7 @@ window.closeHowTo = closeHowTo;
 window.openAdminPanel = openAdminPanel;
 window.enlargePhoto = enlargePhoto;
 window.closePhotoModal = closePhotoModal;
+window.handlePhotoError = handlePhotoError;
 </script>
 
 </body>
