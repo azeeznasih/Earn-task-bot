@@ -6,207 +6,430 @@
 <title>Tasks</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
-  /* ✅ Task card - premium glow on click */
-  .task-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    border-radius: 16px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(0, 20, 10, 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    animation: cardSlideIn 0.4s ease backwards;
-    margin-bottom: 12px;
-    position: relative;
-    overflow: hidden;
-  }
+/* ═══════════════════════════════════════════════════════
+   TASK PAGE — Additional Styles
+   ═══════════════════════════════════════════════════════ */
 
-  .task-card:active,
-  .task-card.selected {
-    border-color: #00ff88;
-    background: rgba(0, 255, 136, 0.06);
-    box-shadow:
-      0 0 25px rgba(0, 255, 136, 0.4),
-      0 0 50px rgba(0, 255, 136, 0.15),
-      inset 0 0 20px rgba(0, 255, 136, 0.08);
-    transform: scale(0.98);
-  }
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  .task-card.completed {
-    opacity: 0.5;
-    border-color: rgba(0, 255, 136, 0.3);
-    cursor: default;
-  }
+.task-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(0, 15, 8, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  animation: cardSlideIn 0.4s ease backwards;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
 
-  .task-info {
-    flex: 1;
-    min-width: 0;
-  }
+.task-card:active,
+.task-card.selected {
+  border-color: rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.05);
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.25),
+    0 0 40px rgba(0, 255, 136, 0.08),
+    inset 0 0 15px rgba(0, 255, 136, 0.05);
+  transform: scale(0.98);
+}
 
-  .task-title {
-    font-weight: 800;
-    font-size: 15px;
-    color: #00ff88;
-    margin-bottom: 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
-  }
+.task-card.completed {
+  opacity: 0.5;
+  border-color: rgba(0, 255, 136, 0.25);
+  cursor: default;
+}
 
-  .task-reward {
-    color: #00ff88;
-    font-size: 13px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-  }
+.task-info {
+  flex: 1;
+  min-width: 0;
+}
 
-  .task-type-badge {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 6px;
-    background: rgba(0, 255, 136, 0.12);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    color: #00ff88;
-    margin-left: 8px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
+.task-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: #00ff88;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  .task-btn {
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 800;
-    font-size: 12px;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-    white-space: nowrap;
-    flex-shrink: 0;
-    margin-left: 12px;
-    font-family: inherit;
-    letter-spacing: 0.5px;
-  }
+.task-reward {
+  color: #00cc6a;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
 
-  .task-btn.completed-btn {
-    background: rgba(0, 255, 136, 0.15);
-    color: #00ff88;
-    border: 1px solid rgba(0, 255, 136, 0.4);
-    box-shadow: none;
-    cursor: default;
-  }
+.task-reward .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
+}
 
-  /* ✅ Task Detail Modal */
-  #taskDetail {
-    text-align: center;
-    margin-bottom: 16px;
-  }
+.task-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 255, 136, 0.10);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  margin-left: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
 
-  .task-detail-icon {
-    font-size: 52px;
-    margin-bottom: 14px;
-  }
+.task-type-badge .icon {
+  width: 10px;
+  height: 10px;
+  stroke: #00ff88;
+}
 
-  .task-detail-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: #00ff88;
-    margin-bottom: 10px;
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-  }
+.task-expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 165, 0, 0.10);
+  border: 1px solid rgba(255, 165, 0, 0.25);
+  color: #ffa500;
+  margin-left: 6px;
+  letter-spacing: 0.5px;
+}
 
-  .task-detail-reward {
-    font-size: 28px;
-    font-weight: 800;
-    color: #00ff88;
-    margin-bottom: 18px;
-    text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
-  }
+.task-expiry-badge .icon {
+  width: 10px;
+  height: 10px;
+  stroke: #ffa500;
+}
 
-  .task-detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.08);
-  }
+.task-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
-  .task-detail-row:last-child { border-bottom: none; }
-  .task-detail-label { color: #00ff88; opacity: 0.65; font-weight: 700; }
-  .task-detail-value { color: #00ff88; font-weight: 800; max-width: 60%; text-align: right; word-break: break-all; }
+.task-btn .icon {
+  stroke: #000000;
+  width: 14px;
+  height: 14px;
+}
 
-  .task-open-btn {
-    display: block;
-    width: 100%;
-    background: linear-gradient(135deg, #00aaff, #0088cc);
-    color: #ffffff;
-    text-decoration: none;
-    padding: 14px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 14px;
-    margin: 16px 0 10px;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
-  }
+.task-btn.completed-btn {
+  background: rgba(0, 255, 136, 0.10);
+  color: #00cc6a;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  box-shadow: none;
+  cursor: default;
+}
 
-  .task-open-btn:active { transform: scale(0.97); }
+.task-btn.completed-btn .icon {
+  stroke: #00cc6a;
+}
 
-  .task-submit-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 15px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 8px;
-    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4);
-    font-family: inherit;
-    letter-spacing: 0.5px;
-  }
+/* ───── Task Detail Modal ───── */
+.task-detail-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.25);
+}
 
-  .task-submit-btn:active { transform: scale(0.97); }
+.task-detail-icon .icon {
+  width: 34px;
+  height: 34px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
 
-  /* ✅ Refer input */
-  .refer-input {
-    width: 100%;
-    padding: 14px;
-    background: rgba(0, 20, 10, 0.6);
-    border: 1px solid rgba(0, 255, 136, 0.25);
-    border-radius: 12px;
-    color: #00ff88;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    outline: none;
-    font-family: inherit;
-  }
+.task-detail-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 10px;
+  text-align: center;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
 
-  .refer-input:focus {
-    border-color: #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-  }
+.task-detail-reward {
+  font-size: 28px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 18px;
+  text-align: center;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
 
-  .refer-input::placeholder {
-    color: #00ff88;
-    opacity: 0.4;
-  }
+.task-detail-desc {
+  background: rgba(0, 255, 136, 0.04);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: #00cc6a;
+  line-height: 1.6;
+  margin-bottom: 14px;
+  opacity: 0.85;
+}
+
+.task-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+  gap: 10px;
+}
+
+.task-detail-row:last-child { border-bottom: none; }
+
+.task-detail-label {
+  color: #00cc6a;
+  opacity: 0.6;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-detail-label .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
+.task-detail-value {
+  color: #00ff88;
+  font-weight: 800;
+  max-width: 60%;
+  text-align: right;
+  word-break: break-all;
+}
+
+.task-open-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: linear-gradient(135deg, #00aaff, #0088cc);
+  color: #ffffff;
+  text-decoration: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  margin: 16px 0 10px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 170, 255, 0.3);
+}
+
+.task-open-btn .icon {
+  stroke: #ffffff;
+  width: 18px;
+  height: 18px;
+}
+
+.task-open-btn:active { transform: scale(0.97); }
+
+.task-submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 15px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.task-submit-btn .icon {
+  stroke: #000000;
+  width: 16px;
+  height: 16px;
+}
+
+.task-submit-btn:active { transform: scale(0.97); }
+
+/* ───── Refer Input ───── */
+.refer-input {
+  width: 100%;
+  padding: 14px;
+  background: rgba(0, 15, 8, 0.65);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+  border-radius: 12px;
+  color: #00ff88;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+.refer-input:focus {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.15);
+}
+
+.refer-input::placeholder {
+  color: #00cc6a;
+  opacity: 0.35;
+}
+
+/* ───── Custom Confirm Modal (replaces confirm()) ───── */
+.confirm-modal-content {
+  text-align: center;
+}
+
+.confirm-icon-wrap {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(255, 165, 0, 0.10);
+  border: 2px solid rgba(255, 165, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 25px rgba(255, 165, 0, 0.2);
+}
+
+.confirm-icon-wrap .icon {
+  width: 34px;
+  height: 34px;
+  stroke: #ffa500;
+}
+
+.confirm-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+
+.confirm-message {
+  font-size: 13.5px;
+  color: #00cc6a;
+  opacity: 0.75;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.confirm-btn-cancel,
+.confirm-btn-ok {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.confirm-btn-cancel {
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff6464;
+  border: 1px solid rgba(255, 100, 100, 0.25);
+}
+
+.confirm-btn-cancel .icon {
+  stroke: #ff6464;
+  width: 15px;
+  height: 15px;
+}
+
+.confirm-btn-cancel:active {
+  background: rgba(255, 100, 100, 0.20);
+  transform: scale(0.97);
+}
+
+.confirm-btn-ok {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
+}
+
+.confirm-btn-ok .icon {
+  stroke: #000000;
+  width: 15px;
+  height: 15px;
+}
+
+.confirm-btn-ok:active {
+  transform: scale(0.97);
+}
 </style>
 </head>
 <body>
@@ -216,31 +439,34 @@
 
     <!-- Page Header -->
     <div class="page-header">
-      <div class="page-title">📋 Tasks</div>
+      <div class="page-title">
+        <i data-lucide="clipboard-list"></i>
+        <span>Tasks</span>
+      </div>
       <p class="page-sub">Complete tasks & earn rewards</p>
     </div>
 
     <!-- Tasks List -->
     <div id="taskList" class="task-list">
-      <div class="loading">⏳ Loading tasks...</div>
+      <div class="loading">Loading tasks...</div>
     </div>
 
-    <!-- 🎯 BOTTOM NAV — Floating Pill -->
+    <!-- 🎯 BOTTOM NAV -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
+        <span class="nav-icon"><i data-lucide="home"></i></span>
         <span class="nav-label">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item active">
-        <span class="nav-icon">📋</span>
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
         <span class="nav-label">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
+        <span class="nav-icon"><i data-lucide="send"></i></span>
         <span class="nav-label">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
+        <span class="nav-icon"><i data-lucide="user"></i></span>
         <span class="nav-label">PROFILE</span>
       </a>
     </nav>
@@ -252,35 +478,90 @@
 <div class="modal" id="taskModal">
   <div class="modal-content glass">
     <div id="taskDetail"></div>
-    <button onclick="closeTaskModal()" class="cancel-btn">Close</button>
+    <button onclick="closeTaskModal()" class="cancel-btn">
+      <i data-lucide="x"></i>
+      <span>Close</span>
+    </button>
   </div>
 </div>
 
 <!-- UPLOAD MODAL -->
 <div class="modal" id="uploadModal">
   <div class="modal-content glass">
-    <h3>📸 Upload Screenshot</h3>
-    <p>Choose your proof</p>
+    <h3>
+      <i data-lucide="camera"></i>
+      <span>Upload Screenshot</span>
+    </h3>
+    <p>Choose your proof of completion</p>
+
     <input type="file" id="screenshotInput" accept="image/*" style="display:none;" onchange="handleScreenshot(event)">
-    <button class="btn-primary" onclick="document.getElementById('screenshotInput').click()">📁 Choose from Gallery</button>
-    <button class="cancel-btn" onclick="closeUploadModal()">❌ Cancel</button>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleScreenshot(event)">
+
+    <button class="btn-primary" onclick="document.getElementById('screenshotInput').click()" style="margin-bottom:10px;">
+      <i data-lucide="image"></i>
+      <span>Choose from Gallery</span>
+    </button>
+
+    <button class="btn-secondary" onclick="document.getElementById('cameraInput').click()">
+      <i data-lucide="camera"></i>
+      <span>Take Photo</span>
+    </button>
+
+    <button class="cancel-btn" onclick="closeUploadModal()">
+      <i data-lucide="x"></i>
+      <span>Cancel</span>
+    </button>
   </div>
 </div>
 
 <!-- REFER MODAL -->
 <div class="modal" id="referModal">
   <div class="modal-content glass">
-    <h3>🔗 Send Refer Link / ID</h3>
-    <p>⚠️ Full Referral Link or Bot ID only</p>
+    <h3>
+      <i data-lucide="link"></i>
+      <span>Send Refer Link / ID</span>
+    </h3>
+    <p>Full Referral Link or Bot ID only</p>
+
     <input type="text" id="referInput" class="refer-input" placeholder="Link or ID" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-    <button class="btn-primary" onclick="submitRefer()">✅ Submit</button>
-    <button class="cancel-btn" onclick="closeReferModal()">❌ Cancel</button>
+
+    <button class="btn-primary" onclick="submitRefer()">
+      <i data-lucide="send"></i>
+      <span>Submit</span>
+    </button>
+
+    <button class="cancel-btn" onclick="closeReferModal()">
+      <i data-lucide="x"></i>
+      <span>Cancel</span>
+    </button>
+  </div>
+</div>
+
+<!-- CUSTOM CONFIRM MODAL (Replaces confirm()) -->
+<div class="modal" id="confirmModal">
+  <div class="modal-content glass confirm-modal-content">
+    <div class="confirm-icon-wrap">
+      <i data-lucide="help-circle"></i>
+    </div>
+    <div class="confirm-title" id="confirmTitle">Confirm</div>
+    <div class="confirm-message" id="confirmMessage">Are you sure?</div>
+
+    <div class="confirm-buttons">
+      <button class="confirm-btn-cancel" onclick="confirmNo()">
+        <i data-lucide="x"></i>
+        <span>Cancel</span>
+      </button>
+      <button class="confirm-btn-ok" onclick="confirmYes()">
+        <i data-lucide="check"></i>
+        <span>Confirm</span>
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
 // ============================================================
-// 📋 TASK PAGE
+// 📋 TASK PAGE LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -288,6 +569,7 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
+  try { if (tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -295,6 +577,16 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let allTasks = [];
 let currentTask = null;
 let currentTaskType = 'photo';
+let confirmCallback = null;
+
+// ============================================================
+// 🎯 ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
 
 // ============================================================
 // 🔔 TOAST
@@ -317,11 +609,69 @@ function escapeHtml(str) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+// ============================================================
+// 🎯 CUSTOM CONFIRM MODAL
+// ============================================================
+function showConfirm(title, message, callback) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+  confirmCallback = callback;
+  document.getElementById('confirmModal').classList.add('active');
+  renderIcons();
+}
+
+function confirmYes() {
+  document.getElementById('confirmModal').classList.remove('active');
+  if (confirmCallback) {
+    const cb = confirmCallback;
+    confirmCallback = null;
+    cb();
+  }
+}
+
+function confirmNo() {
+  document.getElementById('confirmModal').classList.remove('active');
+  confirmCallback = null;
+}
+
+// ============================================================
+// ⏰ TIME HELPERS
+// ============================================================
+function getTimeLeft(expiresAt) {
+  if (!expiresAt) return null;
+  const now = new Date().getTime();
+  const exp = new Date(expiresAt).getTime();
+  const diff = exp - now;
+  if (diff <= 0) return 'Expired';
+
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${mins % 60}m`;
+  return `${mins}m`;
+}
+
+function isExpired(expiresAt) {
+  if (!expiresAt) return false;
+  return new Date(expiresAt).getTime() <= new Date().getTime();
+}
+
 // ============================================================
 // 📋 LOAD TASKS
 // ============================================================
 async function loadTasks() {
   const listEl = document.getElementById('taskList');
+  listEl.innerHTML = '<div class="loading">Loading tasks...</div>';
 
   try {
     const res = await fetch('/miniapp/api/tasks');
@@ -330,11 +680,12 @@ async function loadTasks() {
     if (!data.success || !data.tasks || data.tasks.length === 0) {
       listEl.innerHTML = `
         <div class="empty-state">
-          <div class="icon">📭</div>
-          <div style="font-size:16px;font-weight:800;color:#00ff88;margin-bottom:8px;">No Tasks Available</div>
-          <div style="font-size:13px;">Check back later!</div>
+          <i data-lucide="inbox" style="width:56px;height:56px;stroke:#00cc6a;opacity:0.4;"></i>
+          <div style="font-size:16px;font-weight:800;color:#00ff88;margin:14px 0 8px;">No Tasks Available</div>
+          <div style="font-size:13px;opacity:0.7;">Check back later!</div>
         </div>
       `;
+      renderIcons();
       return;
     }
 
@@ -343,38 +694,63 @@ async function loadTasks() {
     let html = '';
     allTasks.forEach((task, idx) => {
       let isCompleted = task.completedUsers && task.completedUsers.includes(userId);
+      let expired = isExpired(task.expiresAt);
       let completedClass = isCompleted ? 'completed' : '';
       let btnClass = isCompleted ? 'completed-btn' : '';
-      let btnText = isCompleted ? '✅ Done' : 'START';
+      let btnText = isCompleted ? 'Done' : 'Start';
+      let btnIcon = isCompleted ? 'check' : 'play';
 
+      // Type badge
       let typeBadge = '';
-      if (task.taskType === 'refer') typeBadge = '<span class="task-type-badge">REFER</span>';
-      else if (task.taskType === 'affiliate') typeBadge = '<span class="task-type-badge">LINK</span>';
-      else typeBadge = '<span class="task-type-badge">PHOTO</span>';
+      if (task.taskType === 'refer') {
+        typeBadge = `<span class="task-type-badge"><i data-lucide="link"></i>REFER</span>`;
+      } else {
+        typeBadge = `<span class="task-type-badge"><i data-lucide="camera"></i>PHOTO</span>`;
+      }
+
+      // Expiry badge
+      let expiryBadge = '';
+      if (task.expiresAt && !isCompleted) {
+        let timeLeft = getTimeLeft(task.expiresAt);
+        if (expired) {
+          expiryBadge = `<span class="task-expiry-badge"><i data-lucide="clock"></i>EXPIRED</span>`;
+        } else {
+          expiryBadge = `<span class="task-expiry-badge"><i data-lucide="clock"></i>${timeLeft}</span>`;
+        }
+      }
 
       html += `
         <div class="task-card ${completedClass}" style="animation-delay:${idx * 0.05}s" onclick="${isCompleted ? '' : `openTask('${task.taskId}')`}">
           <div class="task-info">
-            <div class="task-title">${escapeHtml(task.title)}${typeBadge}</div>
+            <div class="task-title">
+              <span>${escapeHtml(task.title)}</span>
+              ${typeBadge}
+            </div>
             <div class="task-reward">
-              <span>💰</span>
-              ₹${task.reward}
+              <i data-lucide="indian-rupee" class="icon"></i>
+              <span>₹${task.reward}</span>
+              ${expiryBadge}
             </div>
           </div>
-          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>${btnText}</button>
+          <button class="task-btn ${btnClass}" ${isCompleted ? 'disabled' : ''}>
+            <i data-lucide="${btnIcon}" class="icon"></i>
+            <span>${btnText}</span>
+          </button>
         </div>
       `;
     });
 
     listEl.innerHTML = html;
+    renderIcons();
   } catch (e) {
     console.error('Load tasks error:', e);
     listEl.innerHTML = `
       <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div>Failed to load tasks</div>
+        <i data-lucide="alert-triangle" style="width:48px;height:48px;stroke:#ff6464;opacity:0.6;"></i>
+        <div style="margin-top:12px;">Failed to load tasks</div>
       </div>
     `;
+    renderIcons();
   }
 }
 
@@ -388,41 +764,67 @@ function openTask(taskId) {
   currentTask = task;
 
   if (task.taskType === 'refer') currentTaskType = 'refer';
-  else if (task.taskType === 'affiliate') currentTaskType = 'affiliate';
   else currentTaskType = 'photo';
 
   const detailEl = document.getElementById('taskDetail');
 
-  let icon = '📋';
-  if (currentTaskType === 'refer') icon = '🔗';
-  else if (currentTaskType === 'affiliate') icon = '🌐';
-  else icon = '📸';
+  let iconName = currentTaskType === 'refer' ? 'link' : 'camera';
 
-  let btnLabel = '📸 Submit Screenshot';
-  if (currentTaskType === 'refer') btnLabel = '🔗 Submit Refer ID';
-  else if (currentTaskType === 'affiliate') btnLabel = '✅ I Completed This Task';
+  let btnLabel = currentTaskType === 'refer' ? 'Submit Refer ID' : 'Submit Screenshot';
+  let btnIcon = currentTaskType === 'refer' ? 'send' : 'upload';
+
+  let expired = isExpired(task.expiresAt);
+
+  // Description (optional)
+  let descHtml = '';
+  if (task.description) {
+    descHtml = `<div class="task-detail-desc">${escapeHtml(task.description)}</div>`;
+  }
+
+  // Expiry row
+  let expiryRow = '';
+  if (task.expiresAt) {
+    let timeLeft = getTimeLeft(task.expiresAt);
+    expiryRow = `
+      <div class="task-detail-row">
+        <span class="task-detail-label"><i data-lucide="clock"></i>Time Left</span>
+        <span class="task-detail-value" style="color:${expired ? '#ff6464' : '#ffa500'};">${timeLeft}</span>
+      </div>
+    `;
+  }
 
   detailEl.innerHTML = `
-    <div class="task-detail-icon">${icon}</div>
+    <div class="task-detail-icon">
+      <i data-lucide="${iconName}"></i>
+    </div>
     <div class="task-detail-title">${escapeHtml(task.title)}</div>
     <div class="task-detail-reward">₹${task.reward}</div>
+
+    ${descHtml}
+
     <div class="task-detail-row">
-      <span class="task-detail-label">Task ID</span>
+      <span class="task-detail-label"><i data-lucide="hash"></i>Task ID</span>
       <span class="task-detail-value">${escapeHtml(task.taskId)}</span>
     </div>
     <div class="task-detail-row">
-      <span class="task-detail-label">Type</span>
+      <span class="task-detail-label"><i data-lucide="tag"></i>Type</span>
       <span class="task-detail-value">${currentTaskType.toUpperCase()}</span>
     </div>
+    ${expiryRow}
+
     <a href="${escapeHtml(task.link)}" target="_blank" class="task-open-btn">
-      🔗 Open Task Link
+      <i data-lucide="external-link"></i>
+      <span>Open Task Link</span>
     </a>
-    <button class="task-submit-btn" onclick="startSubmit()">
-      ${btnLabel}
+
+    <button class="task-submit-btn" onclick="startSubmit()" ${expired ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+      <i data-lucide="${btnIcon}"></i>
+      <span>${expired ? 'Task Expired' : btnLabel}</span>
     </button>
   `;
 
   document.getElementById('taskModal').classList.add('active');
+  renderIcons();
 }
 
 function closeTaskModal() {
@@ -433,22 +835,28 @@ function closeTaskModal() {
 // 📸 START SUBMIT
 // ============================================================
 function startSubmit() {
+  if (!currentTask) return;
+  if (isExpired(currentTask.expiresAt)) {
+    showToast('Task has expired');
+    return;
+  }
+
   closeTaskModal();
 
   if (currentTaskType === 'refer') {
     document.getElementById('referModal').classList.add('active');
     setTimeout(() => document.getElementById('referInput').focus(), 300);
-  } else if (currentTaskType === 'affiliate') {
-    // Affiliate — direct submit (user confirms completed)
-    submitAffiliate();
+    renderIcons();
   } else {
     document.getElementById('uploadModal').classList.add('active');
+    renderIcons();
   }
 }
 
 function closeUploadModal() {
   document.getElementById('uploadModal').classList.remove('active');
   document.getElementById('screenshotInput').value = '';
+  document.getElementById('cameraInput').value = '';
 }
 
 function closeReferModal() {
@@ -462,10 +870,10 @@ function closeReferModal() {
 async function handleScreenshot(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (!currentTask) { showToast('❌ No task selected'); return; }
+  if (!currentTask) { showToast('No task selected'); return; }
 
   closeUploadModal();
-  showToast('⏳ Uploading...');
+  showToast('Uploading...');
 
   try {
     const base64 = await fileToBase64(file);
@@ -477,16 +885,18 @@ async function handleScreenshot(event) {
     const data = await res.json();
 
     if (data.success) {
-      showToast('✅ Submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showToast('Submitted!');
+      haptic('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
-      showToast('❌ ' + (data.error || 'Failed'));
+      showToast(data.error || 'Failed');
+      haptic('error');
     }
   } catch (e) {
     console.error(e);
-    showToast('❌ Network error');
+    showToast('Network error');
+    haptic('error');
   }
 }
 
@@ -500,49 +910,17 @@ function fileToBase64(file) {
 }
 
 // ============================================================
-// 🌐 SUBMIT AFFILIATE
-// ============================================================
-async function submitAffiliate() {
-  if (!currentTask) return;
-  if (!confirm('Have you completed this task?')) return;
-
-  try {
-    const res = await fetch('/miniapp/api/submit-refer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        taskId: currentTask.taskId,
-        referValue: `AFFILIATE_CLICKED: ${currentTask.link}`
-      })
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      showToast('✅ Submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      currentTask = null;
-      setTimeout(() => loadTasks(), 500);
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'));
-    }
-  } catch (e) {
-    showToast('❌ Network error');
-  }
-}
-
-// ============================================================
 // 🔗 SUBMIT REFER
 // ============================================================
 async function submitRefer() {
   const input = document.getElementById('referInput');
   const value = input.value.trim();
 
-  if (!value) { showToast('❌ Enter refer link or ID'); return; }
-  if (!currentTask) { showToast('❌ No task selected'); return; }
+  if (!value) { showToast('Enter refer link or ID'); return; }
+  if (!currentTask) { showToast('No task selected'); return; }
 
   closeReferModal();
-  showToast('⏳ Submitting...');
+  showToast('Submitting...');
 
   try {
     const res = await fetch('/miniapp/api/submit-refer', {
@@ -553,15 +931,17 @@ async function submitRefer() {
     const data = await res.json();
 
     if (data.success) {
-      showToast('✅ Refer submitted!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showToast('Refer submitted!');
+      haptic('success');
       currentTask = null;
       setTimeout(() => loadTasks(), 500);
     } else {
-      showToast('❌ ' + (data.error || 'Failed'));
+      showToast(data.error || 'Failed');
+      haptic('error');
     }
   } catch (e) {
-    showToast('❌ Network error');
+    showToast('Network error');
+    haptic('error');
   }
 }
 
@@ -569,22 +949,30 @@ async function submitRefer() {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  renderIcons();
+
   if (!userId) {
     document.getElementById('taskList').innerHTML = `
       <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div>Open from Telegram</div>
+        <i data-lucide="alert-triangle" style="width:48px;height:48px;stroke:#ff6464;opacity:0.6;"></i>
+        <div style="margin-top:12px;">Open from Telegram</div>
       </div>
     `;
+    renderIcons();
     return;
   }
+
   await loadTasks();
 
   document.getElementById('referInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') submitRefer();
   });
+
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
 });
 
+// Modal backdrop close
 document.getElementById('taskModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'taskModal') closeTaskModal();
 });
@@ -594,8 +982,22 @@ document.getElementById('uploadModal')?.addEventListener('click', (e) => {
 document.getElementById('referModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'referModal') closeReferModal();
 });
+document.getElementById('confirmModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'confirmModal') confirmNo();
+});
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.openTask = openTask;
+window.closeTaskModal = closeTaskModal;
+window.startSubmit = startSubmit;
+window.closeUploadModal = closeUploadModal;
+window.closeReferModal = closeReferModal;
+window.handleScreenshot = handleScreenshot;
+window.submitRefer = submitRefer;
+window.confirmYes = confirmYes;
+window.confirmNo = confirmNo;
 </script>
 
 </body>
