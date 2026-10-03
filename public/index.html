@@ -8,7 +8,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   HOME PAGE + WITHDRAW MODAL — Complete
+   HOME PAGE — Additional Styles
    ═══════════════════════════════════════════════════════ */
 
 /* ───── 🔓 SCROLL FIX ───── */
@@ -104,6 +104,16 @@ html, body {
   flex-shrink: 0;
 }
 
+.activity-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: #00ff88;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .activity-details {
   flex: 1;
   min-width: 0;
@@ -187,11 +197,6 @@ html, body {
   display: flex;
 }
 
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 .withdraw-modal-content {
   width: 100%;
   max-width: 480px;
@@ -213,12 +218,6 @@ html, body {
   position: relative;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-/* Handle bar at top */
 .withdraw-modal-content::before {
   content: '';
   display: block;
@@ -270,7 +269,7 @@ html, body {
   background: rgba(255, 100, 100, 0.25);
 }
 
-/* Balance mini display in modal */
+/* Balance mini display */
 .modal-balance-mini {
   background: rgba(0, 255, 136, 0.06);
   border: 1px solid rgba(0, 255, 136, 0.2);
@@ -319,75 +318,123 @@ html, body {
   background: linear-gradient(90deg, rgba(0, 255, 136, 0.3), transparent);
 }
 
-/* ───── METHOD GRID ───── */
-.modal-method-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+/* ───── METHOD LIST (Dynamic) ───── */
+.modal-method-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 18px;
 }
 
-.modal-method-btn {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1.5px solid rgba(0, 255, 136, 0.15);
-  border-radius: 12px;
-  padding: 14px 8px;
-  color: #00ff88;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.25s;
-  font-family: inherit;
+/* Each method card styled as withdraw-method-card */
+.withdraw-method-card {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(0, 20, 10, 0.6);
+  border: 1.5px solid rgba(0, 255, 136, 0.18);
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  animation: cardSlideIn 0.35s ease backwards;
+}
+
+.withdraw-method-card:active {
+  transform: scale(0.98);
+  border-color: #00ff88;
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+}
+
+.withdraw-method-card.auto {
+  border-color: rgba(0, 255, 136, 0.35);
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.1),
+    rgba(0, 20, 10, 0.6));
+}
+
+.withdraw-method-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  flex-shrink: 0;
   position: relative;
-  min-height: 78px;
 }
 
-.modal-method-btn:active {
-  transform: scale(0.96);
-}
-
-.modal-method-btn.selected {
-  background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.2),
-    rgba(0, 255, 136, 0.08));
-  border-color: #00ff88;
-  box-shadow:
-    0 0 22px rgba(0, 255, 136, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.modal-method-btn .mi {
-  font-size: 22px;
-}
-
-.modal-method-btn .mname {
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.modal-method-btn .linked-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+.withdraw-method-card.auto .withdraw-method-icon {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
-  color: #000;
-  font-size: 7.5px;
-  font-weight: 900;
-  padding: 2px 5px;
-  border-radius: 5px;
+  border-color: #00ff88;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.35);
 }
 
-.modal-method-btn.not-linked::before {
-  content: '⚠️';
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 11px;
+.withdraw-method-icon svg {
+  width: 26px;
+  height: 26px;
+  stroke: #00ff88;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.withdraw-method-card.auto .withdraw-method-icon svg {
+  stroke: #000000;
+}
+
+.withdraw-method-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.withdraw-method-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+.withdraw-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.withdraw-method-badge.auto {
+  background: rgba(0, 255, 136, 0.18);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+}
+
+.withdraw-method-badge.manual {
+  background: rgba(255, 165, 0, 0.15);
+  color: #ffa500;
+  border: 1px solid rgba(255, 165, 0, 0.35);
+}
+
+.withdraw-method-arrow {
+  color: #00ff88;
+  opacity: 0.5;
+  font-size: 22px;
+  font-weight: 300;
+  flex-shrink: 0;
 }
 
 /* ───── LINK SECTION (in modal) ───── */
@@ -465,7 +512,7 @@ html, body {
   transform: scale(0.97);
 }
 
-/* ───── AMOUNT INPUT (in modal) ───── */
+/* ───── AMOUNT INPUT ───── */
 .modal-amount-wrap {
   display: flex;
   align-items: center;
@@ -601,6 +648,10 @@ html, body {
   text-transform: uppercase;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .modal-submit-btn::before {
@@ -617,11 +668,6 @@ html, body {
   animation: btnShine 3s ease-in-out infinite;
 }
 
-@keyframes btnShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
-
 .modal-submit-btn:active {
   transform: scale(0.97);
 }
@@ -629,23 +675,6 @@ html, body {
 .modal-submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* ───── LOADING SPINNER ───── */
-.loading-spinner {
-  display: inline-block;
-  width: 15px;
-  height: 15px;
-  border: 2.5px solid rgba(0, 0, 0, 0.2);
-  border-top-color: #000;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ───── SUCCESS SCREEN (in modal) ───── */
@@ -660,11 +689,6 @@ html, body {
   animation: fadeIn 0.4s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .modal-success-icon {
   width: 90px;
   height: 90px;
@@ -674,16 +698,20 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 44px;
   margin: 0 auto 18px;
   box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
   animation: bounceIn 0.6s ease;
 }
 
-@keyframes bounceIn {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
+.modal-success-icon svg {
+  width: 44px;
+  height: 44px;
+  stroke: #00ff88;
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.8));
 }
 
 .modal-success-title {
@@ -798,15 +826,12 @@ html, body {
   width: calc(100% - 32px) !important;
 }
 
-/* ───── ANIMATIONS ───── */
-@keyframes cardSlideIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* ───── RESPONSIVE ───── */
 @media (max-width: 380px) {
-  .modal-method-btn { min-height: 72px; padding: 12px 6px; }
+  .withdraw-method-card { padding: 14px 16px; }
+  .withdraw-method-icon { width: 42px; height: 42px; }
+  .withdraw-method-icon svg { width: 22px; height: 22px; }
+  .withdraw-method-name { font-size: 14px; }
   .modal-quick-amounts button { font-size: 11px; padding: 9px 2px; }
   .modal-amount-wrap input { font-size: 20px; }
   .modal-amount-wrap .rupee { font-size: 22px; }
@@ -931,11 +956,12 @@ html, body {
 
       <!-- STEP 1: Method -->
       <div class="modal-section-title">💳 Select Method</div>
-      <div class="modal-method-grid" id="modalMethodGrid">
-        <!-- Dynamic -->
+      <div class="modal-method-list" id="modalMethodList">
+        <!-- Dynamic methods render here -->
+        <div class="loading">⏳ Loading methods...</div>
       </div>
 
-      <!-- Link Section -->
+      <!-- Link Section (for unlinked methods) -->
       <div class="modal-link-section" id="modalLinkSection">
         <div class="modal-link-title">
           ⚠️ <b id="modalLinkMethodName">Method</b> Not Linked
@@ -960,7 +986,7 @@ html, body {
         <button class="modal-max-btn" onclick="modalSetMax()">MAX</button>
       </div>
       <div class="modal-amount-info">
-        Min: <b>₹<span id="modalMinLabel">10</span></b> • Max: <b>₹<span id="modalMaxLabel">10000</span></b>
+        Min: <b>₹<span id="modalMinLabel">0</span></b> • Max: <b>₹<span id="modalMaxLabel">0</span></b>
       </div>
 
       <!-- Quick Amounts -->
@@ -982,9 +1008,13 @@ html, body {
 
     </div>
 
-    <!-- SUCCESS VIEW -->
+    <!-- SUCCESS VIEW (manual withdraw) -->
     <div class="modal-success" id="withdrawSuccessView">
-      <div class="modal-success-icon">✅</div>
+      <div class="modal-success-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M5 12l5 5L20 7"/>
+        </svg>
+      </div>
       <div class="modal-success-title">REQUEST SUBMITTED!</div>
       <div class="modal-success-sub">
         Your withdrawal has been sent to admin.<br>
@@ -1019,10 +1049,135 @@ html, body {
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     ⏳ PROCESSING OVERLAY (for Gateway auto payout)
+     ═══════════════════════════════════════════════════ -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-box">
+    <div class="premium-loader">
+      <svg viewBox="0 0 50 50">
+        <circle class="track" cx="25" cy="25" r="20" fill="none"/>
+        <circle class="spinner" cx="25" cy="25" r="20" fill="none"/>
+      </svg>
+    </div>
+    <div class="processing-title">Processing Payout...</div>
+    <div class="processing-subtitle">Please wait while we process your withdrawal</div>
+
+    <div class="processing-info">
+      <div class="processing-info-row">
+        <span>Gateway</span>
+        <span id="processingGateway">-</span>
+      </div>
+      <div class="processing-info-row">
+        <span>Amount</span>
+        <span id="processingAmount">-</span>
+      </div>
+      <div class="processing-info-row">
+        <span>Wallet</span>
+        <span id="processingWallet">-</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ✅ SUCCESS OVERLAY (Gateway)
+     ═══════════════════════════════════════════════════ -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-box">
+    <div class="success-icon-svg">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42"/>
+        <path d="M32 52l12 12 24-26"/>
+      </svg>
+    </div>
+    <div class="success-title">Payout Successful!</div>
+    <div class="success-subtitle">Your withdrawal has been processed instantly</div>
+
+    <div class="success-details">
+      <div class="success-detail-row">
+        <span>Amount</span>
+        <span id="successAmount">-</span>
+      </div>
+      <div class="success-detail-row">
+        <span>TXN ID</span>
+        <span id="successTxn">-</span>
+      </div>
+      <div class="success-detail-row">
+        <span>Gateway</span>
+        <span id="successGateway">-</span>
+      </div>
+      <div class="success-detail-row">
+        <span>New Balance</span>
+        <span id="successBalance">-</span>
+      </div>
+    </div>
+
+    <button class="success-close" onclick="closeSuccessOverlay()">
+      ✓ Done
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ❌ FAILED OVERLAY (Gateway)
+     ═══════════════════════════════════════════════════ -->
+<div class="failed-overlay" id="failedOverlay">
+  <div class="failed-box">
+    <div class="failed-icon-svg">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42"/>
+        <path d="M35 35l30 30M65 35L35 65"/>
+      </svg>
+    </div>
+    <div class="failed-title">Payout Failed!</div>
+    <div class="failed-subtitle">The gateway declined the transaction</div>
+
+    <div class="failed-details">
+      <div class="failed-detail-row">
+        <span>Amount</span>
+        <span id="failedAmount">-</span>
+      </div>
+      <div class="failed-detail-row">
+        <span>Reason</span>
+        <span id="failedReason">-</span>
+      </div>
+      <div class="failed-detail-row">
+        <span>Refunded</span>
+        <span id="failedRefund">-</span>
+      </div>
+    </div>
+
+    <button class="failed-close" onclick="closeFailedOverlay()">
+      ✕ Close
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     💳 WALLET NUMBER MODAL (Single Global)
+     ═══════════════════════════════════════════════════ -->
+<div class="modal" id="walletModal">
+  <div class="modal-content glass">
+    <h3>💰 Set Wallet Number</h3>
+    <p>Enter your wallet number to receive payouts</p>
+    <input
+      type="text"
+      id="walletNumberInput"
+      placeholder="Enter wallet number"
+      inputmode="numeric"
+      autocomplete="off"
+      style="margin-bottom:14px;"
+    >
+    <button class="btn-primary" onclick="saveWalletNumber()">💾 Save Wallet</button>
+    <button class="cancel-btn" onclick="closeWalletModal()">Cancel</button>
+  </div>
+</div>
+
 <script>
-// ============================================================
-// 🏠 HOME PAGE + 💸 WITHDRAW MODAL — Complete Logic
-// ============================================================
+/* ============================================================
+   🏠 HOME PAGE — Complete Logic
+   ============================================================ */
 const tg = window.Telegram?.WebApp;
 
 if (tg) {
@@ -1039,16 +1194,17 @@ if (tg) {
 const userId = tg?.initDataUnsafe?.user?.id;
 
 let userBalance = 0;
-let minWithdraw = 10;
-let maxWithdraw = 10000;
+let minWithdraw = 0;
+let maxWithdraw = 0;
 let selectedMethod = null;
-let selectedMethodLabel = '';
+let selectedMethodData = null;
 let userSavedDetails = {};
 let appConfig = {};
+let withdrawMethods = [];
 
-// ============================================================
-// 🔓 FORCE SCROLL
-// ============================================================
+/* ============================================================
+   🔓 FORCE SCROLL
+   ============================================================ */
 function forceScrollEnable() {
   document.body.style.overflow = 'auto';
   document.body.style.height = 'auto';
@@ -1079,9 +1235,9 @@ setInterval(() => {
   }
 }, 800);
 
-// ============================================================
-// 🎨 UTILITIES
-// ============================================================
+/* ============================================================
+   🎨 UTILITIES
+   ============================================================ */
 function showToast(msg, duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -1124,36 +1280,45 @@ async function apiCall(endpoint, options = {}) {
   }
 }
 
-// ============================================================
-// 🎨 CONFIG
-// ============================================================
+function formatCurrency(amt) {
+  return '₹' + (parseFloat(amt) || 0).toFixed(2);
+}
+
+/* ============================================================
+   🎨 SVG ICONS — by method key
+   ============================================================ */
+function getMethodIconSVG(iconKey) {
+  const icons = {
+    wallet: `<svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>`,
+    upi: `<svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+    bank: `<svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
+    amazon: `<svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v3H3z"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><path d="M10 21v-5h4v5"/></svg>`,
+    redeem: `<svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M8 8a2 2 0 1 1 4 0"/><path d="M12 8a2 2 0 1 1 4 0"/></svg>`
+  };
+  return icons[iconKey] || icons.wallet;
+}
+
+/* ============================================================
+   🎨 CONFIG
+   ============================================================ */
 async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
   if (res.success && res.config) {
     appConfig = res.config;
 
-    if (appConfig.minWithdraw) minWithdraw = parseFloat(appConfig.minWithdraw);
-    if (appConfig.maxWithdraw) maxWithdraw = parseFloat(appConfig.maxWithdraw);
+    if (appConfig.minWithdraw !== undefined) minWithdraw = parseFloat(appConfig.minWithdraw) || 0;
+    if (appConfig.maxWithdraw !== undefined) maxWithdraw = parseFloat(appConfig.maxWithdraw) || 0;
 
     if (appConfig.btn_home) document.getElementById('nav-home').textContent = appConfig.btn_home;
     if (appConfig.btn_task) document.getElementById('nav-task').textContent = appConfig.btn_task;
     if (appConfig.btn_pay) document.getElementById('nav-pay').textContent = appConfig.btn_pay;
     if (appConfig.btn_profile) document.getElementById('nav-profile').textContent = appConfig.btn_profile;
   }
-
-  const sres = await apiCall('/miniapp/api/admin/settings');
-  if (sres.success && sres.settings) {
-    if (sres.settings.min_withdraw) minWithdraw = parseFloat(sres.settings.min_withdraw);
-    if (sres.settings.max_withdraw) maxWithdraw = parseFloat(sres.settings.max_withdraw);
-  }
-
-  document.getElementById('modalMinLabel').textContent = minWithdraw;
-  document.getElementById('modalMaxLabel').textContent = maxWithdraw;
 }
 
-// ============================================================
-// 👤 LOAD USER
-// ============================================================
+/* ============================================================
+   👤 LOAD USER
+   ============================================================ */
 async function loadUser() {
   if (!userId) return;
 
@@ -1169,13 +1334,13 @@ async function loadUser() {
 
   document.getElementById('username').textContent = user.firstName || 'User';
   document.getElementById('userid').textContent = 'ID: ' + user.userId;
-  document.getElementById('balance').textContent = '₹' + userBalance.toFixed(2);
-  document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
+  document.getElementById('balance').textContent = formatCurrency(userBalance);
+  document.getElementById('modalBalance').textContent = formatCurrency(userBalance);
 
   // Linked status
   const linkedStatus = document.getElementById('linkedStatus');
-  if (user.walletAccount && user.walletAccount !== 'Not Set') {
-    linkedStatus.textContent = '👛 ' + user.walletAccount;
+  if (user.walletNumber && user.walletNumber !== '') {
+    linkedStatus.textContent = '💰 ' + user.walletNumber;
   } else if (user.upiId && user.upiId !== 'Not Set') {
     linkedStatus.textContent = '⚡ ' + user.upiId;
   } else if (user.bankAccNo && user.bankAccNo !== 'Not Set') {
@@ -1186,19 +1351,19 @@ async function loadUser() {
 
   // Save details for withdraw
   userSavedDetails = {
+    gateway: (user.walletNumber && user.walletNumber !== '') ? user.walletNumber : '',
     upi: (user.upiId && user.upiId !== 'Not Set') ? user.upiId : '',
-    bank: (user.bankAccNo && user.bankAccNo !== 'Not Set') ? user.bankAccNo : '',
-    wallet: (user.walletAccount && user.walletAccount !== 'Not Set') ? user.walletAccount : '',
+    bank: (user.bankAccNo && user.bankAccNo !== 'Not Set') ? `${user.bankAccNo}, ${user.bankIfsc}` : '',
+    amazon: (user.amazonEmail && user.amazonEmail !== 'Not Set') ? user.amazonEmail : '',
     redeem: (user.redeemCodeAddr && user.redeemCodeAddr !== 'Not Set') ? user.redeemCodeAddr : ''
   };
 
-  renderModalMethods();
   await loadAvatar();
 }
 
-// ============================================================
-// 📸 AVATAR
-// ============================================================
+/* ============================================================
+   📸 AVATAR
+   ============================================================ */
 async function loadAvatar() {
   if (!userId) return;
 
@@ -1212,9 +1377,9 @@ async function loadAvatar() {
   }
 }
 
-// ============================================================
-// 💳 PAYMENT METHODS (Home)
-// ============================================================
+/* ============================================================
+   💳 PAYMENT METHODS (Home)
+   ============================================================ */
 async function loadPaymentMethods() {
   if (!userId) return;
   const listEl = document.getElementById('paymentList');
@@ -1238,9 +1403,9 @@ async function loadPaymentMethods() {
   listEl.innerHTML = html;
 }
 
-// ============================================================
-// 📜 RECENT ACTIVITY
-// ============================================================
+/* ============================================================
+   📜 RECENT ACTIVITY
+   ============================================================ */
 async function loadRecentActivity() {
   if (!userId) return;
   const actEl = document.getElementById('recentActivity');
@@ -1262,15 +1427,20 @@ async function loadRecentActivity() {
     const isPos = h.amount >= 0;
     const sign = isPos ? '+' : '';
     const cls = isPos ? 'positive' : 'negative';
-    const icon = isPos ? '💰' : '💸';
     const date = new Date(h.createdAt).toLocaleString('en-IN', {
       day: 'numeric', month: 'short',
       hour: '2-digit', minute: '2-digit'
     });
 
+    let iconKey = 'wallet';
+    if (h.action && h.action.match(/Withdrawal/i)) iconKey = 'bank';
+    else if (h.action && h.action.match(/Deposit|UPI/i)) iconKey = 'upi';
+    else if (h.action && h.action.match(/Task|Reward/i)) iconKey = 'redeem';
+    else if (h.action && h.action.match(/Gift/i)) iconKey = 'redeem';
+
     html += `
       <div class="activity-item">
-        <div class="activity-icon">${icon}</div>
+        <div class="activity-icon">${getMethodIconSVG(iconKey)}</div>
         <div class="activity-details">
           <div class="activity-title">${escapeHtml(h.action)}</div>
           <div class="activity-meta">${date}</div>
@@ -1283,9 +1453,9 @@ async function loadRecentActivity() {
   actEl.innerHTML = html;
 }
 
-// ============================================================
-// 🔄 REFRESH
-// ============================================================
+/* ============================================================
+   🔄 REFRESH
+   ============================================================ */
 async function refreshBalance() {
   const btn = document.getElementById('refreshBtn');
   btn?.classList.add('spinning');
@@ -1300,11 +1470,50 @@ async function refreshBalance() {
   setTimeout(() => btn?.classList.remove('spinning'), 800);
 }
 
-// ============================================================
-// 💸 WITHDRAW MODAL — OPEN / CLOSE
-// ============================================================
-function openWithdrawModal() {
+/* ============================================================
+   🚀 NAVIGATION
+   ============================================================ */
+function openAddFund() {
   haptic('light');
+  window.location.href = '/miniapp/addfund';
+}
+
+function openPaymentMethods() {
+  haptic('light');
+  window.location.href = '/miniapp/profile';
+}
+
+function viewAllHistory() {
+  haptic('light');
+  window.location.href = '/miniapp/history';
+}
+</script>
+
+</body>
+</html>
+<script>
+/* ============================================================
+   💸 WITHDRAW MODAL — Open / Close
+   ============================================================ */
+async function openWithdrawModal() {
+  haptic('light');
+
+  // Check global toggle
+  const settings = await apiCall('/miniapp/api/admin/settings');
+  if (settings.success && settings.settings) {
+    const withdrawEnabled = settings.settings.withdraw_enabled !== false;
+    if (!withdrawEnabled) {
+      showToast('⚠️ Withdrawals are currently disabled');
+      haptic('error');
+      return;
+    }
+    if (settings.settings.min_withdraw !== undefined) {
+      minWithdraw = parseFloat(settings.settings.min_withdraw) || 0;
+    }
+    if (settings.settings.max_withdraw !== undefined) {
+      maxWithdraw = parseFloat(settings.settings.max_withdraw) || 0;
+    }
+  }
 
   // Reset views
   document.getElementById('withdrawFormView').style.display = 'block';
@@ -1312,109 +1521,127 @@ function openWithdrawModal() {
 
   // Reset form
   document.getElementById('modalAmountInput').value = '';
+  document.getElementById('modalLinkSection').classList.remove('active');
   document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
 
   // Update balance display
-  document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
+  document.getElementById('modalBalance').textContent = formatCurrency(userBalance);
 
-  // Render methods
-  renderModalMethods();
+  // Load dynamic methods
+  await loadWithdrawMethods();
 
   // Show modal
   document.getElementById('withdrawModal').classList.add('active');
-
-  // Prevent body scroll while modal open
   document.body.style.overflow = 'hidden';
 }
 
 function closeWithdrawModal() {
   haptic('light');
   document.getElementById('withdrawModal').classList.remove('active');
-
-  // Restore scroll
   forceScrollEnable();
-
-  // Refresh user data
   setTimeout(() => loadUser(), 300);
 }
 
-// ============================================================
-// 🎨 RENDER MODAL METHOD GRID
-// ============================================================
-function renderModalMethods() {
-  const grid = document.getElementById('modalMethodGrid');
+/* ============================================================
+   💳 LOAD WITHDRAW METHODS (Dynamic from API)
+   ============================================================ */
+async function loadWithdrawMethods() {
+  const listEl = document.getElementById('modalMethodList');
+  listEl.innerHTML = '<div class="loading">⏳ Loading methods...</div>';
 
-  const methods = [
-    { key: 'upi', name: 'UPI', icon: '⚡', details: userSavedDetails.upi },
-    { key: 'bank', name: 'Bank', icon: '🏦', details: userSavedDetails.bank },
-    { key: 'wallet', name: 'Wallet', icon: '🌐', details: userSavedDetails.wallet },
-    { key: 'redeem', name: 'Redeem', icon: '🎁', details: userSavedDetails.redeem }
-  ];
+  const res = await apiCall('/miniapp/api/withdraw-methods');
+
+  if (!res.success || !res.methods || res.methods.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div>No withdraw methods available</div>
+      </div>
+    `;
+    return;
+  }
+
+  withdrawMethods = res.methods;
 
   let html = '';
-  methods.forEach(m => {
-    const isLinked = !!m.details;
+  res.methods.forEach((m, idx) => {
+    const isAuto = m.type === 'auto';
+    const badgeClass = isAuto ? 'auto' : 'manual';
+    const badgeText = isAuto ? '⚡ Auto • Instant' : '⏳ Admin Approval';
+
     html += `
-      <button class="modal-method-btn ${isLinked ? 'linked' : 'not-linked'}"
-              data-method="${m.key}"
-              onclick="modalSelectMethod('${m.key}')">
-        ${isLinked ? '<span class="linked-badge">✓ LINKED</span>' : ''}
-        <span class="mi">${m.icon}</span>
-        <span class="mname">${m.name}</span>
-      </button>
+      <div class="withdraw-method-card ${isAuto ? 'auto' : ''}"
+           data-key="${m.key}"
+           style="animation-delay:${idx * 0.05}s"
+           onclick="modalSelectMethod('${m.key}')">
+        <div class="withdraw-method-icon">
+          ${getMethodIconSVG(m.icon)}
+        </div>
+        <div class="withdraw-method-info">
+          <div class="withdraw-method-name">${escapeHtml(m.name)}</div>
+          <div class="withdraw-method-badge ${badgeClass}">${badgeText}</div>
+        </div>
+        <div class="withdraw-method-arrow">›</div>
+      </div>
     `;
   });
 
-  grid.innerHTML = html;
+  listEl.innerHTML = html;
 
-  // Auto-select first linked
-  const firstLinked = methods.find(m => m.details);
-  if (firstLinked) {
-    modalSelectMethod(firstLinked.key);
-  } else {
-    modalSelectMethod('upi');
+  // Auto-select first method
+  if (res.methods.length > 0) {
+    modalSelectMethod(res.methods[0].key);
   }
 }
 
-// ============================================================
-// 💳 MODAL SELECT METHOD
-// ============================================================
+/* ============================================================
+   💳 SELECT METHOD
+   ============================================================ */
 function modalSelectMethod(methodKey) {
+  const method = withdrawMethods.find(m => m.key === methodKey);
+  if (!method) return;
+
   selectedMethod = methodKey;
+  selectedMethodData = method;
 
-  const methodData = {
-    upi: { label: 'UPI', inputLabel: '⚡ Enter your UPI ID', placeholder: 'yourname@upi' },
-    bank: { label: 'Bank', inputLabel: '🏦 Enter Bank Account Number', placeholder: 'Enter account number' },
-    wallet: { label: 'Wallet', inputLabel: '🌐 Enter Wallet ID', placeholder: 'Enter wallet ID' },
-    redeem: { label: 'Redeem', inputLabel: '🎁 Enter Redeem Code', placeholder: 'Enter redeem code' }
-  };
-
-  const m = methodData[methodKey];
-  if (!m) return;
-
-  selectedMethodLabel = m.label;
-
-  document.querySelectorAll('.modal-method-btn').forEach(b => {
-    b.classList.toggle('selected', b.dataset.method === methodKey);
+  // Highlight selected
+  document.querySelectorAll('.withdraw-method-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.key === methodKey);
   });
 
+  // Update min/max labels
+  const min = parseFloat(method.minAmount) || 0;
+  const max = parseFloat(method.maxAmount) || 0;
+  document.getElementById('modalMinLabel').textContent = min;
+  document.getElementById('modalMaxLabel').textContent = max > 0 ? max : '∞';
+
+  // Check if user has linked this method
   const isLinked = !!userSavedDetails[methodKey];
 
   if (isLinked) {
     document.getElementById('modalLinkSection').classList.remove('active');
   } else {
     document.getElementById('modalLinkSection').classList.add('active');
-    document.getElementById('modalLinkMethodName').textContent = m.label;
-    document.getElementById('modalLinkInput').placeholder = m.placeholder;
+    document.getElementById('modalLinkMethodName').textContent = method.name;
+
+    // Set input placeholder based on method
+    const placeholders = {
+      gateway: 'Enter wallet number',
+      upi: 'yourname@upi',
+      bank: 'Account number',
+      amazon: 'email@amazon.com',
+      redeem: 'Redeem code'
+    };
+    document.getElementById('modalLinkInput').placeholder = placeholders[methodKey] || 'Enter details';
     document.getElementById('modalLinkInput').value = '';
   }
 
   haptic('light');
 }
 
-// ============================================================
-// 🔗 MODAL LINK METHOD NOW
-// ============================================================
+/* ============================================================
+   🔗 LINK METHOD NOW
+   ============================================================ */
 async function modalLinkMethodNow() {
   if (!selectedMethod) {
     showToast('❌ Select a method first');
@@ -1430,20 +1657,25 @@ async function modalLinkMethodNow() {
     return;
   }
 
+  // Field mapping
   const fieldMap = {
+    gateway: 'walletNumber',
     upi: 'upiId',
     bank: 'bankAccNo',
-    wallet: 'walletAccount',
+    amazon: 'amazonEmail',
     redeem: 'redeemCodeAddr'
   };
 
   const field = fieldMap[selectedMethod];
-  if (!field) return;
+  if (!field) {
+    showToast('❌ Invalid method');
+    return;
+  }
 
   const btn = event?.target;
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="loading-spinner"></span> Linking...';
+    btn.innerHTML = '⏳ Linking...';
   }
 
   try {
@@ -1462,11 +1694,11 @@ async function modalLinkMethodNow() {
 
       userSavedDetails[selectedMethod] = value;
       document.getElementById('modalLinkSection').classList.remove('active');
-      renderModalMethods();
-      modalSelectMethod(selectedMethod);
-
-      // Refresh home payment methods too
       await loadPaymentMethods();
+      await loadUser();
+
+      // Re-select method
+      modalSelectMethod(selectedMethod);
     } else {
       showToast('❌ ' + (data.error || 'Failed'));
       haptic('error');
@@ -1481,9 +1713,9 @@ async function modalLinkMethodNow() {
   }
 }
 
-// ============================================================
-// 📌 MODAL AMOUNT HANDLERS
-// ============================================================
+/* ============================================================
+   📌 AMOUNT HANDLERS
+   ============================================================ */
 function modalSetAmount(amt, btn) {
   document.getElementById('modalAmountInput').value = amt;
   document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
@@ -1496,47 +1728,53 @@ function modalSetMax() {
     showToast('❌ No balance available');
     return;
   }
-  const max = Math.min(userBalance, maxWithdraw);
+  const maxLimit = (selectedMethodData && selectedMethodData.maxAmount > 0)
+    ? parseFloat(selectedMethodData.maxAmount)
+    : Infinity;
+  const max = Math.min(userBalance, maxLimit);
   document.getElementById('modalAmountInput').value = max.toFixed(2);
   document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
   haptic('light');
 }
 
-// ============================================================
-// ✅ MODAL SUBMIT WITHDRAWAL
-// ============================================================
+/* ============================================================
+   ✅ SUBMIT WITHDRAWAL
+   ============================================================ */
 async function modalSubmitWithdraw() {
   const amountStr = document.getElementById('modalAmountInput').value.trim();
   const btn = document.getElementById('modalSubmitBtn');
-
   const amount = parseFloat(amountStr);
 
+  // Validation
   if (isNaN(amount) || amount <= 0) {
     showToast('❌ Enter a valid amount');
     haptic('error');
     return;
   }
 
-  if (amount < minWithdraw) {
-    showToast(`❌ Minimum withdrawal is ₹${minWithdraw}`);
+  if (!selectedMethodData) {
+    showToast('❌ Select payment method');
     haptic('error');
     return;
   }
 
-  if (amount > maxWithdraw) {
-    showToast(`❌ Maximum withdrawal is ₹${maxWithdraw}`);
+  const minW = parseFloat(selectedMethodData.minAmount) || 0;
+  const maxW = parseFloat(selectedMethodData.maxAmount) || 0;
+
+  if (minW > 0 && amount < minW) {
+    showToast(`❌ Minimum withdrawal is ₹${minW}`);
+    haptic('error');
+    return;
+  }
+
+  if (maxW > 0 && amount > maxW) {
+    showToast(`❌ Maximum withdrawal is ₹${maxW}`);
     haptic('error');
     return;
   }
 
   if (amount > userBalance) {
     showToast(`❌ Insufficient balance. Available: ₹${userBalance.toFixed(2)}`);
-    haptic('error');
-    return;
-  }
-
-  if (!selectedMethod) {
-    showToast('❌ Select payment method');
     haptic('error');
     return;
   }
@@ -1549,7 +1787,88 @@ async function modalSubmitWithdraw() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading-spinner"></span> SUBMITTING...';
+  btn.innerHTML = '⏳ Processing...';
+
+  // AUTO (Gateway) vs MANUAL
+  if (selectedMethodData.type === 'auto') {
+    await submitGatewayWithdraw(amount, details);
+  } else {
+    await submitManualWithdraw(amount);
+  }
+}
+
+/* ============================================================
+   🌐 GATEWAY AUTO WITHDRAW
+   ============================================================ */
+async function submitGatewayWithdraw(amount, wallet) {
+  const btn = document.getElementById('modalSubmitBtn');
+
+  // Close withdraw modal
+  document.getElementById('withdrawModal').classList.remove('active');
+
+  // Show processing overlay
+  document.getElementById('processingGateway').textContent = selectedMethodData.name;
+  document.getElementById('processingAmount').textContent = '₹' + amount.toFixed(2);
+  document.getElementById('processingWallet').textContent = wallet;
+  document.getElementById('processingOverlay').classList.add('active');
+
+  haptic('success');
+
+  try {
+    const res = await apiCall('/miniapp/api/gateway/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: userId,
+        amount: amount
+      })
+    });
+
+    // Hide processing
+    document.getElementById('processingOverlay').classList.remove('active');
+
+    if (res.success) {
+      // Update balance
+      if (res.newBalance !== undefined) userBalance = parseFloat(res.newBalance);
+
+      // Show success overlay
+      document.getElementById('successAmount').textContent = '₹' + amount.toFixed(2);
+      document.getElementById('successTxn').textContent = res.txnNumber || '-';
+      document.getElementById('successGateway').textContent = res.gatewayName || selectedMethodData.name;
+      document.getElementById('successBalance').textContent = formatCurrency(userBalance);
+      document.getElementById('successOverlay').classList.add('active');
+
+      haptic('success');
+      setTimeout(() => { loadUser(); loadRecentActivity(); }, 500);
+    } else {
+      // Show failed overlay
+      document.getElementById('failedAmount').textContent = '₹' + amount.toFixed(2);
+      document.getElementById('failedReason').textContent = res.error || 'Gateway declined';
+      document.getElementById('failedRefund').textContent = '₹' + amount.toFixed(2);
+      document.getElementById('failedOverlay').classList.add('active');
+
+      haptic('error');
+      setTimeout(() => { loadUser(); }, 500);
+    }
+  } catch (e) {
+    document.getElementById('processingOverlay').classList.remove('active');
+
+    document.getElementById('failedAmount').textContent = '₹' + amount.toFixed(2);
+    document.getElementById('failedReason').textContent = 'Network error';
+    document.getElementById('failedRefund').textContent = '₹' + amount.toFixed(2);
+    document.getElementById('failedOverlay').classList.add('active');
+
+    haptic('error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💸 Confirm Withdrawal';
+  }
+}
+
+/* ============================================================
+   👨‍💼 MANUAL WITHDRAW
+   ============================================================ */
+async function submitManualWithdraw(amount) {
+  const btn = document.getElementById('modalSubmitBtn');
 
   try {
     const res = await apiCall('/miniapp/api/withdraw', {
@@ -1557,14 +1876,24 @@ async function modalSubmitWithdraw() {
       body: JSON.stringify({
         userId: userId,
         amount: amount,
-        method: selectedMethodLabel
+        method: selectedMethodData.name
       })
     });
 
     if (res.success) {
       haptic('success');
       const newBalance = userBalance - amount;
-      showModalSuccess(amount, newBalance);
+
+      // Show success screen (inside modal)
+      document.getElementById('withdrawFormView').style.display = 'none';
+      document.getElementById('withdrawSuccessView').classList.add('active');
+
+      document.getElementById('modalSuccessAmount').textContent = '₹' + amount.toFixed(2);
+      document.getElementById('modalSuccessMethod').textContent = selectedMethodData.name;
+      document.getElementById('modalSuccessNewBalance').textContent = formatCurrency(newBalance);
+
+      userBalance = newBalance;
+      setTimeout(() => { loadUser(); loadRecentActivity(); }, 500);
     } else {
       haptic('error');
       showToast(`❌ ${res.error || 'Request failed'}`);
@@ -1579,39 +1908,97 @@ async function modalSubmitWithdraw() {
   }
 }
 
-// ============================================================
-// 🎉 MODAL SUCCESS
-// ============================================================
-function showModalSuccess(amount, newBalance) {
-  document.getElementById('withdrawFormView').style.display = 'none';
-  document.getElementById('withdrawSuccessView').classList.add('active');
-
-  document.getElementById('modalSuccessAmount').textContent = '₹' + amount.toFixed(2);
-  document.getElementById('modalSuccessMethod').textContent = selectedMethodLabel;
-  document.getElementById('modalSuccessNewBalance').textContent = '₹' + newBalance.toFixed(2);
-}
-
-// ============================================================
-// 🏠 NAVIGATION
-// ============================================================
-function openAddFund() {
+/* ============================================================
+   ✅ SUCCESS / FAILED OVERLAY CLOSE
+   ============================================================ */
+function closeSuccessOverlay() {
   haptic('light');
-  window.location.href = '/miniapp/addfund';
+  document.getElementById('successOverlay').classList.remove('active');
+  setTimeout(() => {
+    loadUser();
+    loadPaymentMethods();
+    loadRecentActivity();
+  }, 300);
 }
 
-function openPaymentMethods() {
+function closeFailedOverlay() {
   haptic('light');
-  window.location.href = '/miniapp/profile';
+  document.getElementById('failedOverlay').classList.remove('active');
+  setTimeout(() => loadUser(), 300);
 }
 
-function viewAllHistory() {
+/* ============================================================
+   💰 WALLET NUMBER MODAL (Single Global)
+   ============================================================ */
+function openWalletModal() {
   haptic('light');
-  window.location.href = '/miniapp/history';
+  document.getElementById('walletModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  // Pre-fill if exists
+  const input = document.getElementById('walletNumberInput');
+  const existing = userSavedDetails.gateway;
+  if (existing) input.value = existing;
+  else input.value = '';
+
+  setTimeout(() => input.focus(), 300);
 }
 
-// ============================================================
-// 🚀 INIT
-// ============================================================
+function closeWalletModal() {
+  haptic('light');
+  document.getElementById('walletModal').classList.remove('active');
+  forceScrollEnable();
+}
+
+async function saveWalletNumber() {
+  const input = document.getElementById('walletNumberInput');
+  const value = input.value.trim();
+
+  if (!value || value.length < 5 || !/^[0-9+\-\s]+$/.test(value)) {
+    showToast('❌ Invalid wallet number');
+    haptic('error');
+    return;
+  }
+
+  const btn = event?.target;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Saving...';
+  }
+
+  try {
+    const res = await apiCall('/miniapp/api/gateway/save-number', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: userId,
+        number: value
+      })
+    });
+
+    if (res.success) {
+      showToast('✅ Wallet saved!');
+      haptic('success');
+      userSavedDetails.gateway = value;
+      closeWalletModal();
+      await loadUser();
+      await loadPaymentMethods();
+    } else {
+      showToast('❌ ' + (res.error || 'Failed'));
+      haptic('error');
+    }
+  } catch (e) {
+    showToast('❌ Network error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Wallet';
+    }
+  }
+}
+
+/* ============================================================
+   🚀 INIT
+   ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
   forceScrollEnable();
 
@@ -1638,7 +2025,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 
-// Expose globals
+/* ============================================================
+   🌐 EXPOSE GLOBALS
+   ============================================================ */
 window.refreshBalance = refreshBalance;
 window.openWithdrawModal = openWithdrawModal;
 window.closeWithdrawModal = closeWithdrawModal;
@@ -1650,7 +2039,9 @@ window.modalSubmitWithdraw = modalSubmitWithdraw;
 window.openAddFund = openAddFund;
 window.openPaymentMethods = openPaymentMethods;
 window.viewAllHistory = viewAllHistory;
+window.closeSuccessOverlay = closeSuccessOverlay;
+window.closeFailedOverlay = closeFailedOverlay;
+window.openWalletModal = openWalletModal;
+window.closeWalletModal = closeWalletModal;
+window.saveWalletNumber = saveWalletNumber;
 </script>
-
-</body>
-</html>
