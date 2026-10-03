@@ -6,357 +6,661 @@
 <title>Quick Pay</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
-  .pay-card {
-    padding: 20px;
-    margin-bottom: 14px;
-    border-radius: 20px;
-  }
+/* ═══════════════════════════════════════════════════════
+   PAY PAGE — Additional Styles
+   ═══════════════════════════════════════════════════════ */
 
-  .pay-label {
-    font-size: 11px;
-    color: #00ff88;
-    opacity: 0.7;
-    letter-spacing: 1.5px;
-    font-weight: 800;
-    display: block;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-  }
+.pay-card {
+  padding: 20px;
+  margin-bottom: 14px;
+  border-radius: 20px;
+}
 
-  .pay-input-row {
-    display: flex;
-    gap: 10px;
-  }
+.pay-label {
+  font-size: 11px;
+  color: #00cc6a;
+  opacity: 0.65;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
 
-  .pay-input-row input {
-    flex: 1;
-    background: rgba(0, 20, 10, 0.6);
-    border: 1px solid rgba(0, 255, 136, 0.25);
-    color: #00ff88;
-    padding: 14px 16px;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    outline: none;
-    font-family: inherit;
-  }
+.pay-label .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
+}
 
-  .pay-input-row input:focus {
-    border-color: #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-  }
+.pay-input-row {
+  display: flex;
+  gap: 10px;
+}
 
-  .pay-input-row input::placeholder {
-    color: #00ff88;
-    opacity: 0.4;
-  }
+.pay-input-row input {
+  flex: 1;
+  background: rgba(0, 15, 8, 0.65);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  color: #00ff88;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+}
 
-  .check-btn {
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 0 22px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-  }
+.pay-input-row input:focus {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.15);
+}
 
-  .check-btn:active {
-    transform: scale(0.96);
-  }
+.pay-input-row input::placeholder {
+  color: #00cc6a;
+  opacity: 0.35;
+}
 
-  .user-info-box {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: rgba(0, 255, 136, 0.08);
-    border: 1px solid rgba(0, 255, 136, 0.35);
-    border-radius: 14px;
-    padding: 14px;
-    margin-top: 14px;
-    animation: fadeIn 0.3s ease;
-  }
+.check-btn {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.check-btn .icon {
+  stroke: #000000;
+  width: 16px;
+  height: 16px;
+}
 
-  .user-info-avatar {
-    width: 52px;
-    height: 52px;
-    background: rgba(0, 255, 136, 0.15);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    overflow: hidden;
-    flex-shrink: 0;
-    border: 2px solid #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-  }
+.check-btn:active {
+  transform: scale(0.96);
+}
 
-  .user-info-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+.check-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-  .user-info-details {
-    flex: 1;
-    min-width: 0;
-  }
+.user-info-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.22);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 14px;
+  animation: fadeIn 0.3s ease;
+}
 
-  .user-info-name {
-    font-weight: 800;
-    font-size: 16px;
-    color: #00ff88;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .user-info-id {
-    color: #00ff88;
-    opacity: 0.65;
-    font-size: 12px;
-    margin-top: 3px;
-    font-family: 'SF Mono', 'Courier New', monospace;
-  }
+.user-info-avatar {
+  width: 52px;
+  height: 52px;
+  background: rgba(0, 255, 136, 0.10);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #00ff88;
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.25);
+}
 
-  .check-msg {
-    margin-top: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    text-align: center;
-  }
+.user-info-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-  .check-msg.success { color: #00ff88; text-shadow: 0 0 12px rgba(0, 255, 136, 0.5); }
-  .check-msg.error { color: #ff6464; }
+.user-info-avatar .icon {
+  width: 24px;
+  height: 24px;
+  stroke: #00ff88;
+}
 
-  .amount-input-wrap {
-    display: flex;
-    align-items: center;
-    background: rgba(0, 20, 10, 0.6);
-    border: 1px solid rgba(0, 255, 136, 0.25);
-    border-radius: 14px;
-    padding: 0 18px;
-    margin-bottom: 12px;
-  }
+.user-info-details {
+  flex: 1;
+  min-width: 0;
+}
 
-  .amount-input-wrap:focus-within {
-    border-color: #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-  }
+.user-info-name {
+  font-weight: 800;
+  font-size: 16px;
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.25);
+}
 
-  .rupee-symbol {
-    font-size: 26px;
-    font-weight: 800;
-    color: #00ff88;
-  }
+.user-info-id {
+  color: #00cc6a;
+  opacity: 0.6;
+  font-size: 12px;
+  margin-top: 3px;
+  font-family: 'SF Mono', 'Courier New', monospace;
+}
 
-  .amount-input-wrap input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: #00ff88;
-    padding: 16px 10px;
-    font-size: 24px;
-    font-weight: 800;
-    outline: none;
-    font-family: inherit;
-  }
+.check-msg {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
 
-  .amount-input-wrap input::placeholder {
-    color: #00ff88;
-    opacity: 0.4;
-  }
+.check-msg .icon {
+  width: 16px;
+  height: 16px;
+}
 
-  .quick-amounts {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
+.check-msg.success {
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
 
-  .quick-amounts button {
-    background: rgba(0, 255, 136, 0.08);
-    color: #00ff88;
-    border: 1px solid rgba(0, 255, 136, 0.25);
-    padding: 12px 6px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.2s;
-  }
+.check-msg.success .icon {
+  stroke: #00ff88;
+}
 
-  .quick-amounts button:active {
-    background: #00ff88;
-    color: #000000;
-    transform: scale(0.95);
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-  }
+.check-msg.error {
+  color: #ff6464;
+}
 
-  .pay-balance-info {
-    display: flex;
-    justify-content: space-between;
-    border-radius: 14px;
-    padding: 14px 18px;
-    margin-bottom: 14px;
-    font-size: 14px;
-    background: rgba(0, 20, 10, 0.5);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-  }
+.check-msg.error .icon {
+  stroke: #ff6464;
+}
 
-  .pay-balance-info span:first-child {
-    color: #00ff88;
-    opacity: 0.65;
-    font-weight: 700;
-  }
+/* Amount input */
+.amount-input-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 15, 8, 0.65);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+  border-radius: 14px;
+  padding: 0 18px;
+  margin-bottom: 12px;
+  transition: all 0.25s;
+}
 
-  .pay-balance-info span:last-child {
-    color: #00ff88;
-    font-weight: 800;
-    text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
-  }
+.amount-input-wrap:focus-within {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+}
 
-  .pay-now-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-    color: #000000;
-    border: none;
-    padding: 18px;
-    border-radius: 16px;
-    font-weight: 800;
-    font-size: 16px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
-    transition: all 0.2s;
-    font-family: inherit;
-  }
+.rupee-symbol {
+  font-size: 26px;
+  font-weight: 800;
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+  flex-shrink: 0;
+}
 
-  .pay-now-btn:active {
-    transform: scale(0.97);
-  }
+.amount-input-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #00ff88;
+  padding: 16px 10px;
+  font-size: 24px;
+  font-weight: 800;
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+}
 
-  /* ✅ Confirm Modal */
-  .confirm-modal-content {
-    text-align: center;
-  }
+.amount-input-wrap input::placeholder {
+  color: #00cc6a;
+  opacity: 0.3;
+}
 
-  .confirm-icon {
-    font-size: 52px;
-    margin-bottom: 12px;
-  }
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
 
-  .confirm-details {
-    background: rgba(0, 255, 136, 0.05);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 16px;
-    text-align: left;
-  }
+.quick-amounts button {
+  background: rgba(0, 255, 136, 0.05);
+  color: #00cc6a;
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  padding: 12px 6px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
 
-  .confirm-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    font-size: 13px;
-  }
+.quick-amounts button .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
 
-  .confirm-label { color: #00ff88; opacity: 0.65; font-weight: 700; }
-  .confirm-value { color: #00ff88; font-weight: 800; max-width: 60%; text-align: right; word-break: break-all; }
-  .confirm-value.mono { font-family: 'SF Mono', 'Courier New', monospace; }
+.quick-amounts button:active {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  transform: scale(0.95);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.4);
+}
 
-  .confirm-balance-update {
-    background: rgba(0, 255, 136, 0.04);
-    border: 1px solid rgba(0, 255, 136, 0.15);
-    border-radius: 12px;
-    padding: 14px;
-    margin: 12px 0;
-    text-align: left;
-  }
+.quick-amounts button:active .icon {
+  stroke: #000000;
+}
 
-  .confirm-balance-title {
-    font-size: 11px;
-    color: #00ff88;
-    opacity: 0.7;
-    letter-spacing: 1.5px;
-    font-weight: 800;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-  }
+.quick-amounts button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(255, 100, 100, 0.05);
+  border-color: rgba(255, 100, 100, 0.15);
+  color: #ff6464;
+}
 
-  .balance-update-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 13px;
-  }
+.quick-amounts button:disabled .icon {
+  stroke: #ff6464;
+}
 
-  .balance-update-row span:first-child {
-    color: #00ff88;
-    opacity: 0.7;
-    font-weight: 700;
-  }
+.pay-balance-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  background: rgba(0, 15, 8, 0.55);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  gap: 10px;
+}
 
-  .balance-update-row span:last-child {
-    color: #00ff88;
-    font-weight: 800;
-    font-family: 'SF Mono', 'Courier New', monospace;
-  }
+.pay-balance-info span:first-child {
+  color: #00cc6a;
+  opacity: 0.65;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-  .confirm-buttons {
-    display: flex;
-    gap: 10px;
-  }
+.pay-balance-info span:first-child .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #00cc6a;
+}
 
-  .confirm-cancel-btn {
-    flex: 1;
-    background: rgba(255, 100, 100, 0.1);
-    color: #ff6464;
-    border: 1px solid rgba(255, 100, 100, 0.3);
-    padding: 14px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-  }
+.pay-balance-info span:last-child {
+  color: #00ff88;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
 
-  .confirm-ok-btn {
-    flex: 1;
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #000000;
-    border: none;
-    padding: 14px;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
-  }
+.pay-now-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+  color: #000000;
+  border: none;
+  padding: 18px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 255, 136, 0.3);
+  transition: all 0.2s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
-  /* ✅ Success modal */
-  .success-icon {
-    font-size: 68px;
-    margin-bottom: 12px;
-    animation: bounceIn 0.5s ease;
-  }
+.pay-now-btn .icon {
+  stroke: #000000;
+  width: 18px;
+  height: 18px;
+}
 
-  @keyframes bounceIn {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.15); }
-    100% { transform: scale(1); opacity: 1; }
-  }
+.pay-now-btn:active {
+  transform: scale(0.97);
+}
+
+.pay-now-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ───── Confirm Modal ───── */
+.confirm-modal-content {
+  text-align: center;
+}
+
+.confirm-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(255, 165, 0, 0.10);
+  border: 2px solid rgba(255, 165, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 25px rgba(255, 165, 0, 0.2);
+}
+
+.confirm-icon .icon {
+  width: 34px;
+  height: 34px;
+  stroke: #ffa500;
+}
+
+.confirm-details {
+  background: rgba(0, 255, 136, 0.04);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  gap: 10px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+}
+
+.confirm-row:last-child {
+  border-bottom: none;
+}
+
+.confirm-label {
+  color: #00cc6a;
+  opacity: 0.6;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm-label .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
+.confirm-value {
+  color: #00ff88;
+  font-weight: 800;
+  max-width: 60%;
+  text-align: right;
+  word-break: break-all;
+}
+
+.confirm-value.mono {
+  font-family: 'SF Mono', 'Courier New', monospace;
+}
+
+/* Balance update box */
+.confirm-balance-update {
+  background: rgba(0, 255, 136, 0.03);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+  text-align: left;
+}
+
+.confirm-balance-title {
+  font-size: 11px;
+  color: #00cc6a;
+  opacity: 0.6;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm-balance-title .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
+.balance-update-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  gap: 10px;
+}
+
+.balance-update-row span:first-child {
+  color: #00cc6a;
+  opacity: 0.65;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.balance-update-row span:first-child .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
+.balance-update-row span:last-child {
+  color: #00ff88;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 12.5px;
+}
+
+/* Tax warning */
+.tax-warning {
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 11.5px;
+  color: #ffa500;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tax-warning .icon {
+  width: 14px;
+  height: 14px;
+  stroke: #ffa500;
+  flex-shrink: 0;
+}
+
+/* Buttons row */
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.confirm-cancel-btn {
+  flex: 1;
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff6464;
+  border: 1px solid rgba(255, 100, 100, 0.25);
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.confirm-cancel-btn .icon {
+  stroke: #ff6464;
+  width: 15px;
+  height: 15px;
+}
+
+.confirm-ok-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000000;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.confirm-ok-btn .icon {
+  stroke: #000000;
+  width: 15px;
+  height: 15px;
+}
+
+.confirm-ok-btn:active,
+.confirm-cancel-btn:active {
+  transform: scale(0.97);
+}
+
+/* Success modal */
+.success-icon {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 3px solid #00ff88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.35);
+  animation: bounceIn 0.5s ease;
+}
+
+.success-icon .icon {
+  width: 44px;
+  height: 44px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.5));
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #00ff88;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
+
+.success-msg {
+  color: #00cc6a;
+  opacity: 0.7;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.success-details {
+  background: rgba(0, 255, 136, 0.04);
+  border: 1px solid rgba(0, 255, 136, 0.10);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.success-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 12.5px;
+  gap: 10px;
+}
+
+.success-row span:first-child {
+  color: #00cc6a;
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+.success-row span:last-child {
+  color: #00ff88;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 12px;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+.confirm-subtitle {
+  color: #00cc6a;
+  opacity: 0.65;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
 </style>
 </head>
 <body>
@@ -366,20 +670,31 @@
 
     <!-- Page Header -->
     <div class="page-header">
-      <div class="page-title">💸 Quick Pay</div>
+      <div class="page-title">
+        <i data-lucide="send"></i>
+        <span>Quick Pay</span>
+      </div>
       <p class="page-sub">Send money to any user instantly</p>
     </div>
 
     <!-- Receiver Input -->
     <div class="pay-card glass">
-      <label class="pay-label">📱 Receiver User ID</label>
+      <label class="pay-label">
+        <i data-lucide="user-search"></i>
+        <span>Receiver User ID</span>
+      </label>
       <div class="pay-input-row">
         <input type="number" id="payUserId" placeholder="Enter User ID" autocomplete="off" inputmode="numeric">
-        <button class="check-btn" id="checkBtn" onclick="checkUser()">CHECK</button>
+        <button class="check-btn" id="checkBtn" onclick="checkUser()">
+          <i data-lucide="search"></i>
+          <span>Check</span>
+        </button>
       </div>
 
       <div id="userInfoBox" class="user-info-box" style="display:none;">
-        <div class="user-info-avatar" id="userInfoAvatar">👤</div>
+        <div class="user-info-avatar" id="userInfoAvatar">
+          <i data-lucide="user"></i>
+        </div>
         <div class="user-info-details">
           <div class="user-info-name" id="userInfoName">-</div>
           <div class="user-info-id" id="userInfoId">ID: -</div>
@@ -391,46 +706,53 @@
 
     <!-- Amount Input -->
     <div class="pay-card glass" id="amountCard" style="display:none;">
-      <label class="pay-label">💰 Amount</label>
+      <label class="pay-label">
+        <i data-lucide="indian-rupee"></i>
+        <span>Amount</span>
+      </label>
       <div class="amount-input-wrap">
         <span class="rupee-symbol">₹</span>
         <input type="number" id="payAmount" placeholder="0" min="1" autocomplete="off" inputmode="decimal">
       </div>
       <div class="quick-amounts">
-        <button onclick="setAmount(10)">₹10</button>
-        <button onclick="setAmount(50)">₹50</button>
-        <button onclick="setAmount(100)">₹100</button>
-        <button onclick="setAmount(500)">₹500</button>
+        <button onclick="setAmount(10)" data-amt="10">₹10</button>
+        <button onclick="setAmount(50)" data-amt="50">₹50</button>
+        <button onclick="setAmount(100)" data-amt="100">₹100</button>
+        <button onclick="setAmount(500)" data-amt="500">₹500</button>
       </div>
     </div>
 
     <!-- Balance Info -->
     <div class="pay-balance-info" id="payBalanceInfo" style="display:none;">
-      <span>💵 Your Balance:</span>
+      <span>
+        <i data-lucide="wallet"></i>
+        <span>Your Balance:</span>
+      </span>
       <span id="payBalance">₹0.00</span>
     </div>
 
     <!-- Pay Button -->
     <button class="pay-now-btn" id="payNowBtn" onclick="initiatePay()" style="display:none;">
-      💸 PAY NOW
+      <i data-lucide="send"></i>
+      <span>PAY NOW</span>
     </button>
 
     <!-- Bottom Nav -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
+        <span class="nav-icon"><i data-lucide="home"></i></span>
         <span class="nav-label">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
         <span class="nav-label">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item active">
-        <span class="nav-icon">💸</span>
+        <span class="nav-icon"><i data-lucide="send"></i></span>
         <span class="nav-label">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
+        <span class="nav-icon"><i data-lucide="user"></i></span>
         <span class="nav-label">PROFILE</span>
       </a>
     </nav>
@@ -441,39 +763,67 @@
 <!-- CONFIRM MODAL -->
 <div class="modal" id="confirmModal">
   <div class="modal-content glass confirm-modal-content">
-    <div class="confirm-icon">⚠️</div>
-    <h3>Confirm Payment</h3>
+    <div class="confirm-icon">
+      <i data-lucide="shield-alert"></i>
+    </div>
+    <h3 style="justify-content:center;">Confirm Payment</h3>
 
     <div class="confirm-details">
       <div class="confirm-row">
-        <span class="confirm-label">👤 Receiver</span>
+        <span class="confirm-label">
+          <i data-lucide="user"></i>
+          <span>Receiver</span>
+        </span>
         <span class="confirm-value" id="confirmName">-</span>
       </div>
       <div class="confirm-row">
-        <span class="confirm-label">🆔 ID</span>
+        <span class="confirm-label">
+          <i data-lucide="hash"></i>
+          <span>ID</span>
+        </span>
         <span class="confirm-value mono" id="confirmUserId">-</span>
       </div>
       <div class="confirm-row">
-        <span class="confirm-label">💰 Amount</span>
+        <span class="confirm-label">
+          <i data-lucide="indian-rupee"></i>
+          <span>Amount</span>
+        </span>
         <span class="confirm-value" id="confirmAmount">₹0</span>
       </div>
     </div>
 
     <div class="confirm-balance-update" id="balanceUpdateBox">
-      <div class="confirm-balance-title">📊 Balance Update</div>
+      <div class="confirm-balance-title">
+        <i data-lucide="trending-up"></i>
+        <span>Balance Update</span>
+      </div>
       <div class="balance-update-row" id="yourBalanceRow">
-        <span>💵 Your</span>
+        <span>
+          <i data-lucide="wallet"></i>
+          <span>Your</span>
+        </span>
         <span id="yourBalanceChange">₹0 → ₹0</span>
       </div>
       <div class="balance-update-row">
-        <span>💰 Receiver</span>
+        <span>
+          <i data-lucide="user"></i>
+          <span>Receiver</span>
+        </span>
         <span id="receiverBalanceChange">₹0 → ₹0</span>
       </div>
     </div>
 
+    <div id="taxWarningBox" style="display:none;"></div>
+
     <div class="confirm-buttons">
-      <button class="confirm-cancel-btn" onclick="cancelPay()">❌ CANCEL</button>
-      <button class="confirm-ok-btn" id="confirmBtn" onclick="confirmPay()">✅ CONFIRM</button>
+      <button class="confirm-cancel-btn" onclick="cancelPay()">
+        <i data-lucide="x"></i>
+        <span>Cancel</span>
+      </button>
+      <button class="confirm-ok-btn" id="confirmBtn" onclick="confirmPay()">
+        <i data-lucide="check"></i>
+        <span>Confirm</span>
+      </button>
     </div>
   </div>
 </div>
@@ -481,16 +831,41 @@
 <!-- SUCCESS MODAL -->
 <div class="modal" id="successModal">
   <div class="modal-content glass confirm-modal-content">
-    <div class="success-icon">✅</div>
-    <h3>Payment Successful!</h3>
-    <p class="confirm-subtitle" id="successMsg">Money sent successfully.</p>
-    <button class="confirm-ok-btn" onclick="closeSuccess()" style="width:100%;margin-top:16px;">OK</button>
+    <div class="success-icon">
+      <i data-lucide="check"></i>
+    </div>
+    <div class="success-title">PAYMENT SUCCESSFUL!</div>
+    <div class="success-msg" id="successMsg">Money sent successfully.</div>
+
+    <div class="success-details">
+      <div class="success-row">
+        <span>Receiver</span>
+        <span id="successReceiver">-</span>
+      </div>
+      <div class="success-row">
+        <span>Amount</span>
+        <span id="successAmount">₹0</span>
+      </div>
+      <div class="success-row" id="successNewBalRow">
+        <span>New Balance</span>
+        <span id="successNewBalance">₹0</span>
+      </div>
+      <div class="success-row">
+        <span>Time</span>
+        <span id="successTime">-</span>
+      </div>
+    </div>
+
+    <button class="confirm-ok-btn" onclick="closeSuccess()" style="width:100%;margin-top:16px;">
+      <i data-lucide="check"></i>
+      <span>OK</span>
+    </button>
   </div>
 </div>
 
 <script>
 // ============================================================
-// 💸 QUICK PAY
+// 💸 QUICK PAY LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -505,6 +880,17 @@ const MY_ID = tg?.initDataUnsafe?.user?.id;
 let checkedUser = null;
 let myBalance = 0;
 let isAdminUser = false;
+let payTaxEnabled = false;
+let payTaxPercent = 0;
+
+// ============================================================
+// 🎯 ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
 
 // ============================================================
 // 🔔 TOAST
@@ -522,38 +908,77 @@ function showToast(msg) {
   }, 2000);
 }
 
-function showMsg(msg, type = 'error') {
-  const el = document.getElementById('userCheckMsg');
-  el.className = 'check-msg ' + type;
-  el.textContent = msg;
-}
-
-function clearMsg() {
-  document.getElementById('userCheckMsg').textContent = '';
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
 }
 
 // ============================================================
-// 💰 LOAD MY BALANCE + ADMIN STATUS
+// 💬 MSG HELPERS
+// ============================================================
+function showMsg(msg, type = 'error') {
+  const el = document.getElementById('userCheckMsg');
+  const iconName = type === 'success' ? 'check-circle-2' : 'x-circle';
+  el.className = 'check-msg ' + type;
+  el.innerHTML = `<i data-lucide="${iconName}" class="icon"></i><span>${msg}</span>`;
+  renderIcons();
+}
+
+function clearMsg() {
+  document.getElementById('userCheckMsg').innerHTML = '';
+  document.getElementById('userCheckMsg').className = 'check-msg';
+}
+
+// ============================================================
+// 💰 LOAD MY BALANCE + ADMIN + TAX INFO
 // ============================================================
 async function loadMyBalance() {
   if (!MY_ID) return;
   try {
-    const [userRes, adminRes] = await Promise.all([
+    const [userRes, adminRes, settingsRes] = await Promise.all([
       fetch(`/miniapp/api/user/${MY_ID}`),
-      fetch(`/miniapp/api/is-admin/${MY_ID}`)
+      fetch(`/miniapp/api/is-admin/${MY_ID}`),
+      fetch('/miniapp/api/admin/settings').catch(() => ({ json: () => ({}) }))
     ]);
 
     const userData = await userRes.json();
     const adminData = await adminRes.json();
+    let settingsData = {};
+    try { settingsData = await settingsRes.json(); } catch (e) {}
 
     if (userData.success) {
       myBalance = userData.user.balance || 0;
       document.getElementById('payBalance').textContent = '₹' + myBalance.toFixed(2);
     }
+
     isAdminUser = adminData.isAdmin === true;
+
+    if (settingsData.success && settingsData.settings) {
+      payTaxEnabled = settingsData.settings.quick_pay_tax_enabled || false;
+      payTaxPercent = settingsData.settings.quick_pay_tax_percent || 0;
+    }
+
+    updateQuickButtons();
   } catch (e) {
     console.error('Balance load:', e);
   }
+}
+
+// ============================================================
+// 🔘 UPDATE QUICK AMOUNT BUTTONS (based on balance)
+// ============================================================
+function updateQuickButtons() {
+  document.querySelectorAll('.quick-amounts button').forEach(btn => {
+    const amt = parseFloat(btn.dataset.amt) || 0;
+    if (!isAdminUser && amt > myBalance) {
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+    }
+  });
 }
 
 // ============================================================
@@ -566,17 +991,17 @@ async function checkUser() {
   const btn = document.getElementById('checkBtn');
 
   if (!userId || isNaN(userId)) {
-    showMsg('❌ Enter a valid User ID', 'error');
+    showMsg('Enter a valid User ID', 'error');
     return;
   }
 
   if (parseInt(userId) === MY_ID) {
-    showMsg('❌ Cannot send to yourself', 'error');
+    showMsg('Cannot send to yourself', 'error');
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = '⏳';
+  btn.innerHTML = 'Checking...';
   document.getElementById('userInfoBox').style.display = 'none';
   document.getElementById('amountCard').style.display = 'none';
   document.getElementById('payBalanceInfo').style.display = 'none';
@@ -587,9 +1012,10 @@ async function checkUser() {
     const data = await res.json();
 
     if (!data.success) {
-      showMsg(`❌ ${data.error || 'User not found'}`, 'error');
+      showMsg(data.error || 'User not found', 'error');
       btn.disabled = false;
-      btn.textContent = 'CHECK';
+      btn.innerHTML = '<i data-lucide="search" class="icon"></i><span>Check</span>';
+      renderIcons();
       return;
     }
 
@@ -602,24 +1028,26 @@ async function checkUser() {
     if (data.user.photoUrl) {
       avatar.innerHTML = `<img src="${data.user.photoUrl}" alt="">`;
     } else {
-      avatar.textContent = (data.user.firstName || 'U').charAt(0).toUpperCase();
+      avatar.innerHTML = `<i data-lucide="user"></i>`;
     }
 
     document.getElementById('userInfoBox').style.display = 'flex';
     document.getElementById('amountCard').style.display = 'block';
     document.getElementById('payBalanceInfo').style.display = 'flex';
-    document.getElementById('payNowBtn').style.display = 'block';
+    document.getElementById('payNowBtn').style.display = 'flex';
 
-    showMsg('✅ User found!', 'success');
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    showMsg('User found!', 'success');
+    haptic('success');
+    updateQuickButtons();
     setTimeout(() => document.getElementById('payAmount').focus(), 300);
   } catch (e) {
-    showMsg('❌ Network error', 'error');
+    showMsg('Network error', 'error');
     console.error(e);
   }
 
   btn.disabled = false;
-  btn.textContent = 'CHECK';
+  btn.innerHTML = '<i data-lucide="search" class="icon"></i><span>Check</span>';
+  renderIcons();
 }
 
 // ============================================================
@@ -627,44 +1055,91 @@ async function checkUser() {
 // ============================================================
 function setAmount(amt) {
   document.getElementById('payAmount').value = amt;
-  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  haptic('light');
 }
 
 // ============================================================
-// 💸 INITIATE PAY
+// 💸 INITIATE PAY (opens confirm modal)
 // ============================================================
-function initiatePay() {
+async function initiatePay() {
   clearMsg();
-  if (!checkedUser) { showToast('❌ Check user first'); return; }
+  if (!checkedUser) { showToast('Check user first'); return; }
 
   const amtStr = document.getElementById('payAmount').value.trim();
   const amt = parseFloat(amtStr);
 
-  if (isNaN(amt) || amt <= 0) { showToast('❌ Enter valid amount'); return; }
+  if (isNaN(amt) || amt <= 0) { showToast('Enter valid amount'); return; }
 
-  // ✅ Regular user — balance check
+  // Regular user — balance check
   if (!isAdminUser && amt > myBalance) {
-    showToast('❌ Insufficient balance');
+    showToast('Insufficient balance');
+    haptic('error');
     return;
   }
 
-  // ✅ Fill confirm modal
+  // ✅ Re-fetch fresh balances (avoid stale data)
+  try {
+    const [senderRes, receiverRes] = await Promise.all([
+      fetch(`/miniapp/api/user/${MY_ID}`),
+      fetch(`/miniapp/api/check-user/${checkedUser.userId}`)
+    ]);
+    const senderData = await senderRes.json();
+    const receiverData = await receiverRes.json();
+
+    if (senderData.success) {
+      myBalance = senderData.user.balance || 0;
+      document.getElementById('payBalance').textContent = '₹' + myBalance.toFixed(2);
+    }
+    if (receiverData.success) {
+      checkedUser.balance = receiverData.user.balance || 0;
+    }
+
+    // Re-check balance after fresh fetch
+    if (!isAdminUser && amt > myBalance) {
+      showToast('Insufficient balance');
+      haptic('error');
+      return;
+    }
+  } catch (e) {
+    console.error('Fresh fetch error:', e);
+  }
+
+  // Fill confirm modal
   document.getElementById('confirmName').textContent = checkedUser.firstName || 'User';
   document.getElementById('confirmUserId').textContent = checkedUser.userId;
   document.getElementById('confirmAmount').textContent = '₹' + amt.toFixed(2);
 
-  // ✅ Balance update info
+  // Balance update info
   if (isAdminUser) {
-    document.getElementById('yourBalanceRow').style.display = 'none';
+    document.getElementById('yourBalanceRow').style.display = 'flex';
+    document.getElementById('yourBalanceChange').textContent =
+      `₹${myBalance.toFixed(2)} → ₹${(myBalance - amt).toFixed(2)} (No Limit)`;
   } else {
     document.getElementById('yourBalanceRow').style.display = 'flex';
     document.getElementById('yourBalanceChange').textContent =
       `₹${myBalance.toFixed(2)} → ₹${(myBalance - amt).toFixed(2)}`;
   }
+
   document.getElementById('receiverBalanceChange').textContent =
     `₹${(checkedUser.balance || 0).toFixed(2)} → ₹${((checkedUser.balance || 0) + amt).toFixed(2)}`;
 
+  // Tax warning
+  if (payTaxEnabled && payTaxPercent > 0) {
+    const taxAmt = (amt * payTaxPercent) / 100;
+    const receiveAmt = amt - taxAmt;
+    const taxBox = document.getElementById('taxWarningBox');
+    taxBox.style.display = 'block';
+    taxBox.className = 'tax-warning';
+    taxBox.innerHTML = `
+      <i data-lucide="info" class="icon"></i>
+      <span>Tax ${payTaxPercent}% (₹${taxAmt.toFixed(2)}) — Receiver gets ₹${receiveAmt.toFixed(2)}</span>
+    `;
+  } else {
+    document.getElementById('taxWarningBox').style.display = 'none';
+  }
+
   document.getElementById('confirmModal').classList.add('active');
+  renderIcons();
 }
 
 // ============================================================
@@ -680,10 +1155,10 @@ function cancelPay() {
 async function confirmPay() {
   const amt = parseFloat(document.getElementById('payAmount').value);
   const btn = document.getElementById('confirmBtn');
-  if (!checkedUser || isNaN(amt) || amt <= 0) { showToast('❌ Invalid data'); return; }
+  if (!checkedUser || isNaN(amt) || amt <= 0) { showToast('Invalid data'); return; }
 
   btn.disabled = true;
-  btn.innerHTML = '⏳ Sending...';
+  btn.innerHTML = 'Sending...';
 
   try {
     const res = await fetch('/miniapp/api/quick-pay', {
@@ -696,18 +1171,38 @@ async function confirmPay() {
     document.getElementById('confirmModal').classList.remove('active');
 
     if (!data.success) {
-      showToast(`❌ ${data.error || 'Payment failed'}`);
+      showToast(data.error || 'Payment failed');
       btn.disabled = false;
-      btn.textContent = '✅ CONFIRM';
+      btn.innerHTML = '<i data-lucide="check" class="icon"></i><span>Confirm</span>';
+      renderIcons();
+      haptic('error');
       return;
     }
 
-    document.getElementById('successMsg').textContent =
-      `₹${amt.toFixed(2)} sent to ${checkedUser.firstName || 'User'}`;
+    // Success
+    haptic('success');
+
+    const newBalance = myBalance - amt;
+    document.getElementById('successReceiver').textContent = checkedUser.firstName || 'User';
+    document.getElementById('successAmount').textContent = '₹' + amt.toFixed(2);
+
+    if (isAdminUser) {
+      document.getElementById('successNewBalRow').style.display = 'flex';
+      document.getElementById('successNewBalance').textContent = '₹' + newBalance.toFixed(2);
+    } else {
+      document.getElementById('successNewBalRow').style.display = 'flex';
+      document.getElementById('successNewBalance').textContent = '₹' + newBalance.toFixed(2);
+    }
+
+    document.getElementById('successTime').textContent = new Date().toLocaleString('en-IN', {
+      day: '2-digit', month: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+
     document.getElementById('successModal').classList.add('active');
+    renderIcons();
 
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
+    // Reset form
     document.getElementById('payUserId').value = '';
     document.getElementById('payAmount').value = '';
     document.getElementById('userInfoBox').style.display = 'none';
@@ -718,11 +1213,13 @@ async function confirmPay() {
     checkedUser = null;
     await loadMyBalance();
   } catch (e) {
-    showToast('❌ Network error');
+    showToast('Network error');
     document.getElementById('confirmModal').classList.remove('active');
+    haptic('error');
   }
   btn.disabled = false;
-  btn.textContent = '✅ CONFIRM';
+  btn.innerHTML = '<i data-lucide="check" class="icon"></i><span>Confirm</span>';
+  renderIcons();
 }
 
 function closeSuccess() {
@@ -733,11 +1230,24 @@ function closeSuccess() {
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  renderIcons();
+
   if (!MY_ID) {
-    document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#00ff88;"><h2>⚠️ Open from Telegram</h2></div>`;
+    document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#00cc6a;"><h2 style="color:#ff6464;">Open from Telegram</h2></div>`;
     return;
   }
+
   await loadMyBalance();
+
+  // Reset checkedUser on input change
+  document.getElementById('payUserId')?.addEventListener('input', () => {
+    checkedUser = null;
+    document.getElementById('userInfoBox').style.display = 'none';
+    document.getElementById('amountCard').style.display = 'none';
+    document.getElementById('payBalanceInfo').style.display = 'none';
+    document.getElementById('payNowBtn').style.display = 'none';
+    clearMsg();
+  });
 
   document.getElementById('payUserId')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') checkUser();
@@ -745,15 +1255,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('payAmount')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') initiatePay();
   });
+
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
 });
 
+// Backdrop clicks
 document.getElementById('confirmModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'confirmModal') cancelPay();
 });
 document.getElementById('successModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'successModal') closeSuccess();
 });
+
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Expose globals
+window.checkUser = checkUser;
+window.setAmount = setAmount;
+window.initiatePay = initiatePay;
+window.cancelPay = cancelPay;
+window.confirmPay = confirmPay;
+window.closeSuccess = closeSuccess;
 </script>
 
 </body>
