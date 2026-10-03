@@ -6,48 +6,11 @@
 <title>TASK EARN BOT</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   HOME PAGE + WITHDRAW MODAL — Complete
+   HOME PAGE — Additional styles (page-specific)
    ═══════════════════════════════════════════════════════ */
-
-/* ───── 🔓 SCROLL FIX ───── */
-html, body {
-  height: auto !important;
-  min-height: 100vh !important;
-  max-height: none !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  position: relative !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: auto !important;
-  touch-action: pan-y !important;
-  padding-bottom: 200px !important;
-}
-
-.app {
-  overflow: visible !important;
-  max-height: none !important;
-  height: auto !important;
-  min-height: 100vh !important;
-  padding-bottom: 220px !important;
-  position: relative !important;
-}
-
-.app::after {
-  content: '';
-  display: block;
-  height: 120px;
-  width: 100%;
-  pointer-events: none;
-}
-
-.iphone-frame {
-  min-height: 100vh !important;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
-}
 
 /* ───── SECTION HEADER ───── */
 .section-header {
@@ -62,15 +25,33 @@ html, body {
   font-weight: 800;
   color: #00ff88;
   letter-spacing: 0.5px;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title-big .icon {
+  stroke: #00ff88;
+  width: 18px;
+  height: 18px;
 }
 
 .view-all {
-  color: #00ff88;
+  color: #00cc6a;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-all .icon {
+  stroke: #00cc6a;
+  width: 14px;
+  height: 14px;
 }
 
 .view-all:active {
@@ -84,9 +65,9 @@ html, body {
   gap: 12px;
   padding: 14px 16px;
   margin-bottom: 10px;
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.10);
   border-radius: 16px;
   animation: cardSlideIn 0.4s ease backwards;
 }
@@ -94,14 +75,19 @@ html, body {
 .activity-icon {
   width: 44px;
   height: 44px;
-  background: rgba(0, 255, 136, 0.1);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   flex-shrink: 0;
+}
+
+.activity-icon .icon {
+  width: 20px;
+  height: 20px;
+  stroke: #00ff88;
 }
 
 .activity-details {
@@ -121,8 +107,8 @@ html, body {
 
 .activity-meta {
   font-size: 11px;
-  color: #00ff88;
-  opacity: 0.6;
+  color: #00cc6a;
+  opacity: 0.55;
   font-weight: 600;
 }
 
@@ -134,46 +120,20 @@ html, body {
 
 .activity-amount.positive {
   color: #00ff88;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
 }
 
 .activity-amount.negative {
   color: #ff6464;
-  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+  text-shadow: 0 0 10px rgba(255, 100, 100, 0.3);
 }
 
-/* ───── LOADING / EMPTY ───── */
-.loading {
-  text-align: center;
-  color: #00ff88;
-  opacity: 0.7;
-  padding: 30px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 30px 20px;
-  color: #00ff88;
-  opacity: 0.7;
-}
-
-.empty-state .icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-}
-
-/* ═══════════════════════════════════════════════════════
-   💸 WITHDRAW MODAL — Premium
-   ═══════════════════════════════════════════════════════ */
-
+/* ───── WITHDRAW MODAL ───── */
 .withdraw-modal {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   z-index: 100000;
@@ -199,16 +159,17 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: linear-gradient(160deg,
-    rgba(10, 25, 15, 0.98) 0%,
-    rgba(5, 15, 8, 0.99) 100%);
+    rgba(8, 22, 13, 0.98) 0%,
+    rgba(3, 12, 6, 0.99) 100%);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border: 1.5px solid rgba(0, 255, 136, 0.18);
   border-bottom: none;
   padding: 20px 18px 30px;
+  padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   box-shadow:
-    0 -10px 60px rgba(0, 255, 136, 0.15),
-    0 -20px 80px rgba(0, 0, 0, 0.8);
+    0 -10px 50px rgba(0, 255, 136, 0.10),
+    0 -20px 80px rgba(0, 0, 0, 0.9);
   animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
@@ -223,7 +184,7 @@ html, body {
   display: block;
   width: 45px;
   height: 4px;
-  background: rgba(0, 255, 136, 0.4);
+  background: rgba(0, 255, 136, 0.3);
   border-radius: 4px;
   margin: 0 auto 18px;
 }
@@ -244,18 +205,28 @@ html, body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 0.5px;
-  filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.4));
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.3));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-title .icon {
+  stroke: #00ff88;
+  width: 22px;
+  height: 22px;
+  -webkit-text-fill-color: initial;
+  background: none;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
 }
 
 .modal-close-btn {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: rgba(255, 100, 100, 0.12);
-  border: 1.5px solid rgba(255, 100, 100, 0.35);
+  background: rgba(255, 100, 100, 0.10);
+  border: 1.5px solid rgba(255, 100, 100, 0.28);
   color: #ff6464;
-  font-size: 20px;
-  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -264,15 +235,21 @@ html, body {
   transition: transform 0.2s;
 }
 
-.modal-close-btn:active {
-  transform: scale(0.9);
-  background: rgba(255, 100, 100, 0.25);
+.modal-close-btn .icon {
+  stroke: #ff6464;
+  width: 18px;
+  height: 18px;
 }
 
-/* Balance mini display in modal */
+.modal-close-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 100, 100, 0.20);
+}
+
+/* Balance mini display */
 .modal-balance-mini {
-  background: rgba(0, 255, 136, 0.06);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 14px;
   padding: 12px 16px;
   margin-bottom: 18px;
@@ -283,8 +260,8 @@ html, body {
 
 .modal-balance-label {
   font-size: 10.5px;
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.65;
   letter-spacing: 1.5px;
   font-weight: 800;
   text-transform: uppercase;
@@ -294,14 +271,14 @@ html, body {
   font-size: 20px;
   font-weight: 900;
   color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
 }
 
-/* Section headers in modal */
+/* Section headers */
 .modal-section-title {
   font-size: 11px;
-  color: #00ff88;
-  opacity: 0.75;
+  color: #00cc6a;
+  opacity: 0.7;
   letter-spacing: 1.5px;
   font-weight: 800;
   text-transform: uppercase;
@@ -311,14 +288,20 @@ html, body {
   gap: 8px;
 }
 
+.modal-section-title .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
 .modal-section-title::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(0, 255, 136, 0.3), transparent);
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.2), transparent);
 }
 
-/* ───── METHOD GRID ───── */
+/* Method grid */
 .modal-method-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -328,10 +311,10 @@ html, body {
 
 .modal-method-btn {
   background: rgba(0, 0, 0, 0.4);
-  border: 1.5px solid rgba(0, 255, 136, 0.15);
+  border: 1.5px solid rgba(0, 255, 136, 0.12);
   border-radius: 12px;
   padding: 14px 8px;
-  color: #00ff88;
+  color: #00cc6a;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -352,16 +335,32 @@ html, body {
 
 .modal-method-btn.selected {
   background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.2),
-    rgba(0, 255, 136, 0.08));
-  border-color: #00ff88;
+    rgba(0, 255, 136, 0.15),
+    rgba(0, 255, 136, 0.05));
+  border-color: rgba(0, 255, 136, 0.5);
+  color: #00ff88;
   box-shadow:
-    0 0 22px rgba(0, 255, 136, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 0 18px rgba(0, 255, 136, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .modal-method-btn .mi {
-  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.modal-method-btn .mi .icon {
+  width: 22px;
+  height: 22px;
+  stroke: #00cc6a;
+}
+
+.modal-method-btn.selected .mi .icon {
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
 }
 
 .modal-method-btn .mname {
@@ -382,18 +381,22 @@ html, body {
 }
 
 .modal-method-btn.not-linked::before {
-  content: '⚠️';
+  content: '';
   position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 11px;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: #ffcc00;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #ffcc00;
 }
 
-/* ───── LINK SECTION (in modal) ───── */
+/* Link section */
 .modal-link-section {
   display: none;
-  background: rgba(255, 165, 0, 0.06);
-  border: 1.5px solid rgba(255, 165, 0, 0.3);
+  background: rgba(255, 165, 0, 0.05);
+  border: 1.5px solid rgba(255, 165, 0, 0.25);
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 16px;
@@ -415,8 +418,14 @@ html, body {
   text-transform: uppercase;
 }
 
+.modal-link-title .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #ffa500;
+}
+
 .modal-link-title b {
-  background: rgba(255, 165, 0, 0.15);
+  background: rgba(255, 165, 0, 0.12);
   padding: 2px 6px;
   border-radius: 5px;
 }
@@ -424,7 +433,7 @@ html, body {
 .modal-link-input {
   width: 100%;
   background: rgba(0, 0, 0, 0.5);
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
   border-radius: 10px;
   padding: 12px 14px;
   color: #00ff88;
@@ -436,12 +445,12 @@ html, body {
 }
 
 .modal-link-input:focus {
-  border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.2);
 }
 
 .modal-link-input::placeholder {
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.35;
 }
 
@@ -458,18 +467,28 @@ html, body {
   font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.modal-link-save .icon {
+  stroke: #000;
+  width: 14px;
+  height: 14px;
 }
 
 .modal-link-save:active {
   transform: scale(0.97);
 }
 
-/* ───── AMOUNT INPUT (in modal) ───── */
+/* Amount wrap */
 .modal-amount-wrap {
   display: flex;
   align-items: center;
   background: rgba(0, 0, 0, 0.5);
-  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
   border-radius: 14px;
   padding: 0 14px;
   margin-bottom: 8px;
@@ -477,15 +496,15 @@ html, body {
 }
 
 .modal-amount-wrap:focus-within {
-  border-color: #00ff88;
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.35);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
 }
 
 .modal-amount-wrap .rupee {
   font-size: 26px;
   font-weight: 800;
   color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
   flex-shrink: 0;
 }
 
@@ -503,18 +522,8 @@ html, body {
 }
 
 .modal-amount-wrap input::placeholder {
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.25;
-}
-
-.modal-amount-wrap input::-webkit-outer-spin-button,
-.modal-amount-wrap input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.modal-amount-wrap input[type=number] {
-  -moz-appearance: textfield;
 }
 
 .modal-max-btn {
@@ -537,8 +546,8 @@ html, body {
 
 .modal-amount-info {
   text-align: center;
-  color: #00ff88;
-  opacity: 0.6;
+  color: #00cc6a;
+  opacity: 0.55;
   font-size: 10.5px;
   margin-bottom: 12px;
   font-weight: 600;
@@ -550,7 +559,7 @@ html, body {
   font-weight: 800;
 }
 
-/* ───── QUICK AMOUNTS ───── */
+/* Quick amounts */
 .modal-quick-amounts {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -559,9 +568,9 @@ html, body {
 }
 
 .modal-quick-amounts button {
-  background: rgba(0, 255, 136, 0.06);
-  color: #00ff88;
-  border: 1.5px solid rgba(0, 255, 136, 0.22);
+  background: rgba(0, 255, 136, 0.05);
+  color: #00cc6a;
+  border: 1.5px solid rgba(0, 255, 136, 0.15);
   padding: 10px 2px;
   border-radius: 10px;
   font-weight: 800;
@@ -576,11 +585,11 @@ html, body {
   background: linear-gradient(135deg, #00ff88, #00cc6a);
   color: #000;
   transform: scale(0.94);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
   border-color: #00ff88;
 }
 
-/* ───── SUBMIT BUTTON ───── */
+/* Submit button */
 .modal-submit-btn {
   width: 100%;
   background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -593,32 +602,23 @@ html, body {
   letter-spacing: 1px;
   cursor: pointer;
   box-shadow:
-    0 8px 28px rgba(0, 255, 136, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 8px 24px rgba(0, 255, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   transition: transform 0.15s;
   font-family: inherit;
   text-transform: uppercase;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.modal-submit-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent);
-  animation: btnShine 3s ease-in-out infinite;
-}
-
-@keyframes btnShine {
-  0% { left: -100%; }
-  100% { left: 100%; }
+.modal-submit-btn .icon {
+  stroke: #000;
+  width: 18px;
+  height: 18px;
 }
 
 .modal-submit-btn:active {
@@ -630,24 +630,7 @@ html, body {
   cursor: not-allowed;
 }
 
-/* ───── LOADING SPINNER ───── */
-.loading-spinner {
-  display: inline-block;
-  width: 15px;
-  height: 15px;
-  border: 2.5px solid rgba(0, 0, 0, 0.2);
-  border-top-color: #000;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ───── SUCCESS SCREEN (in modal) ───── */
+/* Success screen */
 .modal-success {
   display: none;
   text-align: center;
@@ -668,15 +651,21 @@ html, body {
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 136, 0.08);
   border: 3px solid #00ff88;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 44px;
   margin: 0 auto 18px;
-  box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.35);
   animation: bounceIn 0.6s ease;
+}
+
+.modal-success-icon .icon {
+  width: 44px;
+  height: 44px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.5));
 }
 
 @keyframes bounceIn {
@@ -691,12 +680,12 @@ html, body {
   color: #00ff88;
   margin-bottom: 8px;
   letter-spacing: 0.8px;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
 }
 
 .modal-success-sub {
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.65;
   font-size: 12px;
   line-height: 1.6;
   margin-bottom: 16px;
@@ -704,17 +693,17 @@ html, body {
 
 .modal-success-amount-box {
   background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.08),
-    rgba(0, 255, 136, 0.04));
-  border: 1.5px solid rgba(0, 255, 136, 0.35);
+    rgba(0, 255, 136, 0.06),
+    rgba(0, 255, 136, 0.02));
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-radius: 16px;
   padding: 18px;
   margin: 16px 0;
 }
 
 .modal-success-amount-label {
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.6;
   font-size: 10.5px;
   letter-spacing: 1.5px;
   font-weight: 800;
@@ -736,7 +725,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
   font-size: 12px;
   gap: 10px;
 }
@@ -746,8 +735,8 @@ html, body {
 }
 
 .modal-success-row span:first-child {
-  color: #00ff88;
-  opacity: 0.65;
+  color: #00cc6a;
+  opacity: 0.6;
   font-weight: 700;
 }
 
@@ -763,9 +752,9 @@ html, body {
 
 .modal-success-close {
   width: 100%;
-  background: rgba(0, 255, 136, 0.08);
-  color: #00ff88;
-  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.06);
+  color: #00cc6a;
+  border: 1.5px solid rgba(0, 255, 136, 0.2);
   padding: 14px;
   border-radius: 14px;
   font-weight: 800;
@@ -774,44 +763,24 @@ html, body {
   margin-top: 16px;
   font-family: inherit;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.modal-success-close .icon {
+  stroke: #00cc6a;
+  width: 16px;
+  height: 16px;
 }
 
 .modal-success-close:active {
-  background: rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.15);
   transform: scale(0.97);
 }
 
-/* ───── BOTTOM NAV FIX ───── */
-.bottom-nav,
-.glass-nav {
-  position: fixed !important;
-  bottom: 18px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 99999 !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: flex !important;
-  pointer-events: auto !important;
-  max-width: 448px !important;
-  width: calc(100% - 32px) !important;
-}
-
-/* ───── ANIMATIONS ───── */
-@keyframes cardSlideIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ───── RESPONSIVE ───── */
-@media (max-width: 380px) {
-  .modal-method-btn { min-height: 72px; padding: 12px 6px; }
-  .modal-quick-amounts button { font-size: 11px; padding: 9px 2px; }
-  .modal-amount-wrap input { font-size: 20px; }
-  .modal-amount-wrap .rupee { font-size: 22px; }
-}
-
-/* iOS Safari */
+/* iOS SAFARI */
 @supports (-webkit-touch-callout: none) {
   html, body {
     height: auto !important;
@@ -832,7 +801,7 @@ html, body {
     <div class="user-card glass">
       <div class="user-info">
         <div class="avatar">
-          <span id="avatarFallback">👤</span>
+          <i data-lucide="user" id="avatarFallback"></i>
           <img id="avatarImg" src="" alt="" style="display:none;">
         </div>
         <div style="flex:1;min-width:0;">
@@ -847,18 +816,29 @@ html, body {
       <div class="balance-header">
         <div class="label">AVAILABLE BALANCE</div>
         <button class="refresh-icon-btn" onclick="refreshBalance()" id="refreshBtn">
-          <span class="refresh-icon">🔄</span>
+          <i data-lucide="refresh-cw"></i>
         </button>
       </div>
       <div class="balance" id="balance">₹0.00</div>
-      <button class="addfund-btn" onclick="openAddFund()">➕ ADD FUND</button>
-      <button class="withdraw-btn" onclick="openWithdrawModal()">🚀 WITHDRAW NOW</button>
+
+      <!-- Add Fund button (hidden by default, shown via API) -->
+      <button class="addfund-btn" id="addFundBtn" onclick="openAddFund()" style="display:none;">
+        <i data-lucide="plus-circle"></i>
+        <span>ADD FUND</span>
+      </button>
+
+      <button class="withdraw-btn" onclick="openWithdrawModal()">
+        <i data-lucide="arrow-up-circle"></i>
+        <span>WITHDRAW NOW</span>
+      </button>
     </div>
 
     <!-- 🔗 LINKED ACCOUNT -->
     <div class="linked-card glass">
       <div class="linked-left">
-        <div class="linked-icon">🔗</div>
+        <div class="linked-icon">
+          <i data-lucide="link-2"></i>
+        </div>
         <div>
           <div class="linked-label">LINKED ACCOUNT</div>
           <div class="linked-status" id="linkedStatus">Not Linked</div>
@@ -869,37 +849,46 @@ html, body {
 
     <!-- 💳 PAYMENT METHODS -->
     <div class="payment-card glass">
-      <div class="section-title">💳 PAYMENT METHODS</div>
+      <div class="section-title">
+        <i data-lucide="credit-card"></i>
+        <span>PAYMENT METHODS</span>
+      </div>
       <div id="paymentList" class="payment-list">
-        <div class="loading">⏳ Loading...</div>
+        <div class="loading">Loading...</div>
       </div>
     </div>
 
     <!-- 📜 RECENT ACTIVITY -->
     <div class="section-header">
-      <div class="section-title-big">Recent Activity</div>
-      <div class="view-all" onclick="viewAllHistory()">View All →</div>
+      <div class="section-title-big">
+        <i data-lucide="activity"></i>
+        <span>Recent Activity</span>
+      </div>
+      <div class="view-all" onclick="viewAllHistory()">
+        <span>View All</span>
+        <i data-lucide="chevron-right"></i>
+      </div>
     </div>
     <div id="recentActivity">
-      <div class="loading">⏳ Loading...</div>
+      <div class="loading">Loading...</div>
     </div>
 
     <!-- 🎯 BOTTOM NAV -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item active">
-        <span class="nav-icon">🏠</span>
+        <span class="nav-icon"><i data-lucide="home"></i></span>
         <span class="nav-label" id="nav-home">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
         <span class="nav-label" id="nav-task">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
+        <span class="nav-icon"><i data-lucide="send"></i></span>
         <span class="nav-label" id="nav-pay">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
+        <span class="nav-icon"><i data-lucide="user"></i></span>
         <span class="nav-label" id="nav-profile">PROFILE</span>
       </a>
     </nav>
@@ -908,36 +897,43 @@ html, body {
 </div>
 
 <!-- ═══════════════════════════════════════════════════
-     💸 WITHDRAW MODAL — Opens on button click
+     💸 WITHDRAW MODAL
      ═══════════════════════════════════════════════════ -->
 <div class="withdraw-modal" id="withdrawModal">
   <div class="withdraw-modal-content">
 
-    <!-- Header -->
     <div class="modal-header">
-      <div class="modal-title">💸 Withdraw</div>
-      <button class="modal-close-btn" onclick="closeWithdrawModal()">✕</button>
+      <div class="modal-title">
+        <i data-lucide="banknote"></i>
+        <span>Withdraw</span>
+      </div>
+      <button class="modal-close-btn" onclick="closeWithdrawModal()">
+        <i data-lucide="x"></i>
+      </button>
     </div>
 
     <!-- FORM VIEW -->
     <div id="withdrawFormView">
 
-      <!-- Balance Mini -->
       <div class="modal-balance-mini">
         <div class="modal-balance-label">Available</div>
         <div class="modal-balance-value" id="modalBalance">₹0.00</div>
       </div>
 
-      <!-- STEP 1: Method -->
-      <div class="modal-section-title">💳 Select Method</div>
+      <!-- Method selection -->
+      <div class="modal-section-title">
+        <i data-lucide="credit-card"></i>
+        <span>Select Method</span>
+      </div>
       <div class="modal-method-grid" id="modalMethodGrid">
         <!-- Dynamic -->
       </div>
 
-      <!-- Link Section -->
+      <!-- Link section -->
       <div class="modal-link-section" id="modalLinkSection">
         <div class="modal-link-title">
-          ⚠️ <b id="modalLinkMethodName">Method</b> Not Linked
+          <i data-lucide="alert-triangle"></i>
+          <b id="modalLinkMethodName">Method</b> Not Linked
         </div>
         <input
           type="text"
@@ -946,13 +942,17 @@ html, body {
           placeholder="Enter details"
           autocomplete="off"
         >
-        <button class="modal-link-save" onclick="modalLinkMethodNow()">
-          🔗 Link Now
+        <button class="modal-link-save" onclick="modalLinkMethodNow(event)">
+          <i data-lucide="link"></i>
+          <span>Link Now</span>
         </button>
       </div>
 
-      <!-- STEP 2: Amount -->
-      <div class="modal-section-title">💰 Enter Amount</div>
+      <!-- Amount -->
+      <div class="modal-section-title">
+        <i data-lucide="indian-rupee"></i>
+        <span>Enter Amount</span>
+      </div>
       <div class="modal-amount-wrap">
         <span class="rupee">₹</span>
         <input type="number" id="modalAmountInput" placeholder="0" inputmode="decimal">
@@ -962,7 +962,7 @@ html, body {
         Min: <b>₹<span id="modalMinLabel">10</span></b> • Max: <b>₹<span id="modalMaxLabel">10000</span></b>
       </div>
 
-      <!-- Quick Amounts -->
+      <!-- Quick amounts -->
       <div class="modal-quick-amounts">
         <button onclick="modalSetAmount(5, this)">₹5</button>
         <button onclick="modalSetAmount(10, this)">₹10</button>
@@ -976,14 +976,17 @@ html, body {
 
       <!-- Submit -->
       <button class="modal-submit-btn" id="modalSubmitBtn" onclick="modalSubmitWithdraw()">
-        💸 Confirm Withdrawal
+        <i data-lucide="send"></i>
+        <span>Confirm Withdrawal</span>
       </button>
 
     </div>
 
     <!-- SUCCESS VIEW -->
     <div class="modal-success" id="withdrawSuccessView">
-      <div class="modal-success-icon">✅</div>
+      <div class="modal-success-icon">
+        <i data-lucide="check"></i>
+      </div>
       <div class="modal-success-title">REQUEST SUBMITTED!</div>
       <div class="modal-success-sub">
         Your withdrawal has been sent to admin.<br>
@@ -995,14 +998,14 @@ html, body {
         <div class="modal-success-amount-value" id="modalSuccessAmount">₹0.00</div>
       </div>
 
-      <div style="background:rgba(0,0,0,0.35);border-radius:12px;padding:12px;margin-top:10px;border:1px solid rgba(0,255,136,0.1);">
+      <div style="background:rgba(0,0,0,0.35);border-radius:12px;padding:12px;margin-top:10px;border:1px solid rgba(0,255,136,0.08);">
         <div class="modal-success-row">
           <span>METHOD</span>
           <span id="modalSuccessMethod">UPI</span>
         </div>
         <div class="modal-success-row">
           <span>STATUS</span>
-          <span style="color:#FFA500;">⏳ PENDING</span>
+          <span style="color:#FFA500;">PENDING</span>
         </div>
         <div class="modal-success-row">
           <span>NEW BALANCE</span>
@@ -1011,7 +1014,8 @@ html, body {
       </div>
 
       <button class="modal-success-close" onclick="closeWithdrawModal()">
-        ✓ Close
+        <i data-lucide="check"></i>
+        <span>Close</span>
       </button>
     </div>
 
@@ -1020,7 +1024,7 @@ html, body {
 
 <script>
 // ============================================================
-// 🏠 HOME PAGE + 💸 WITHDRAW MODAL — Complete Logic
+// 🏠 HOME PAGE LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -1029,7 +1033,6 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
-
   try {
     if (tg.enableVerticalSwipes) tg.enableVerticalSwipes();
   } catch (e) {}
@@ -1044,9 +1047,23 @@ let selectedMethod = null;
 let selectedMethodLabel = '';
 let userSavedDetails = {};
 let appConfig = {};
+let addFundEnabled = true;
 
 // ============================================================
-// 🔓 FORCE SCROLL
+// 🎯 RENDER LUCIDE ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try {
+      window.lucide.createIcons();
+    } catch (e) {
+      console.warn('Lucide render error:', e);
+    }
+  }
+}
+
+// ============================================================
+// 🔓 FORCE SCROLL (Aggressive but safe)
 // ============================================================
 function forceScrollEnable() {
   document.body.style.overflow = 'auto';
@@ -1071,12 +1088,6 @@ forceScrollEnable();
 setTimeout(forceScrollEnable, 100);
 setTimeout(forceScrollEnable, 500);
 setTimeout(forceScrollEnable, 1500);
-
-setInterval(() => {
-  if (document.body.style.overflow === 'hidden') {
-    document.body.style.overflow = 'auto';
-  }
-}, 800);
 
 // ============================================================
 // 🎨 UTILITIES
@@ -1124,7 +1135,7 @@ async function apiCall(endpoint, options = {}) {
 }
 
 // ============================================================
-// 🎨 CONFIG
+// ⚙️ LOAD CONFIG
 // ============================================================
 async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
@@ -1134,20 +1145,36 @@ async function loadConfig() {
     if (appConfig.minWithdraw) minWithdraw = parseFloat(appConfig.minWithdraw);
     if (appConfig.maxWithdraw) maxWithdraw = parseFloat(appConfig.maxWithdraw);
 
+    // Nav labels
     if (appConfig.btn_home) document.getElementById('nav-home').textContent = appConfig.btn_home;
     if (appConfig.btn_task) document.getElementById('nav-task').textContent = appConfig.btn_task;
     if (appConfig.btn_pay) document.getElementById('nav-pay').textContent = appConfig.btn_pay;
     if (appConfig.btn_profile) document.getElementById('nav-profile').textContent = appConfig.btn_profile;
+
+    // ✅ Add Fund enabled check
+    if (typeof appConfig.addFundEnabled === 'boolean') {
+      addFundEnabled = appConfig.addFundEnabled;
+    }
   }
 
+  // Also fetch admin settings for min/max (fallback)
   const sres = await apiCall('/miniapp/api/admin/settings');
   if (sres.success && sres.settings) {
     if (sres.settings.min_withdraw) minWithdraw = parseFloat(sres.settings.min_withdraw);
     if (sres.settings.max_withdraw) maxWithdraw = parseFloat(sres.settings.max_withdraw);
+    if (typeof sres.settings.add_fund_enabled === 'boolean') {
+      addFundEnabled = sres.settings.add_fund_enabled;
+    }
   }
 
   document.getElementById('modalMinLabel').textContent = minWithdraw;
   document.getElementById('modalMaxLabel').textContent = maxWithdraw;
+
+  // ✅ Show/hide Add Fund button
+  const addFundBtn = document.getElementById('addFundBtn');
+  if (addFundBtn) {
+    addFundBtn.style.display = addFundEnabled ? 'flex' : 'none';
+  }
 }
 
 // ============================================================
@@ -1173,12 +1200,14 @@ async function loadUser() {
 
   // Linked status
   const linkedStatus = document.getElementById('linkedStatus');
-  if (user.walletAccount && user.walletAccount !== 'Not Set') {
-    linkedStatus.textContent = '👛 ' + user.walletAccount;
+  if (user.walletNumber && user.walletNumber !== '') {
+    linkedStatus.textContent = 'Wallet: ' + user.walletNumber;
+  } else if (user.walletAccount && user.walletAccount !== 'Not Set') {
+    linkedStatus.textContent = 'Wallet: ' + user.walletAccount;
   } else if (user.upiId && user.upiId !== 'Not Set') {
-    linkedStatus.textContent = '⚡ ' + user.upiId;
+    linkedStatus.textContent = 'UPI: ' + user.upiId;
   } else if (user.bankAccNo && user.bankAccNo !== 'Not Set') {
-    linkedStatus.textContent = '🏦 ' + user.bankAccNo;
+    linkedStatus.textContent = 'Bank: ' + user.bankAccNo;
   } else {
     linkedStatus.textContent = 'Not Linked';
   }
@@ -1187,7 +1216,8 @@ async function loadUser() {
   userSavedDetails = {
     upi: (user.upiId && user.upiId !== 'Not Set') ? user.upiId : '',
     bank: (user.bankAccNo && user.bankAccNo !== 'Not Set') ? user.bankAccNo : '',
-    wallet: (user.walletAccount && user.walletAccount !== 'Not Set') ? user.walletAccount : '',
+    wallet: (user.walletNumber && user.walletNumber !== '') ? user.walletNumber :
+            ((user.walletAccount && user.walletAccount !== 'Not Set') ? user.walletAccount : ''),
     redeem: (user.redeemCodeAddr && user.redeemCodeAddr !== 'Not Set') ? user.redeemCodeAddr : ''
   };
 
@@ -1196,7 +1226,7 @@ async function loadUser() {
 }
 
 // ============================================================
-// 📸 AVATAR
+// 📸 LOAD AVATAR
 // ============================================================
 async function loadAvatar() {
   if (!userId) return;
@@ -1207,12 +1237,13 @@ async function loadAvatar() {
     const img = document.getElementById('avatarImg');
     img.src = data.photoUrl;
     img.style.display = 'block';
-    document.getElementById('avatarFallback').style.display = 'none';
+    const fallback = document.getElementById('avatarFallback');
+    if (fallback) fallback.style.display = 'none';
   }
 }
 
 // ============================================================
-// 💳 PAYMENT METHODS (Home)
+// 💳 PAYMENT METHODS
 // ============================================================
 async function loadPaymentMethods() {
   if (!userId) return;
@@ -1228,13 +1259,23 @@ async function loadPaymentMethods() {
   let html = '';
   data.methods.forEach(m => {
     let display = (m.value && m.value !== 'Not Set') ? m.value : 'Not Set';
+    // Map emoji icon to Lucide icon name
+    const iconMap = {
+      '👛': 'wallet',
+      '⚡': 'zap',
+      '🏦': 'landmark',
+      '📧': 'mail',
+      '🎁': 'gift'
+    };
+    const iconName = iconMap[m.icon] || 'circle';
     html += `<div class="payment-item">
-      <span>${m.icon} ${m.name}</span>
+      <span><i data-lucide="${iconName}"></i> ${escapeHtml(m.name)}</span>
       <span>${escapeHtml(display)}</span>
     </div>`;
   });
 
   listEl.innerHTML = html;
+  renderIcons();
 }
 
 // ============================================================
@@ -1249,10 +1290,11 @@ async function loadRecentActivity() {
   if (!data.success || !data.history || data.history.length === 0) {
     actEl.innerHTML = `
       <div class="empty-state">
-        <div class="icon">📭</div>
-        <div>No recent activity</div>
+        <i data-lucide="inbox" style="width:48px;height:48px;stroke:#00cc6a;opacity:0.4;"></i>
+        <div style="margin-top:10px;">No recent activity</div>
       </div>
     `;
+    renderIcons();
     return;
   }
 
@@ -1261,7 +1303,7 @@ async function loadRecentActivity() {
     const isPos = h.amount >= 0;
     const sign = isPos ? '+' : '';
     const cls = isPos ? 'positive' : 'negative';
-    const icon = isPos ? '💰' : '💸';
+    const iconName = isPos ? 'trending-up' : 'trending-down';
     const date = new Date(h.createdAt).toLocaleString('en-IN', {
       day: 'numeric', month: 'short',
       hour: '2-digit', minute: '2-digit'
@@ -1269,7 +1311,9 @@ async function loadRecentActivity() {
 
     html += `
       <div class="activity-item">
-        <div class="activity-icon">${icon}</div>
+        <div class="activity-icon">
+          <i data-lucide="${iconName}"></i>
+        </div>
         <div class="activity-details">
           <div class="activity-title">${escapeHtml(h.action)}</div>
           <div class="activity-meta">${date}</div>
@@ -1280,10 +1324,11 @@ async function loadRecentActivity() {
   });
 
   actEl.innerHTML = html;
+  renderIcons();
 }
 
 // ============================================================
-// 🔄 REFRESH
+// 🔄 REFRESH BALANCE
 // ============================================================
 async function refreshBalance() {
   const btn = document.getElementById('refreshBtn');
@@ -1294,60 +1339,48 @@ async function refreshBalance() {
   await loadPaymentMethods();
   await loadRecentActivity();
 
-  showToast('✅ Refreshed!');
+  showToast('Refreshed!');
 
   setTimeout(() => btn?.classList.remove('spinning'), 800);
 }
 
 // ============================================================
-// 💸 WITHDRAW MODAL — OPEN / CLOSE
+// 💸 WITHDRAW MODAL
 // ============================================================
 function openWithdrawModal() {
   haptic('light');
 
-  // Reset views
   document.getElementById('withdrawFormView').style.display = 'block';
   document.getElementById('withdrawSuccessView').classList.remove('active');
-
-  // Reset form
   document.getElementById('modalAmountInput').value = '';
   document.querySelectorAll('.modal-quick-amounts button').forEach(b => b.classList.remove('selected'));
-
-  // Update balance display
   document.getElementById('modalBalance').textContent = '₹' + userBalance.toFixed(2);
 
-  // Render methods
   renderModalMethods();
-
-  // Show modal
   document.getElementById('withdrawModal').classList.add('active');
-
-  // Prevent body scroll while modal open
   document.body.style.overflow = 'hidden';
+
+  renderIcons();
 }
 
 function closeWithdrawModal() {
   haptic('light');
   document.getElementById('withdrawModal').classList.remove('active');
-
-  // Restore scroll
   forceScrollEnable();
-
-  // Refresh user data
   setTimeout(() => loadUser(), 300);
 }
 
 // ============================================================
-// 🎨 RENDER MODAL METHOD GRID
+// 🎨 RENDER MODAL METHODS (Priority: UPI → Bank → Wallet → Redeem)
 // ============================================================
 function renderModalMethods() {
   const grid = document.getElementById('modalMethodGrid');
 
   const methods = [
-    { key: 'upi', name: 'UPI', icon: '⚡', details: userSavedDetails.upi },
-    { key: 'bank', name: 'Bank', icon: '🏦', details: userSavedDetails.bank },
-    { key: 'wallet', name: 'Wallet', icon: '🌐', details: userSavedDetails.wallet },
-    { key: 'redeem', name: 'Redeem', icon: '🎁', details: userSavedDetails.redeem }
+    { key: 'upi', name: 'UPI', icon: 'zap', details: userSavedDetails.upi },
+    { key: 'bank', name: 'Bank', icon: 'landmark', details: userSavedDetails.bank },
+    { key: 'wallet', name: 'Wallet', icon: 'wallet', details: userSavedDetails.wallet },
+    { key: 'redeem', name: 'Redeem', icon: 'gift', details: userSavedDetails.redeem }
   ];
 
   let html = '';
@@ -1357,16 +1390,17 @@ function renderModalMethods() {
       <button class="modal-method-btn ${isLinked ? 'linked' : 'not-linked'}"
               data-method="${m.key}"
               onclick="modalSelectMethod('${m.key}')">
-        ${isLinked ? '<span class="linked-badge">✓ LINKED</span>' : ''}
-        <span class="mi">${m.icon}</span>
+        ${isLinked ? '<span class="linked-badge">LINKED</span>' : ''}
+        <span class="mi"><i data-lucide="${m.icon}"></i></span>
         <span class="mname">${m.name}</span>
       </button>
     `;
   });
 
   grid.innerHTML = html;
+  renderIcons();
 
-  // Auto-select first linked
+  // Auto-select first linked (priority: UPI → Bank → Wallet → Redeem)
   const firstLinked = methods.find(m => m.details);
   if (firstLinked) {
     modalSelectMethod(firstLinked.key);
@@ -1376,16 +1410,16 @@ function renderModalMethods() {
 }
 
 // ============================================================
-// 💳 MODAL SELECT METHOD
+// 💳 SELECT METHOD
 // ============================================================
 function modalSelectMethod(methodKey) {
   selectedMethod = methodKey;
 
   const methodData = {
-    upi: { label: 'UPI', inputLabel: '⚡ Enter your UPI ID', placeholder: 'yourname@upi' },
-    bank: { label: 'Bank', inputLabel: '🏦 Enter Bank Account Number', placeholder: 'Enter account number' },
-    wallet: { label: 'Wallet', inputLabel: '🌐 Enter Wallet ID', placeholder: 'Enter wallet ID' },
-    redeem: { label: 'Redeem', inputLabel: '🎁 Enter Redeem Code', placeholder: 'Enter redeem code' }
+    upi: { label: 'UPI', inputLabel: 'Enter your UPI ID', placeholder: 'yourname@upi' },
+    bank: { label: 'Bank', inputLabel: 'Enter Bank Account Number', placeholder: 'Enter account number' },
+    wallet: { label: 'Wallet', inputLabel: 'Enter Wallet ID', placeholder: 'Enter wallet ID' },
+    redeem: { label: 'Redeem', inputLabel: 'Enter Redeem Code', placeholder: 'Enter redeem code' }
   };
 
   const m = methodData[methodKey];
@@ -1412,11 +1446,11 @@ function modalSelectMethod(methodKey) {
 }
 
 // ============================================================
-// 🔗 MODAL LINK METHOD NOW
+// 🔗 LINK METHOD NOW
 // ============================================================
-async function modalLinkMethodNow() {
+async function modalLinkMethodNow(event) {
   if (!selectedMethod) {
-    showToast('❌ Select a method first');
+    showToast('Select a method first');
     return;
   }
 
@@ -1424,7 +1458,7 @@ async function modalLinkMethodNow() {
   const value = input.value.trim();
 
   if (!value || value.length < 3) {
-    showToast('❌ Enter valid details');
+    showToast('Enter valid details');
     haptic('error');
     return;
   }
@@ -1439,24 +1473,22 @@ async function modalLinkMethodNow() {
   const field = fieldMap[selectedMethod];
   if (!field) return;
 
-  const btn = event?.target;
+  const btn = event?.target?.closest('.modal-link-save') || event?.target;
+  const originalHtml = btn ? btn.innerHTML : '';
+
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="loading-spinner"></span> Linking...';
+    btn.innerHTML = 'Linking...';
   }
 
   try {
     const data = await apiCall('/miniapp/api/update-payment', {
       method: 'POST',
-      body: JSON.stringify({
-        userId: userId,
-        field: field,
-        value: value
-      })
+      body: JSON.stringify({ userId, field, value })
     });
 
     if (data.success) {
-      showToast('✅ Linked successfully!');
+      showToast('Linked successfully!');
       haptic('success');
 
       userSavedDetails[selectedMethod] = value;
@@ -1464,24 +1496,24 @@ async function modalLinkMethodNow() {
       renderModalMethods();
       modalSelectMethod(selectedMethod);
 
-      // Refresh home payment methods too
       await loadPaymentMethods();
     } else {
-      showToast('❌ ' + (data.error || 'Failed'));
+      showToast((data.error || 'Failed'));
       haptic('error');
     }
   } catch (e) {
-    showToast('❌ Network error');
+    showToast('Network error');
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '🔗 Link Now';
+      btn.innerHTML = originalHtml;
+      renderIcons();
     }
   }
 }
 
 // ============================================================
-// 📌 MODAL AMOUNT HANDLERS
+// 📌 AMOUNT HANDLERS
 // ============================================================
 function modalSetAmount(amt, btn) {
   document.getElementById('modalAmountInput').value = amt;
@@ -1492,7 +1524,7 @@ function modalSetAmount(amt, btn) {
 
 function modalSetMax() {
   if (userBalance <= 0) {
-    showToast('❌ No balance available');
+    showToast('No balance available');
     return;
   }
   const max = Math.min(userBalance, maxWithdraw);
@@ -1502,7 +1534,7 @@ function modalSetMax() {
 }
 
 // ============================================================
-// ✅ MODAL SUBMIT WITHDRAWAL
+// ✅ SUBMIT WITHDRAWAL
 // ============================================================
 async function modalSubmitWithdraw() {
   const amountStr = document.getElementById('modalAmountInput').value.trim();
@@ -1511,51 +1543,52 @@ async function modalSubmitWithdraw() {
   const amount = parseFloat(amountStr);
 
   if (isNaN(amount) || amount <= 0) {
-    showToast('❌ Enter a valid amount');
+    showToast('Enter a valid amount');
     haptic('error');
     return;
   }
 
   if (amount < minWithdraw) {
-    showToast(`❌ Minimum withdrawal is ₹${minWithdraw}`);
+    showToast(`Minimum withdrawal is ₹${minWithdraw}`);
     haptic('error');
     return;
   }
 
   if (amount > maxWithdraw) {
-    showToast(`❌ Maximum withdrawal is ₹${maxWithdraw}`);
+    showToast(`Maximum withdrawal is ₹${maxWithdraw}`);
     haptic('error');
     return;
   }
 
   if (amount > userBalance) {
-    showToast(`❌ Insufficient balance. Available: ₹${userBalance.toFixed(2)}`);
+    showToast(`Insufficient balance. Available: ₹${userBalance.toFixed(2)}`);
     haptic('error');
     return;
   }
 
   if (!selectedMethod) {
-    showToast('❌ Select payment method');
+    showToast('Select payment method');
     haptic('error');
     return;
   }
 
   const details = userSavedDetails[selectedMethod];
   if (!details) {
-    showToast('❌ Please link this method first');
+    showToast('Please link this method first');
     haptic('error');
     return;
   }
 
+  const originalHtml = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="loading-spinner"></span> SUBMITTING...';
+  btn.innerHTML = 'Submitting...';
 
   try {
     const res = await apiCall('/miniapp/api/withdraw', {
       method: 'POST',
       body: JSON.stringify({
-        userId: userId,
-        amount: amount,
+        userId,
+        amount,
         method: selectedMethodLabel
       })
     });
@@ -1563,23 +1596,26 @@ async function modalSubmitWithdraw() {
     if (res.success) {
       haptic('success');
       const newBalance = userBalance - amount;
+      userBalance = newBalance;
       showModalSuccess(amount, newBalance);
     } else {
       haptic('error');
-      showToast(`❌ ${res.error || 'Request failed'}`);
+      showToast(`${res.error || 'Request failed'}`);
       btn.disabled = false;
-      btn.innerHTML = '💸 Confirm Withdrawal';
+      btn.innerHTML = originalHtml;
+      renderIcons();
     }
   } catch (e) {
-    showToast('❌ Network error');
+    showToast('Network error');
     haptic('error');
     btn.disabled = false;
-    btn.innerHTML = '💸 Confirm Withdrawal';
+    btn.innerHTML = originalHtml;
+    renderIcons();
   }
 }
 
 // ============================================================
-// 🎉 MODAL SUCCESS
+// 🎉 SUCCESS
 // ============================================================
 function showModalSuccess(amount, newBalance) {
   document.getElementById('withdrawFormView').style.display = 'none';
@@ -1588,12 +1624,18 @@ function showModalSuccess(amount, newBalance) {
   document.getElementById('modalSuccessAmount').textContent = '₹' + amount.toFixed(2);
   document.getElementById('modalSuccessMethod').textContent = selectedMethodLabel;
   document.getElementById('modalSuccessNewBalance').textContent = '₹' + newBalance.toFixed(2);
+
+  renderIcons();
 }
 
 // ============================================================
 // 🏠 NAVIGATION
 // ============================================================
 function openAddFund() {
+  if (!addFundEnabled) {
+    showToast('Add Fund is currently disabled');
+    return;
+  }
   haptic('light');
   window.location.href = '/miniapp/addfund';
 }
@@ -1613,12 +1655,13 @@ function viewAllHistory() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
   forceScrollEnable();
+  renderIcons();
 
   if (!userId) {
     document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#00ff88;">
-        <h2>⚠️ Open from Telegram</h2>
-        <p style="opacity:0.7;margin-top:20px;">This Mini App works only inside Telegram.</p>
+      <div style="padding:50px;text-align:center;color:#00cc6a;">
+        <h2 style="color:#ff6464;">Open from Telegram</h2>
+        <p style="opacity:0.6;margin-top:20px;">This Mini App works only inside Telegram.</p>
       </div>
     `;
     return;
@@ -1629,10 +1672,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadPaymentMethods();
   await loadRecentActivity();
 
+  // Re-render icons after all content loaded
+  renderIcons();
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
+
   setTimeout(forceScrollEnable, 300);
   setTimeout(forceScrollEnable, 800);
-
-  console.log('✅ Home page ready');
 });
 
 document.addEventListener('gesturestart', e => e.preventDefault());
