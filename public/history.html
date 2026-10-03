@@ -6,22 +6,77 @@
 <title>History</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   HISTORY PAGE — Complete Styles
+   HISTORY PAGE — Premium Styles
    ═══════════════════════════════════════════════════════ */
 
-/* ───── HISTORY PAGE WRAPPER ───── */
-.history-page {
-  padding: 20px 16px 130px;
-  min-height: 100vh;
+/* ───── SCROLL FIX (Aggressive) ───── */
+html {
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
 }
 
+body {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+  padding-bottom: 200px !important;
+}
+
+.history-page {
+  padding: 20px 16px 200px;
+  min-height: 100vh;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+.app {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  padding-bottom: 220px !important;
+  position: relative !important;
+}
+
+.iphone-frame {
+  min-height: 100vh !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.app::after {
+  content: '';
+  display: block;
+  height: 140px;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* ───── HEADER ───── */
 .history-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   padding-top: 8px;
 }
 
@@ -30,23 +85,37 @@
   font-weight: 800;
   color: #00ff88;
   letter-spacing: 1px;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-title .icon {
+  width: 26px;
+  height: 26px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .history-close {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #00ff88;
-  font-size: 20px;
-  font-weight: 800;
+  color: #00cc6a;
   transition: all 0.2s;
+}
+
+.history-close .icon {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
 }
 
 .history-close:active {
@@ -56,62 +125,18 @@
   transform: scale(0.92);
 }
 
-/* ───── FILTER TABS ───── */
-.history-filters {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 4px;
-}
-
-.history-filters::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-btn {
-  flex-shrink: 0;
-  padding: 9px 16px;
-  border-radius: 20px;
-  background: rgba(0, 20, 10, 0.5);
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  color: #00ff88;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.25s;
-  font-family: inherit;
-  white-space: nowrap;
-  opacity: 0.6;
-}
-
-.filter-btn.active {
-  background: rgba(0, 255, 136, 0.15);
-  border-color: rgba(0, 255, 136, 0.5);
-  opacity: 1;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
-}
-
-.filter-btn:active {
-  transform: scale(0.95);
-}
-
-/* ───── STATS SUMMARY BAR ───── */
+/* ───── SUMMARY ───── */
 .history-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .summary-card {
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.10);
   border-radius: 14px;
   padding: 12px 8px;
   text-align: center;
@@ -120,8 +145,8 @@
 
 .summary-label {
   font-size: 9.5px;
-  color: #00ff88;
-  opacity: 0.6;
+  color: #00cc6a;
+  opacity: 0.55;
   letter-spacing: 1px;
   font-weight: 700;
   text-transform: uppercase;
@@ -132,7 +157,7 @@
   font-size: 15px;
   font-weight: 800;
   color: #00ff88;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
 .summary-value.in {
@@ -141,32 +166,91 @@
 
 .summary-value.out {
   color: #ff6464;
-  text-shadow: 0 0 12px rgba(255, 100, 100, 0.4);
+  text-shadow: 0 0 10px rgba(255, 100, 100, 0.3);
+}
+
+/* ───── FILTER TABS ───── */
+.history-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-btn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: rgba(0, 15, 8, 0.55);
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  color: #00cc6a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+  white-space: nowrap;
+  opacity: 0.65;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-btn .icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.filter-btn.active {
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.4);
+  opacity: 1;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+  color: #00ff88;
+}
+
+.filter-btn:active {
+  transform: scale(0.95);
 }
 
 /* ───── HISTORY LIST ───── */
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .history-item {
   position: relative;
-  background: rgba(0, 20, 10, 0.5);
+  background: rgba(0, 15, 8, 0.55);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.10);
   border-radius: 16px;
-  padding: 16px 18px;
-  border-left: 3px solid #00ff88;
-  animation: cardSlideIn 0.4s ease backwards;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s ease;
+  padding: 14px 16px;
+  border-left: 3px solid #00cc6a;
+  animation: cardSlideIn 0.35s ease backwards;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .history-item:active {
   transform: scale(0.98);
+  border-color: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
 }
 
 .history-item.pending {
@@ -178,12 +262,45 @@
   border-left-color: #ff6464;
 }
 
-.history-header-row {
+/* Icon box */
+.history-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.history-icon-box .icon {
+  width: 20px;
+  height: 20px;
+  stroke: #00ff88;
+}
+
+.history-icon-box.pending .icon {
+  stroke: #ffa500;
+}
+
+.history-icon-box.failed .icon {
+  stroke: #ff6464;
+}
+
+/* Content */
+.history-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-name-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
   gap: 10px;
+  margin-bottom: 4px;
 }
 
 .history-name {
@@ -193,106 +310,115 @@
   letter-spacing: 0.3px;
   flex: 1;
   min-width: 0;
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-amount {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   flex-shrink: 0;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 
 .history-amount.positive {
   color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
 }
 
 .history-amount.negative {
   color: #ff6464;
-  text-shadow: 0 0 15px rgba(255, 100, 100, 0.4);
+  text-shadow: 0 0 10px rgba(255, 100, 100, 0.3);
 }
 
 .history-amount.pending {
   color: #ffa500;
-  text-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
+  text-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
 }
 
-.history-detail {
-  font-size: 11.5px;
-  color: #00ff88;
-  opacity: 0.7;
-  margin-bottom: 4px;
-  line-height: 1.5;
-  word-break: break-all;
-  font-weight: 600;
-}
-
-.history-detail b {
-  color: #00ff88;
-  opacity: 0.5;
-  font-weight: 700;
-  margin-right: 4px;
-}
-
-.history-bottom-row {
+.history-meta-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 255, 136, 0.08);
-  gap: 10px;
+  gap: 8px;
 }
 
 .history-date {
   font-size: 10.5px;
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.55;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.history-date .icon {
+  width: 10px;
+  height: 10px;
+  stroke: #00cc6a;
 }
 
 .history-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 9.5px;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  background: rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 136, 0.10);
   color: #00ff88;
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  flex-shrink: 0;
+  border: 1px solid rgba(0, 255, 136, 0.22);
+}
+
+.history-status-badge .icon {
+  width: 10px;
+  height: 10px;
+  stroke: currentColor;
 }
 
 .history-status-badge.pending {
-  background: rgba(255, 165, 0, 0.12);
+  background: rgba(255, 165, 0, 0.10);
   color: #ffa500;
-  border-color: rgba(255, 165, 0, 0.3);
+  border-color: rgba(255, 165, 0, 0.25);
 }
 
-.history-status-badge.failed,
-.history-status-badge.rejected {
-  background: rgba(255, 100, 100, 0.12);
+.history-status-badge.failed {
+  background: rgba(255, 100, 100, 0.10);
   color: #ff6464;
-  border-color: rgba(255, 100, 100, 0.3);
+  border-color: rgba(255, 100, 100, 0.25);
 }
 
-/* ───── EMPTY STATE ───── */
+/* Chevron */
+.history-chevron {
+  flex-shrink: 0;
+  opacity: 0.3;
+}
+
+.history-chevron .icon {
+  width: 16px;
+  height: 16px;
+  stroke: #00cc6a;
+}
+
+/* ───── EMPTY / LOADING ───── */
 .history-empty {
   text-align: center;
   padding: 60px 20px;
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.65;
 }
 
 .history-empty .icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.5;
+  width: 60px;
+  height: 60px;
+  stroke: #00cc6a;
+  opacity: 0.4;
+  margin-bottom: 14px;
 }
 
 .history-empty .title {
@@ -309,11 +435,10 @@
   line-height: 1.5;
 }
 
-/* ───── LOADING STATE ───── */
 .history-loading {
   text-align: center;
   padding: 60px 20px;
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.7;
   font-size: 13px;
   font-weight: 700;
@@ -322,7 +447,7 @@
 .history-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(0, 255, 136, 0.15);
+  border: 3px solid rgba(0, 255, 136, 0.10);
   border-top-color: #00ff88;
   border-radius: 50%;
   margin: 0 auto 16px;
@@ -333,54 +458,380 @@
   to { transform: rotate(360deg); }
 }
 
+/* ═══════════════════════════════════════════════════════
+   📄 DETAIL BOTTOM SHEET
+   ═══════════════════════════════════════════════════════ */
+.detail-sheet {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100000;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  animation: modalFadeIn 0.25s ease;
+}
+
+.detail-sheet.active {
+  display: flex;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.detail-sheet-content {
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(160deg,
+    rgba(8, 22, 13, 0.98) 0%,
+    rgba(3, 12, 6, 0.99) 100%);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border: 1.5px solid rgba(0, 255, 136, 0.18);
+  border-bottom: none;
+  padding: 20px 18px 30px;
+  padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  box-shadow:
+    0 -10px 50px rgba(0, 255, 136, 0.10),
+    0 -20px 80px rgba(0, 0, 0, 0.9);
+  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.detail-sheet-content::before {
+  content: '';
+  display: block;
+  width: 45px;
+  height: 4px;
+  background: rgba(0, 255, 136, 0.3);
+  border-radius: 4px;
+  margin: 0 auto 18px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.detail-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+}
+
+.detail-title .icon {
+  width: 22px;
+  height: 22px;
+  stroke: #00ff88;
+  flex-shrink: 0;
+}
+
+.detail-close-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 100, 100, 0.10);
+  border: 1.5px solid rgba(255, 100, 100, 0.28);
+  color: #ff6464;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: transform 0.2s;
+  padding: 0;
+}
+
+.detail-close-btn .icon {
+  width: 18px;
+  height: 18px;
+  stroke: #ff6464;
+}
+
+.detail-close-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 100, 100, 0.20);
+}
+
+/* Big amount display */
+.detail-amount-box {
+  text-align: center;
+  padding: 20px 16px;
+  border-radius: 18px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg,
+    rgba(0, 255, 136, 0.06),
+    rgba(0, 255, 136, 0.02));
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+}
+
+.detail-amount-box.negative {
+  background: linear-gradient(135deg,
+    rgba(255, 100, 100, 0.06),
+    rgba(255, 100, 100, 0.02));
+  border-color: rgba(255, 100, 100, 0.25);
+}
+
+.detail-amount-box.pending {
+  background: linear-gradient(135deg,
+    rgba(255, 165, 0, 0.06),
+    rgba(255, 165, 0, 0.02));
+  border-color: rgba(255, 165, 0, 0.25);
+}
+
+.detail-amount-label {
+  font-size: 10.5px;
+  color: #00cc6a;
+  opacity: 0.6;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.detail-amount-value {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.detail-amount-value.positive {
+  color: #00ff88;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.detail-amount-value.negative {
+  color: #ff6464;
+  text-shadow: 0 0 20px rgba(255, 100, 100, 0.3);
+}
+
+.detail-amount-value.pending {
+  color: #ffa500;
+  text-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
+}
+
+/* Info list */
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 4px 16px;
+  border: 1px solid rgba(0, 255, 136, 0.08);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+  gap: 12px;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row-label {
+  font-size: 12px;
+  color: #00cc6a;
+  opacity: 0.6;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.detail-row-label .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
+}
+
+.detail-row-value {
+  font-size: 12.5px;
+  color: #00ff88;
+  font-weight: 800;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+  font-family: 'SF Mono', 'Courier New', monospace;
+}
+
+.detail-row-value.plain {
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* Status badge (large) */
+.detail-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(0, 255, 136, 0.10);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.25);
+}
+
+.detail-status-badge .icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.detail-status-badge.pending {
+  background: rgba(255, 165, 0, 0.10);
+  color: #ffa500;
+  border-color: rgba(255, 165, 0, 0.28);
+}
+
+.detail-status-badge.failed {
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff6464;
+  border-color: rgba(255, 100, 100, 0.28);
+}
+
+/* Copy button in detail */
+.detail-copy-btn {
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.20);
+  color: #00cc6a;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 6px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.detail-copy-btn .icon {
+  width: 10px;
+  height: 10px;
+  stroke: #00cc6a;
+}
+
+.detail-copy-btn:active {
+  background: rgba(0, 255, 136, 0.15);
+}
+
+/* Detail close button at bottom */
+.detail-bottom-close {
+  width: 100%;
+  background: rgba(0, 255, 136, 0.06);
+  color: #00cc6a;
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 18px;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.detail-bottom-close .icon {
+  width: 16px;
+  height: 16px;
+  stroke: #00cc6a;
+}
+
+.detail-bottom-close:active {
+  background: rgba(0, 255, 136, 0.15);
+  transform: scale(0.97);
+}
+
 /* ───── BOTTOM NAV FIX ───── */
 .bottom-nav {
   position: fixed !important;
-  bottom: 18px !important;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   z-index: 9999 !important;
 }
 
-/* ───── APP PADDING ───── */
-.app {
-  padding-bottom: 130px !important;
-}
-
-/* ───── SCROLL FIX ───── */
-html, body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
-}
-
 /* ───── RESPONSIVE ───── */
 @media (max-width: 380px) {
   .history-title { font-size: 22px; }
-  .history-amount { font-size: 16px; }
+  .history-title .icon { width: 22px; height: 22px; }
+  .history-amount { font-size: 13.5px; }
   .summary-value { font-size: 13px; }
-  .history-name { font-size: 13px; }
+  .history-name { font-size: 12.5px; }
+  .detail-amount-value { font-size: 32px; }
+  .history-icon-box { width: 38px; height: 38px; }
+  .history-icon-box .icon { width: 18px; height: 18px; }
+}
+
+/* iOS SAFARI FIX */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: auto !important;
+    min-height: -webkit-fill-available !important;
+  }
+  .app, .history-page {
+    min-height: -webkit-fill-available !important;
+  }
 }
 </style>
 </head>
 <body>
 
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
-
 <div class="iphone-frame">
-  <div class="iphone-notch"></div>
-
   <div class="app">
 
     <div class="history-page">
 
       <!-- ═══ HEADER ═══ -->
       <div class="history-top">
-        <div class="history-title">📜 History</div>
-        <div class="history-close" onclick="goBack()">✕</div>
+        <div class="history-title">
+          <i data-lucide="scroll-text"></i>
+          <span>History</span>
+        </div>
+        <div class="history-close" onclick="goHome()">
+          <i data-lucide="x"></i>
+        </div>
       </div>
 
       <!-- ═══ SUMMARY BAR ═══ -->
@@ -402,16 +853,20 @@ html, body {
       <!-- ═══ FILTER TABS ═══ -->
       <div class="history-filters">
         <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">
-          All
+          <i data-lucide="list"></i>
+          <span>All</span>
         </button>
         <button class="filter-btn" data-filter="in" onclick="setFilter('in', this)">
-          ⬇ Earned
+          <i data-lucide="arrow-down-circle"></i>
+          <span>Earned</span>
         </button>
         <button class="filter-btn" data-filter="out" onclick="setFilter('out', this)">
-          ⬆ Spent
+          <i data-lucide="arrow-up-circle"></i>
+          <span>Spent</span>
         </button>
         <button class="filter-btn" data-filter="pending" onclick="setFilter('pending', this)">
-          ⏳ Pending
+          <i data-lucide="clock"></i>
+          <span>Pending</span>
         </button>
       </div>
 
@@ -428,29 +883,63 @@ html, body {
     <!-- ═══ BOTTOM NAV ═══ -->
     <nav class="bottom-nav glass-nav">
       <a href="/miniapp" class="nav-item">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label" id="nav-home">HOME</span>
+        <span class="nav-icon"><i data-lucide="home"></i></span>
+        <span class="nav-label">HOME</span>
       </a>
       <a href="/miniapp/task" class="nav-item">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label" id="nav-task">TASK</span>
+        <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
+        <span class="nav-label">TASK</span>
       </a>
       <a href="/miniapp/pay" class="nav-item">
-        <span class="nav-icon">💸</span>
-        <span class="nav-label" id="nav-pay">PAY</span>
+        <span class="nav-icon"><i data-lucide="send"></i></span>
+        <span class="nav-label">PAY</span>
       </a>
       <a href="/miniapp/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label" id="nav-profile">PROFILE</span>
+        <span class="nav-icon"><i data-lucide="user"></i></span>
+        <span class="nav-label">PROFILE</span>
       </a>
     </nav>
 
   </div>
 </div>
 
+<!-- ═══ DETAIL BOTTOM SHEET ═══ -->
+<div class="detail-sheet" id="detailSheet" onclick="closeDetailFromBackdrop(event)">
+  <div class="detail-sheet-content" onclick="event.stopPropagation()">
+
+    <div class="detail-header">
+      <div class="detail-title">
+        <i data-lucide="receipt" id="detailTitleIcon"></i>
+        <span id="detailTitleText">Transaction Details</span>
+      </div>
+      <button class="detail-close-btn" onclick="closeDetail()">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <!-- Amount -->
+    <div class="detail-amount-box" id="detailAmountBox">
+      <div class="detail-amount-label" id="detailAmountLabel">Amount</div>
+      <div class="detail-amount-value" id="detailAmountValue">₹0.00</div>
+    </div>
+
+    <!-- Details list -->
+    <div class="detail-list" id="detailList">
+      <!-- Dynamic -->
+    </div>
+
+    <!-- Close -->
+    <button class="detail-bottom-close" onclick="closeDetail()">
+      <i data-lucide="check"></i>
+      <span>Close</span>
+    </button>
+
+  </div>
+</div>
+
 <script>
 // ============================================================
-// 📜 HISTORY PAGE — Complete Logic
+// 📜 HISTORY PAGE LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -459,6 +948,7 @@ if (tg) {
   tg.expand();
   tg.setHeaderColor('#000000');
   tg.setBackgroundColor('#000000');
+  try { if (tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
 }
 
 const userId = tg?.initDataUnsafe?.user?.id;
@@ -466,6 +956,59 @@ const userId = tg?.initDataUnsafe?.user?.id;
 let allHistory = [];
 let currentFilter = 'all';
 let appConfig = {};
+
+// ============================================================
+// 🎯 ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
+
+// ============================================================
+// 🔓 FORCE SCROLL (Aggressive)
+// ============================================================
+function forceScrollEnable() {
+  document.body.style.overflow = 'auto';
+  document.body.style.height = 'auto';
+  document.body.style.maxHeight = 'none';
+  document.body.style.position = 'relative';
+  document.body.style.paddingBottom = '200px';
+  document.body.style.touchAction = 'pan-y';
+
+  document.documentElement.style.overflow = 'auto';
+  document.documentElement.style.height = 'auto';
+  document.documentElement.style.maxHeight = 'none';
+  document.documentElement.style.touchAction = 'pan-y';
+
+  const app = document.querySelector('.app');
+  if (app) {
+    app.style.overflow = 'visible';
+    app.style.height = 'auto';
+    app.style.maxHeight = 'none';
+    app.style.paddingBottom = '220px';
+  }
+
+  const page = document.querySelector('.history-page');
+  if (page) {
+    page.style.overflow = 'visible';
+    page.style.height = 'auto';
+    page.style.maxHeight = 'none';
+  }
+}
+
+forceScrollEnable();
+setTimeout(forceScrollEnable, 100);
+setTimeout(forceScrollEnable, 500);
+setTimeout(forceScrollEnable, 1500);
+
+// Watch for scroll lock attempts
+setInterval(() => {
+  if (document.body.style.overflow === 'hidden') {
+    document.body.style.overflow = 'auto';
+  }
+}, 800);
 
 // ============================================================
 // 🎨 UTILITIES
@@ -499,6 +1042,16 @@ function haptic(type = 'light') {
   }
 }
 
+function formatFullDate(d) {
+  if (!d) return '-';
+  return new Date(d).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: true
+  });
+}
+
 async function apiCall(endpoint, options = {}) {
   try {
     const res = await fetch(endpoint, {
@@ -513,22 +1066,20 @@ async function apiCall(endpoint, options = {}) {
 }
 
 // ============================================================
+// 🏠 GO HOME
+// ============================================================
+function goHome() {
+  haptic('light');
+  window.location.href = '/miniapp';
+}
+
+// ============================================================
 // 🎨 LOAD CONFIG
 // ============================================================
 async function loadConfig() {
   const res = await apiCall('/miniapp/api/config');
   if (res.success && res.config) {
     appConfig = res.config;
-
-    const navHome = document.getElementById('nav-home');
-    const navTask = document.getElementById('nav-task');
-    const navPay = document.getElementById('nav-pay');
-    const navProfile = document.getElementById('nav-profile');
-
-    if (navHome && appConfig.btn_home) navHome.textContent = appConfig.btn_home;
-    if (navTask && appConfig.btn_task) navTask.textContent = appConfig.btn_task;
-    if (navPay && appConfig.btn_pay) navPay.textContent = appConfig.btn_pay;
-    if (navProfile && appConfig.btn_profile) navProfile.textContent = appConfig.btn_profile;
   }
 }
 
@@ -541,11 +1092,12 @@ async function loadHistory() {
   if (!userId) {
     listEl.innerHTML = `
       <div class="history-empty">
-        <div class="icon">⚠️</div>
+        <i data-lucide="alert-triangle" class="icon"></i>
         <div class="title">Open from Telegram</div>
         <div class="subtitle">This page works only inside Telegram Mini App.</div>
       </div>
     `;
+    renderIcons();
     return;
   }
 
@@ -561,11 +1113,12 @@ async function loadHistory() {
   if (!data.success) {
     listEl.innerHTML = `
       <div class="history-empty">
-        <div class="icon">⚠️</div>
+        <i data-lucide="alert-triangle" class="icon"></i>
         <div class="title">Failed to load</div>
         <div class="subtitle">${escapeHtml(data.error || 'Please try again later.')}</div>
       </div>
     `;
+    renderIcons();
     return;
   }
 
@@ -578,13 +1131,12 @@ async function loadHistory() {
     return tb - ta;
   });
 
-  // Summary
   updateSummary();
   renderHistory();
 }
 
 // ============================================================
-// 📊 UPDATE SUMMARY
+// 📊 SUMMARY
 // ============================================================
 function updateSummary() {
   let totalIn = 0;
@@ -594,9 +1146,7 @@ function updateSummary() {
     const amt = parseFloat(h.amount) || 0;
     const status = (h.status || 'success').toLowerCase();
 
-    if (status === 'pending' || status === 'failed' || status === 'rejected') {
-      return;
-    }
+    if (status === 'pending' || status === 'failed' || status === 'rejected') return;
 
     if (amt >= 0) totalIn += amt;
     else totalOut += Math.abs(amt);
@@ -612,10 +1162,8 @@ function updateSummary() {
 // ============================================================
 function setFilter(filter, btn) {
   currentFilter = filter;
-
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-
   haptic('light');
   renderHistory();
 }
@@ -646,27 +1194,48 @@ function renderHistory() {
   }
 
   if (filtered.length === 0) {
+    const messages = {
+      all: { title: 'No transactions yet', subtitle: 'Your transactions will appear here once you earn or spend.' },
+      in: { title: 'No earnings yet', subtitle: 'Complete tasks or receive payments to see them here.' },
+      out: { title: 'No spending yet', subtitle: 'Withdrawals and payments will appear here.' },
+      pending: { title: 'No pending transactions', subtitle: 'All your transactions are processed.' }
+    };
+    const msg = messages[currentFilter] || messages.all;
+
     listEl.innerHTML = `
       <div class="history-empty">
-        <div class="icon">📭</div>
-        <div class="title">No transactions yet</div>
-        <div class="subtitle">Your transactions will appear here once you earn or spend.</div>
+        <i data-lucide="inbox" class="icon"></i>
+        <div class="title">${msg.title}</div>
+        <div class="subtitle">${msg.subtitle}</div>
       </div>
     `;
+    renderIcons();
     return;
   }
 
   let html = '';
-
   filtered.forEach((h, idx) => {
     const amt = parseFloat(h.amount) || 0;
     const status = (h.status || 'success').toLowerCase();
     const isPending = status === 'pending';
     const isFailed = status === 'failed' || status === 'rejected';
-    const isPositive = amt >= 0 && !isFailed;
+    const isPos = amt >= 0 && !isFailed;
 
-    const sign = amt >= 0 ? '+' : '−';
+    const sign = amt >= 0 ? '+' : '-';
     const absAmt = Math.abs(amt).toFixed(2);
+
+    // Determine icon based on action
+    let iconName = 'activity';
+    const action = (h.action || '').toLowerCase();
+    if (action.includes('withdraw')) iconName = 'arrow-up-circle';
+    else if (action.includes('deposit') || action.includes('upi')) iconName = 'arrow-down-circle';
+    else if (action.includes('quick pay') || action.includes('payment')) iconName = 'send';
+    else if (action.includes('gift') || action.includes('redeem')) iconName = 'gift';
+    else if (action.includes('task')) iconName = 'clipboard-check';
+    else if (action.includes('admin')) iconName = 'crown';
+    else if (action.includes('referral')) iconName = 'users';
+    else if (isPos) iconName = 'trending-up';
+    else iconName = 'trending-down';
 
     let amountClass = 'positive';
     if (isPending) amountClass = 'pending';
@@ -678,84 +1247,274 @@ function renderHistory() {
 
     let statusBadge = '';
     if (isPending) {
-      statusBadge = '<span class="history-status-badge pending">⏳ Pending</span>';
+      statusBadge = `<span class="history-status-badge pending"><i data-lucide="clock" class="icon"></i><span>Pending</span></span>`;
     } else if (isFailed) {
-      statusBadge = `<span class="history-status-badge failed">✕ ${status === 'rejected' ? 'Rejected' : 'Failed'}</span>`;
+      statusBadge = `<span class="history-status-badge failed"><i data-lucide="x-circle" class="icon"></i><span>${status === 'rejected' ? 'Rejected' : 'Failed'}</span></span>`;
     } else {
-      statusBadge = '<span class="history-status-badge">✓ Success</span>';
+      statusBadge = `<span class="history-status-badge"><i data-lucide="check" class="icon"></i><span>Success</span></span>`;
     }
 
     const date = h.createdAt
       ? new Date(h.createdAt).toLocaleString('en-IN', {
-          day: '2-digit', month: 'short', year: 'numeric',
-          hour: '2-digit', minute: '2-digit'
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit', month: 'short',
+          hour: '2-digit', minute: '2-digit', hour12: true
         })
-      : '—';
+      : '-';
 
-    const detailParts = [];
-    if (h.detail) detailParts.push(escapeHtml(h.detail));
-    if (h.txnId) detailParts.push(`<b>ID:</b> ${escapeHtml(h.txnId)}`);
-    const detailHtml = detailParts.length
-      ? `<div class="history-detail">${detailParts.join('<br>')}</div>`
-      : '';
+    // Store index in a data attribute — we need to find back original
+    const originalIdx = allHistory.indexOf(h);
 
     html += `
-      <div class="history-item ${itemClass}" style="animation-delay:${Math.min(idx * 0.03, 0.4)}s">
-        <div class="history-header-row">
-          <div class="history-name">${escapeHtml(h.action || 'Transaction')}</div>
-          <div class="history-amount ${amountClass}">${sign}₹${absAmt}</div>
+      <div class="history-item ${itemClass}" onclick="openDetail(${originalIdx})" style="animation-delay:${Math.min(idx * 0.02, 0.3)}s">
+        <div class="history-icon-box ${itemClass}">
+          <i data-lucide="${iconName}" class="icon"></i>
         </div>
-        ${detailHtml}
-        <div class="history-bottom-row">
-          <div class="history-date">${date}</div>
-          ${statusBadge}
+        <div class="history-content">
+          <div class="history-name-row">
+            <div class="history-name">${escapeHtml(h.action || 'Transaction')}</div>
+            <div class="history-amount ${amountClass}">${sign}₹${absAmt}</div>
+          </div>
+          <div class="history-meta-row">
+            <div class="history-date">
+              <i data-lucide="clock" class="icon"></i>
+              <span>${date}</span>
+            </div>
+            ${statusBadge}
+          </div>
+        </div>
+        <div class="history-chevron">
+          <i data-lucide="chevron-right" class="icon"></i>
         </div>
       </div>
     `;
   });
 
   listEl.innerHTML = html;
+  renderIcons();
 }
 
 // ============================================================
-// ◀ GO BACK
+// 📄 OPEN DETAIL
 // ============================================================
-function goBack() {
-  haptic('light');
+function openDetail(idx) {
+  const h = allHistory[idx];
+  if (!h) return;
 
-  if (tg?.BackButton) {
-    tg.close();
-    return;
-  }
+  const amt = parseFloat(h.amount) || 0;
+  const status = (h.status || 'success').toLowerCase();
+  const isPending = status === 'pending';
+  const isFailed = status === 'failed' || status === 'rejected';
+  const isPos = amt >= 0 && !isFailed;
 
-  if (document.referrer) {
-    window.history.back();
+  // Determine icon & title
+  let iconName = 'receipt';
+  const action = (h.action || '').toLowerCase();
+  if (action.includes('withdraw')) iconName = 'arrow-up-circle';
+  else if (action.includes('deposit') || action.includes('upi')) iconName = 'arrow-down-circle';
+  else if (action.includes('quick pay') || action.includes('payment')) iconName = 'send';
+  else if (action.includes('gift') || action.includes('redeem')) iconName = 'gift';
+  else if (action.includes('task')) iconName = 'clipboard-check';
+  else if (action.includes('admin')) iconName = 'crown';
+  else if (action.includes('referral')) iconName = 'users';
+
+  document.getElementById('detailTitleIcon').setAttribute('data-lucide', iconName);
+  document.getElementById('detailTitleText').textContent = h.action || 'Transaction Details';
+
+  // Amount
+  const amountBox = document.getElementById('detailAmountBox');
+  const amountValue = document.getElementById('detailAmountValue');
+  amountBox.className = 'detail-amount-box';
+  amountValue.className = 'detail-amount-value';
+
+  if (isPending) {
+    amountBox.classList.add('pending');
+    amountValue.classList.add('pending');
+  } else if (isFailed || amt < 0) {
+    if (amt < 0) amountBox.classList.add('negative');
+    if (amt < 0) amountValue.classList.add('negative');
   } else {
-    window.location.href = '/miniapp/profile';
+    amountValue.classList.add('positive');
   }
+
+  const sign = amt >= 0 ? '+' : '-';
+  amountValue.textContent = sign + '₹' + Math.abs(amt).toFixed(2);
+
+  document.getElementById('detailAmountLabel').textContent =
+    isPos ? 'Amount Credited' : 'Amount Debited';
+
+  // Detail rows
+  let rows = [];
+
+  // Status
+  let statusHtml;
+  if (isPending) {
+    statusHtml = `<span class="detail-status-badge pending"><i data-lucide="clock"></i><span>Pending</span></span>`;
+  } else if (isFailed) {
+    statusHtml = `<span class="detail-status-badge failed"><i data-lucide="x-circle"></i><span>${status === 'rejected' ? 'Rejected' : 'Failed'}</span></span>`;
+  } else {
+    statusHtml = `<span class="detail-status-badge"><i data-lucide="check"></i><span>Success</span></span>`;
+  }
+  rows.push({
+    label: 'Status',
+    icon: 'activity',
+    valueHtml: statusHtml
+  });
+
+  // Date & Time
+  rows.push({
+    label: 'Date & Time',
+    icon: 'calendar',
+    value: formatFullDate(h.createdAt)
+  });
+
+  // Detail (extra info)
+  if (h.detail) {
+    rows.push({
+      label: 'Details',
+      icon: 'info',
+      value: h.detail,
+      plain: true
+    });
+  }
+
+  // TXN ID
+  if (h.txnId) {
+    rows.push({
+      label: 'Transaction ID',
+      icon: 'hash',
+      value: h.txnId,
+      copy: true
+    });
+  }
+
+  // Reference / Order ID
+  if (h.orderId) {
+    rows.push({
+      label: 'Order ID',
+      icon: 'hash',
+      value: h.orderId,
+      copy: true
+    });
+  }
+
+  // Transaction type
+  if (h.type) {
+    rows.push({
+      label: 'Type',
+      icon: 'tag',
+      value: (h.type || '').toUpperCase(),
+      plain: true
+    });
+  }
+
+  // User's own ID
+  rows.push({
+    label: 'Account',
+    icon: 'user',
+    value: String(userId || '-'),
+    copy: true
+  });
+
+  let html = '';
+  rows.forEach(r => {
+    let valueContent;
+    if (r.valueHtml) {
+      valueContent = r.valueHtml;
+    } else {
+      const cls = r.plain ? 'plain' : '';
+      valueContent = `<span class="detail-row-value ${cls}">${escapeHtml(r.value)}</span>`;
+      if (r.copy) {
+        valueContent += `<button class="detail-copy-btn" onclick="copyValue('${escapeHtml(r.value)}')"><i data-lucide="copy"></i>Copy</button>`;
+      }
+    }
+
+    html += `
+      <div class="detail-row">
+        <span class="detail-row-label">
+          <i data-lucide="${r.icon}"></i>
+          <span>${r.label}</span>
+        </span>
+        <span style="display:flex;align-items:center;max-width:62%;justify-content:flex-end;flex-wrap:wrap;gap:4px;">
+          ${valueContent}
+        </span>
+      </div>
+    `;
+  });
+
+  document.getElementById('detailList').innerHTML = html;
+
+  // Show
+  document.getElementById('detailSheet').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  renderIcons();
+  haptic('light');
+}
+
+function closeDetail() {
+  document.getElementById('detailSheet').classList.remove('active');
+  forceScrollEnable();
+  haptic('light');
+}
+
+function closeDetailFromBackdrop(e) {
+  if (e.target.id === 'detailSheet') closeDetail();
+}
+
+// ============================================================
+// 📋 COPY VALUE
+// ============================================================
+function copyValue(val) {
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    showToast('Copied!');
+    haptic('success');
+  }).catch(() => {
+    // Fallback
+    const input = document.createElement('input');
+    input.value = val;
+    document.body.appendChild(input);
+    input.select();
+    try { document.execCommand('copy'); showToast('Copied!'); } catch (e) {}
+    document.body.removeChild(input);
+  });
 }
 
 // ============================================================
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  forceScrollEnable();
+  renderIcons();
+
   await loadConfig();
   await loadHistory();
-});
 
-// Handle Telegram BackButton
-if (tg?.BackButton) {
-  tg.BackButton.show();
-  tg.BackButton.onClick(() => {
-    tg.close();
-  });
-}
+  // Enable Telegram BackButton
+  try {
+    if (tg.BackButton) {
+      tg.BackButton.show();
+      tg.BackButton.onClick(() => {
+        goHome();
+      });
+    }
+  } catch (e) {}
+
+  setTimeout(forceScrollEnable, 300);
+  setTimeout(forceScrollEnable, 800);
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
+});
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 // Expose globals
 window.setFilter = setFilter;
-window.goBack = goBack;
+window.goHome = goHome;
+window.openDetail = openDetail;
+window.closeDetail = closeDetail;
+window.closeDetailFromBackdrop = closeDetailFromBackdrop;
+window.copyValue = copyValue;
 </script>
 
 </body>
