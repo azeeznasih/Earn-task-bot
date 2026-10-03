@@ -6,12 +6,12 @@
 <title>Add Fund</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   ADD FUND PAGE — Premium Styles (Green Glow Theme)
+   ADD FUND PAGE — Additional Styles
    ═══════════════════════════════════════════════════════ */
 
-/* ───── PAGE HEADER ───── */
 .page-header {
   text-align: center;
   margin-bottom: 22px;
@@ -25,7 +25,52 @@
   -webkit-text-fill-color: transparent;
   font-weight: 900;
   letter-spacing: 0.5px;
-  filter: drop-shadow(0 0 24px rgba(0, 255, 136, 0.35));
+  filter: drop-shadow(0 0 18px rgba(0, 255, 136, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.page-title .icon {
+  width: 26px;
+  height: 26px;
+  stroke: #00ff88;
+  -webkit-text-fill-color: initial;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+}
+
+/* ───── BACK BUTTON (top-left) ───── */
+.back-btn-top {
+  position: absolute;
+  top: 20px;
+  left: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
+  color: #00cc6a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 100;
+  font-family: inherit;
+  padding: 0;
+}
+
+.back-btn-top .icon {
+  width: 20px;
+  height: 20px;
+  stroke: #00cc6a;
+}
+
+.back-btn-top:active {
+  transform: scale(0.92);
+  background: rgba(0, 255, 136, 0.15);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
 }
 
 /* ───── AUTO UPI CARD ───── */
@@ -39,13 +84,14 @@
 }
 
 .auto-upi-card::before {
-  content: '💠';
+  content: '';
   position: absolute;
-  top: -20px;
-  right: -20px;
-  font-size: 100px;
-  opacity: 0.05;
-  transform: rotate(-15deg);
+  top: -30px;
+  right: -30px;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.06), transparent);
+  border-radius: 50%;
   pointer-events: none;
 }
 
@@ -59,13 +105,25 @@
   -webkit-text-fill-color: transparent;
   margin-bottom: 6px;
   letter-spacing: 1px;
-  text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.25));
+}
+
+.auto-upi-title .icon {
+  width: 22px;
+  height: 22px;
+  stroke: #00ff88;
+  -webkit-text-fill-color: initial;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
 }
 
 .auto-upi-sub {
   text-align: center;
-  color: #00ff88;
-  opacity: 0.65;
+  color: #00cc6a;
+  opacity: 0.55;
   font-size: 12px;
   margin-bottom: 22px;
   font-weight: 600;
@@ -75,8 +133,8 @@
 .amount-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
   border-radius: 16px;
   padding: 0 18px;
   transition: all 0.25s;
@@ -84,18 +142,18 @@
 }
 
 .amount-input-wrap:focus-within {
-  border-color: #00ff88;
-  box-shadow: 
-    0 0 24px rgba(0, 255, 136, 0.35),
-    0 0 60px rgba(0, 255, 136, 0.1),
-    inset 0 0 20px rgba(0, 255, 136, 0.05);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.25),
+    inset 0 0 15px rgba(0, 255, 136, 0.04);
 }
 
 .amount-input-wrap .rupee {
   font-size: 30px;
   font-weight: 800;
   color: #00ff88;
-  text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+  flex-shrink: 0;
 }
 
 .amount-input-wrap input {
@@ -109,27 +167,18 @@
   outline: none;
   font-family: inherit;
   letter-spacing: -0.5px;
+  min-width: 0;
 }
 
 .amount-input-wrap input::placeholder {
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.25;
-}
-
-/* Remove number spinners */
-.amount-input-wrap input::-webkit-outer-spin-button,
-.amount-input-wrap input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.amount-input-wrap input[type=number] {
-  -moz-appearance: textfield;
 }
 
 .amount-range {
   text-align: center;
-  color: #00ff88;
-  opacity: 0.65;
+  color: #00cc6a;
+  opacity: 0.55;
   font-size: 11.5px;
   margin-top: 10px;
   margin-bottom: 20px;
@@ -140,7 +189,7 @@
   color: #00ff88;
   opacity: 1;
   font-weight: 800;
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
 }
 
 /* ───── QUICK AMOUNTS ───── */
@@ -151,15 +200,15 @@
 }
 
 .quick-amounts button {
-  background: rgba(0, 255, 136, 0.06);
-  color: #00ff88;
-  border: 1.5px solid rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.05);
+  color: #00cc6a;
+  border: 1.5px solid rgba(0, 255, 136, 0.15);
   padding: 13px 8px;
   border-radius: 12px;
   font-weight: 800;
   font-size: 15px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s;
   font-family: inherit;
   letter-spacing: 0.3px;
 }
@@ -169,9 +218,7 @@
   background: linear-gradient(135deg, #00ff88, #00cc6a);
   color: #000000;
   transform: scale(0.94);
-  box-shadow: 
-    0 0 25px rgba(0, 255, 136, 0.55),
-    0 0 50px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
   border-color: #00ff88;
 }
 
@@ -185,35 +232,30 @@
   overflow: hidden;
 }
 
-.upi-info-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(0, 255, 136, 0.08),
-    transparent);
-  animation: shine 4s infinite;
-  pointer-events: none;
-}
-
 .upi-info-label {
   font-size: 11px;
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.6;
   letter-spacing: 1.5px;
   font-weight: 800;
   margin-bottom: 12px;
   text-align: center;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.upi-info-label .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
 }
 
 .upi-id-display {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1.5px dashed rgba(0, 255, 136, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px dashed rgba(0, 255, 136, 0.3);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -227,10 +269,10 @@
 }
 
 .upi-id-display:active {
-  background: rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 136, 0.10);
   transform: scale(0.98);
-  border-color: #00ff88;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
 }
 
 .upi-id-text {
@@ -240,7 +282,7 @@
   word-break: break-all;
   font-family: 'SF Mono', 'Courier New', monospace;
   letter-spacing: 0.5px;
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.35);
 }
 
 .copy-badge {
@@ -252,14 +294,23 @@
   font-weight: 800;
   white-space: nowrap;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.copy-badge .icon {
+  width: 10px;
+  height: 10px;
+  stroke: #000000;
 }
 
 .copy-hint {
   text-align: center;
-  color: #00ff88;
-  opacity: 0.55;
+  color: #00cc6a;
+  opacity: 0.5;
   font-size: 10.5px;
   margin-top: 10px;
   font-weight: 600;
@@ -276,18 +327,27 @@
 
 .utr-label {
   font-size: 11px;
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.6;
   letter-spacing: 1.3px;
   font-weight: 800;
   margin-bottom: 12px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.utr-label .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
 }
 
 .utr-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1.5px solid rgba(0, 255, 136, 0.25);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
   border-radius: 14px;
   padding: 16px 18px;
   color: #00ff88;
@@ -298,17 +358,18 @@
   letter-spacing: 2px;
   transition: all 0.25s;
   text-align: center;
+  margin-bottom: 14px;
 }
 
 .utr-input:focus {
-  border-color: #00ff88;
-  box-shadow: 
-    0 0 24px rgba(0, 255, 136, 0.35),
-    inset 0 0 20px rgba(0, 255, 136, 0.05);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.25),
+    inset 0 0 15px rgba(0, 255, 136, 0.04);
 }
 
 .utr-input::placeholder {
-  color: #00ff88;
+  color: #00cc6a;
   opacity: 0.3;
   letter-spacing: 1px;
   font-family: inherit;
@@ -324,32 +385,26 @@
   padding: 18px;
   border-radius: 16px;
   font-weight: 800;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 1px;
   cursor: pointer;
-  box-shadow: 
-    0 8px 32px rgba(0, 255, 136, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 28px rgba(0, 255, 136, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   transition: transform 0.15s;
-  margin-top: 16px;
   font-family: inherit;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.verify-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent);
-  animation: shine 3s ease-in-out infinite;
-  pointer-events: none;
+.verify-btn .icon {
+  stroke: #000000;
+  width: 18px;
+  height: 18px;
 }
 
 .verify-btn:active {
@@ -379,17 +434,23 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 136, 0.08);
   border: 3px solid #00ff88;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 54px;
   margin: 0 auto 24px;
   animation: bounceIn 0.6s ease;
-  box-shadow: 
-    0 0 40px rgba(0, 255, 136, 0.5),
-    0 0 80px rgba(0, 255, 136, 0.2);
+  box-shadow:
+    0 0 30px rgba(0, 255, 136, 0.4),
+    0 0 60px rgba(0, 255, 136, 0.15);
+}
+
+.success-icon-big .icon {
+  width: 54px;
+  height: 54px;
+  stroke: #00ff88;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.5));
 }
 
 @keyframes bounceIn {
@@ -404,14 +465,24 @@
   color: #00ff88;
   margin-bottom: 10px;
   letter-spacing: 1px;
-  text-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.success-sub {
+  color: #00cc6a;
+  opacity: 0.7;
+  font-size: 12.5px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  line-height: 1.5;
 }
 
 .success-amount-box {
   background: linear-gradient(135deg,
-    rgba(0, 255, 136, 0.08),
-    rgba(0, 255, 136, 0.04));
-  border: 1.5px solid rgba(0, 255, 136, 0.35);
+    rgba(0, 255, 136, 0.06),
+    rgba(0, 255, 136, 0.02));
+  border: 1.5px solid rgba(0, 255, 136, 0.25);
   border-radius: 18px;
   padding: 22px;
   margin: 20px 0;
@@ -419,24 +490,9 @@
   overflow: hidden;
 }
 
-.success-amount-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(0, 255, 136, 0.1),
-    transparent);
-  animation: shine 3s ease-in-out infinite;
-  pointer-events: none;
-}
-
 .success-amount-label {
-  color: #00ff88;
-  opacity: 0.7;
+  color: #00cc6a;
+  opacity: 0.6;
   font-size: 11px;
   letter-spacing: 1.5px;
   font-weight: 800;
@@ -451,15 +507,24 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
   letter-spacing: -1px;
+  filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.25));
+}
+
+.success-details-box {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 10px;
+  border: 1px solid rgba(0, 255, 136, 0.10);
 }
 
 .success-row {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
   font-size: 12.5px;
   gap: 10px;
 }
@@ -469,10 +534,18 @@
 }
 
 .success-row span:first-child {
-  color: #00ff88;
-  opacity: 0.65;
+  color: #00cc6a;
+  opacity: 0.6;
   font-weight: 700;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.success-row span:first-child .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #00cc6a;
 }
 
 .success-row span:last-child {
@@ -485,11 +558,24 @@
   max-width: 60%;
 }
 
+.status-pending-badge {
+  color: #ffa500 !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-pending-badge .icon {
+  width: 12px;
+  height: 12px;
+  stroke: #ffa500;
+}
+
 .back-home-btn {
   width: 100%;
-  background: rgba(0, 255, 136, 0.08);
-  color: #00ff88;
-  border: 1.5px solid rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.06);
+  color: #00cc6a;
+  border: 1.5px solid rgba(0, 255, 136, 0.20);
   padding: 16px;
   border-radius: 16px;
   font-weight: 800;
@@ -499,12 +585,22 @@
   font-family: inherit;
   letter-spacing: 0.5px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.back-home-btn .icon {
+  stroke: #00cc6a;
+  width: 16px;
+  height: 16px;
 }
 
 .back-home-btn:active {
-  background: rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.15);
   transform: scale(0.97);
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
 }
 
 /* ───── LOADING SPINNER ───── */
@@ -529,11 +625,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ───── BOTTOM SPACING ───── */
-.app {
-  padding-bottom: 60px !important;
-}
-
 /* ───── RESPONSIVE ───── */
 @media (max-width: 380px) {
   .auto-upi-title { font-size: 18px; }
@@ -542,32 +633,30 @@
   .upi-id-text { font-size: 15px; }
   .success-amount-value { font-size: 32px; }
   .quick-amounts button { font-size: 13px; padding: 11px 6px; }
-}
-
-/* ───── SCROLL FIX ───── */
-html, body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
+  .back-btn-top { top: 16px; left: 12px; }
 }
 </style>
 </head>
 <body>
 
-<div class="bg-animation">
-  <div class="bg-blob blob-1"></div>
-  <div class="bg-blob blob-2"></div>
-  <div class="bg-blob blob-3"></div>
-</div>
-
 <div class="iphone-frame">
-  <div class="iphone-notch"></div>
+
+  <!-- ═══ BACK BUTTON (top-left) ═══ -->
+  <button class="back-btn-top" onclick="goHome()" id="topBackBtn">
+    <i data-lucide="arrow-left"></i>
+  </button>
 
   <div class="app">
 
     <!-- ═══ HEADER ═══ -->
     <div class="page-header">
-      <div class="page-title">💠 Add Fund</div>
-      <div class="page-sub">Instant UPI Deposit</div>
+      <div class="page-title">
+        <i data-lucide="plus-circle"></i>
+        <span>Add Fund</span>
+      </div>
+      <div class="page-sub" style="text-align:center;margin-top:8px;">
+        Instant UPI Deposit
+      </div>
     </div>
 
     <!-- ═══ MAIN FORM ═══ -->
@@ -575,7 +664,10 @@ html, body {
 
       <!-- Amount Card -->
       <div class="auto-upi-card glass">
-        <div class="auto-upi-title">💠 AUTO UPI DEPOSIT</div>
+        <div class="auto-upi-title">
+          <i data-lucide="zap"></i>
+          <span>AUTO UPI DEPOSIT</span>
+        </div>
         <div class="auto-upi-sub">Enter the amount you wish to deposit</div>
 
         <div class="amount-input-wrap">
@@ -598,20 +690,37 @@ html, body {
 
       <!-- UPI Info Card -->
       <div class="upi-info-card glass">
-        <div class="upi-info-label">📌 Pay to UPI ID</div>
-        <div class="upi-id-display" onclick="copyUPI()">
-          <span class="upi-id-text" id="upiIdText">nasih@fam</span>
-          <span class="copy-badge">TAP TO COPY</span>
+        <div class="upi-info-label">
+          <i data-lucide="map-pin"></i>
+          <span>Pay to UPI ID</span>
         </div>
-        <div class="copy-hint">Double-tap to copy • Pay any amount between ₹5 and ₹200</div>
+        <div class="upi-id-display" onclick="copyUPI()">
+          <span class="upi-id-text" id="upiIdText">payzy@upi</span>
+          <span class="copy-badge">
+            <i data-lucide="copy"></i>
+            <span>TAP TO COPY</span>
+          </span>
+        </div>
+        <div class="copy-hint">Tap above to copy • Pay any amount between the range</div>
       </div>
 
       <!-- UTR Card -->
       <div class="utr-card glass">
-        <div class="utr-label">🔐 After payment, enter UTR / Transaction ID</div>
-        <input type="text" id="utrInput" class="utr-input" placeholder="Enter 12-digit UTR" inputmode="numeric" maxlength="20">
+        <div class="utr-label">
+          <i data-lucide="shield-check"></i>
+          <span>After payment, enter UTR / Transaction ID</span>
+        </div>
+        <input
+          type="text"
+          id="utrInput"
+          class="utr-input"
+          placeholder="Enter 12-digit UTR"
+          inputmode="numeric"
+          maxlength="25"
+        >
         <button class="verify-btn" id="verifyBtn" onclick="verifyPayment()">
-          ✅ VERIFY PAYMENT
+          <i data-lucide="check-circle-2"></i>
+          <span>VERIFY PAYMENT</span>
         </button>
       </div>
 
@@ -619,38 +728,56 @@ html, body {
 
     <!-- ═══ SUCCESS SCREEN ═══ -->
     <div class="success-screen glass" id="successScreen">
-      <div class="success-icon-big">✅</div>
-      <div class="success-title">DEPOSIT AUTO-APPROVED!</div>
-      <div style="color:#00ff88;opacity:0.65;font-size:12px;letter-spacing:1px;font-weight:600;">
-        Your payment has been verified
+      <div class="success-icon-big">
+        <i data-lucide="clock" id="successIconDynamic"></i>
+      </div>
+      <div class="success-title" id="successTitle">REQUEST SUBMITTED</div>
+      <div class="success-sub" id="successSub">
+        Your deposit is pending admin approval.
       </div>
 
       <div class="success-amount-box">
-        <div class="success-amount-label">Amount Added</div>
+        <div class="success-amount-label">Amount Requested</div>
         <div class="success-amount-value" id="successAmount">₹0.00</div>
       </div>
 
-      <div style="background:rgba(0,0,0,0.35);border-radius:14px;padding:16px;margin-top:10px;border:1px solid rgba(0,255,136,0.1);">
+      <div class="success-details-box">
         <div class="success-row">
-          <span>UTR</span>
+          <span>
+            <i data-lucide="hash"></i>
+            <span>UTR</span>
+          </span>
           <span id="successUTR">-</span>
         </div>
         <div class="success-row">
-          <span>STATUS</span>
-          <span style="color:#00ff88;">✅ APPROVED</span>
+          <span>
+            <i data-lucide="activity"></i>
+            <span>Status</span>
+          </span>
+          <span id="successStatus" class="status-pending-badge">
+            <i data-lucide="clock"></i>
+            <span>PENDING</span>
+          </span>
         </div>
         <div class="success-row">
-          <span>NEW BALANCE</span>
-          <span id="successNewBalance">₹0.00</span>
-        </div>
-        <div class="success-row">
-          <span>DATE</span>
+          <span>
+            <i data-lucide="calendar"></i>
+            <span>Date</span>
+          </span>
           <span id="successDate">-</span>
+        </div>
+        <div class="success-row">
+          <span>
+            <i data-lucide="info"></i>
+            <span>Note</span>
+          </span>
+          <span style="font-family:inherit;font-size:11.5px;opacity:0.85;">Admin will verify shortly</span>
         </div>
       </div>
 
       <button class="back-home-btn" onclick="goHome()">
-        🏠 BACK TO HOME
+        <i data-lucide="home"></i>
+        <span>BACK TO HOME</span>
       </button>
     </div>
 
@@ -659,7 +786,7 @@ html, body {
 
 <script>
 // ============================================================
-// 📱 ADD FUND PAGE — Complete Logic
+// 💠 ADD FUND PAGE LOGIC
 // ============================================================
 const tg = window.Telegram?.WebApp;
 
@@ -674,7 +801,17 @@ const userId = tg?.initDataUnsafe?.user?.id;
 
 let minAmount = 5;
 let maxAmount = 200;
-let upiId = 'nasih@fam';
+let upiId = 'payzy@upi';
+let isSubmitting = false;
+
+// ============================================================
+// 🎯 ICONS
+// ============================================================
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
 
 // ============================================================
 // 🔔 TOAST
@@ -695,16 +832,31 @@ function showToast(msg) {
   }, 2500);
 }
 
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+// ============================================================
+// 🏠 GO HOME
+// ============================================================
+function goHome() {
+  haptic('light');
+  // Navigate to Home page inside the mini app
+  window.location.href = '/miniapp';
+}
+
 // ============================================================
 // 📌 SET AMOUNT
 // ============================================================
 function setAmount(amt, btn) {
   document.getElementById('amountInput').value = amt;
-
   document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('selected'));
   if (btn) btn.classList.add('selected');
-
-  if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  haptic('light');
 }
 
 // ============================================================
@@ -715,8 +867,8 @@ function copyUPI() {
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
-      showToast('✅ UPI ID Copied!');
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showToast('UPI ID Copied!');
+      haptic('success');
     }).catch(() => fallbackCopy(text));
   } else {
     fallbackCopy(text);
@@ -733,9 +885,9 @@ function fallbackCopy(text) {
 
   try {
     document.execCommand('copy');
-    showToast('✅ UPI ID Copied!');
+    showToast('UPI ID Copied!');
   } catch (e) {
-    showToast('❌ Copy failed');
+    showToast('Copy failed');
   }
 
   document.body.removeChild(input);
@@ -752,7 +904,7 @@ async function loadSettings() {
     if (data.success) {
       minAmount = data.min || 5;
       maxAmount = data.max || 200;
-      upiId = data.upiId || 'nasih@fam';
+      upiId = data.upiId || 'payzy@upi';
 
       document.getElementById('minAmtLabel').textContent = minAmount;
       document.getElementById('maxAmtLabel').textContent = maxAmount;
@@ -767,6 +919,8 @@ async function loadSettings() {
 // ✅ VERIFY PAYMENT
 // ============================================================
 async function verifyPayment() {
+  if (isSubmitting) return;
+
   const amountStr = document.getElementById('amountInput').value.trim();
   const utrStr = document.getElementById('utrInput').value.trim();
   const btn = document.getElementById('verifyBtn');
@@ -774,20 +928,24 @@ async function verifyPayment() {
   const amount = parseFloat(amountStr);
 
   if (isNaN(amount) || amount < minAmount || amount > maxAmount) {
-    showToast(`❌ Amount must be ₹${minAmount} - ₹${maxAmount}`);
+    showToast(`Amount must be ₹${minAmount} - ₹${maxAmount}`);
+    haptic('error');
     return;
   }
 
   if (!utrStr || utrStr.length < 10) {
-    showToast('❌ Enter valid UTR (min 10 digits)');
+    showToast('Enter valid UTR (min 10 digits)');
+    haptic('error');
     return;
   }
 
   if (!/^\d+$/.test(utrStr)) {
-    showToast('❌ UTR should contain only numbers');
+    showToast('UTR should contain only numbers');
+    haptic('error');
     return;
   }
 
+  isSubmitting = true;
   btn.disabled = true;
   btn.innerHTML = '<span class="loading-spinner"></span> VERIFYING...';
 
@@ -806,65 +964,97 @@ async function verifyPayment() {
     const data = await res.json();
 
     if (data.success) {
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      showSuccessScreen(amount, utrStr, data.newBalance || 0);
+      haptic('success');
+      showSuccessScreen(amount, utrStr, data);
     } else {
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-      showToast(`❌ ${data.error || 'Verification failed'}`);
+      haptic('error');
+      showToast(data.error || 'Verification failed');
       btn.disabled = false;
-      btn.innerHTML = '✅ VERIFY PAYMENT';
+      btn.innerHTML = '<i data-lucide="check-circle-2" class="icon"></i><span>VERIFY PAYMENT</span>';
+      renderIcons();
     }
   } catch (e) {
     console.error('Verify error:', e);
-    showToast('❌ Network error. Try again.');
+    showToast('Network error. Try again.');
+    haptic('error');
     btn.disabled = false;
-    btn.innerHTML = '✅ VERIFY PAYMENT';
+    btn.innerHTML = '<i data-lucide="check-circle-2" class="icon"></i><span>VERIFY PAYMENT</span>';
+    renderIcons();
   }
+
+  isSubmitting = false;
 }
 
 // ============================================================
 // 🎉 SHOW SUCCESS SCREEN
 // ============================================================
-function showSuccessScreen(amount, utr, newBalance) {
+function showSuccessScreen(amount, utr, data) {
   document.getElementById('mainForm').style.display = 'none';
   document.getElementById('successScreen').classList.add('active');
 
   document.getElementById('successAmount').textContent = '₹' + amount.toFixed(2);
   document.getElementById('successUTR').textContent = utr;
-  document.getElementById('successNewBalance').textContent = '₹' + newBalance.toFixed(2);
   document.getElementById('successDate').textContent = new Date().toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true
   });
-}
 
-// ============================================================
-// 🏠 GO HOME
-// ============================================================
-function goHome() {
-  if (tg) {
-    tg.close();
+  // ✅ Auto-approve (bot API says so) vs manual (pending)
+  const iconDynamic = document.getElementById('successIconDynamic');
+  const titleEl = document.getElementById('successTitle');
+  const subEl = document.getElementById('successSub');
+  const statusEl = document.getElementById('successStatus');
+
+  if (data.newBalance !== undefined && data.newBalance > 0) {
+    // Auto-approved
+    iconDynamic.setAttribute('data-lucide', 'check-circle-2');
+    titleEl.textContent = 'DEPOSIT APPROVED!';
+    subEl.textContent = 'Your payment has been auto-verified.';
+    statusEl.innerHTML = '<i data-lucide="check-circle-2" style="stroke:#00ff88;width:12px;height:12px;"></i><span>APPROVED</span>';
+    statusEl.style.color = '#00ff88';
   } else {
-    window.location.href = '/miniapp';
+    // Pending manual approval
+    iconDynamic.setAttribute('data-lucide', 'clock');
+    titleEl.textContent = 'REQUEST SUBMITTED';
+    subEl.textContent = 'Your deposit is pending admin approval.';
   }
+
+  renderIcons();
 }
 
 // ============================================================
 // 🚀 INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  renderIcons();
+
   if (!userId) {
     document.body.innerHTML = `
-      <div style="padding:50px;text-align:center;color:#00ff88;">
-        <h2>⚠️ Open from Telegram</h2>
-        <p style="color:#00ff88;opacity:0.7;margin-top:20px;">This page works only inside Telegram Mini App.</p>
+      <div style="padding:50px;text-align:center;color:#00cc6a;">
+        <h2 style="color:#ff6464;">Open from Telegram</h2>
+        <p style="color:#00cc6a;opacity:0.7;margin-top:20px;">This page works only inside Telegram Mini App.</p>
       </div>
     `;
     return;
   }
 
+  // ✅ Enable Telegram BackButton (goes to Home, not close app)
+  try {
+    if (tg.BackButton) {
+      tg.BackButton.show();
+      tg.BackButton.onClick(() => {
+        goHome();
+      });
+    }
+  } catch (e) {}
+
   await loadSettings();
-  console.log('✅ Add Fund page ready');
+  renderIcons();
+
+  setTimeout(renderIcons, 500);
+  setTimeout(renderIcons, 1500);
+
+  console.log('Add Fund page ready');
 });
 
 // Prevent zoom
