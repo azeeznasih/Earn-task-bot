@@ -8713,3 +8713,508 @@ setInterval(() => {
   if (global.broadcastCache) { for (let uid in global.broadcastCache) delete global.broadcastCache[uid]; }
   if (global.taskCreation) { for (let uid in global.taskCreation) delete global.taskCreation[uid]; }
 }, 30 * 60 * 1000);
+// ═══════════════════════════════════════════════════════════
+// COMPLETE WITHDRAW CALLBACK HANDLERS
+// ═══════════════════════════════════════════════════════════
+
+// ────────── Set Payout Method ──────────
+bot.callbackQuery("set_upi", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  userState[ctx.from.id] = "SET_UPI_ACC";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `📝 ${toSmallCaps("Send your UPI ID")}:\n\n${toSmallCaps("Example")}: <code>yourname@upi</code>`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("set_wallet_number", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  userState[ctx.from.id] = "SET_WALLET_NUMBER";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `📝 ${toSmallCaps("Send your Wallet Number")}:`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("set_bank", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  userState[ctx.from.id] = "SET_BANK_ACCNO";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `🏦 ${toSmallCaps("Send Your Bank Account Number")}:`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("btn_payout_back", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  delete userState[ctx.from.id];
+  await sendPayoutMethodPage(ctx, true);
+});
+
+bot.callbackQuery("back_to_withdraw", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  delete userState[ctx.from.id];
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let buttons = await buildWithdrawMenu();
+  if (buttons.length === 0) {
+    return ctx.editMessageText(
+      `<b>${toSmallCaps("Choose Withdraw Method")}</b>\n\n❌ ${toSmallCaps("No withdraw methods available.")}`,
+      { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_balance") }
+    ).catch(() => { });
+  }
+  await ctx.editMessageText(
+    `<b>${toSmallCaps("Choose Withdraw Method")}</b>`,
+    { reply_markup: await buildStyledKb(buttons), parse_mode: "HTML" }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("wd_cancel", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "Cancelled" }).catch(() => { });
+  delete userState[ctx.from.id];
+  await sendBalancePage(ctx, true);
+});
+
+bot.callbackQuery("add_fund_cancel", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "Cancelled" }).catch(() => { });
+  delete userState[ctx.from.id];
+  await sendBalancePage(ctx, true);
+});
+
+// ────────── Gateway Withdraw (wd_gw_*) ──────────
+bot.callbackQuery(/^wd_gw_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let userId = ctx.from.id;
+  let gwName = ctx.callbackQuery.data.replace("wd_gw_", "");
+  let gateway = await Gateway.findOne({ name: gwName, isActive: true });
+  if (!gateway) {
+    return ctx.answerCallbackQuery({ text: "Gateway not available", show_alert: true }).catch(() => { });
+  }
+
+  let user = await getUser(userId);
+  let wallet = user.walletNumber || "";
+
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+
+  if (!wallet) {
+    userState[userId] = `GW_NUMBER_${gwName}`;
+    return ctx.editMessageText(
+      `🔗 <b>${gwName}</b>\n\n📝 ${toSmallCaps("Send Your Wallet Number First")}:`,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "wd_cancel")
+      }
+    ).catch(() => { });
+  }
+
+  userState[userId] = `GW_AMOUNT_${gwName}`;
+  await ctx.editMessageText(
+    `🔗 <b>${gwName}</b>\n\n` +
+    `👛 ${toSmallCaps("Wallet")}: <code>${wallet}</code>\n\n` +
+    `📝 ${toSmallCaps("Enter Withdraw Amount")}:`,
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard()
+        .text(makeBtn("Change Wallet"), `gw_change_wallet_${gwName}`).row()
+        .text(makeBtn("Cancel"), "wd_cancel")
+    }
+  ).catch(() => { });
+});
+
+bot.callbackQuery(/^gw_change_wallet_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let gwName = ctx.callbackQuery.data.replace("gw_change_wallet_", "");
+  userState[ctx.from.id] = `GW_NUMBER_${gwName}`;
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `🔗 <b>${gwName}</b>\n\n📝 ${toSmallCaps("Send Your New Wallet Number")}:`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "wd_cancel") }
+  ).catch(() => { });
+});
+
+// ────────── Gateway Confirm ──────────
+bot.callbackQuery(/^gw_conf_yes_/, async (ctx) => {
+  let userId = ctx.from.id;
+  let data = ctx.callbackQuery.data.replace("gw_conf_yes_", "");
+  let parts = data.split("_");
+  let amount = parseFloat(parts.pop());
+  let gwName = parts.join("_");
+
+  await ctx.answerCallbackQuery({ text: "Processing..." }).catch(() => { });
+  delete userState[userId];
+
+  let user = await getUser(userId);
+  let gateway = await Gateway.findOne({ name: gwName, isActive: true });
+  if (!gateway) {
+    return ctx.editMessageText(`❌ ${toSmallCaps("Gateway not found.")}`, { parse_mode: "HTML" }).catch(() => { });
+  }
+
+  let minW = gateway.minAmount || 0;
+  let maxW = gateway.maxAmount || 0;
+  if (minW > 0 && amount < minW) return ctx.editMessageText(`❌ ${toSmallCaps("Minimum")}: ₹${minW}`, { parse_mode: "HTML" }).catch(() => { });
+  if (maxW > 0 && amount > maxW) return ctx.editMessageText(`❌ ${toSmallCaps("Maximum")}: ₹${maxW}`, { parse_mode: "HTML" }).catch(() => { });
+  if (user.balance < amount) return ctx.editMessageText(`❌ ${toSmallCaps("Insufficient balance!")}`, { parse_mode: "HTML" }).catch(() => { });
+
+  let wallet = user.walletNumber || "";
+  if (!wallet) return ctx.editMessageText(`❌ ${toSmallCaps("Number not saved!")}`, { parse_mode: "HTML" }).catch(() => { });
+
+  user.balance -= amount;
+  user.withdrawnTotal = (user.withdrawnTotal || 0) + amount;
+  await user.save();
+  await logBalanceHistory(userId, `Withdrawn via ${gwName} (Bot)`, -amount);
+
+  let approvedCount = await Withdrawal.countDocuments({ userId, status: "Approved" });
+  let userWithdrawalCount = approvedCount + 1;
+  let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
+
+  let payoutChannel = await getPayoutChannel(gwName);
+  let channelList = payoutChannel && payoutChannel !== "Not Set" ? [payoutChannel] : [];
+
+  await ctx.editMessageText(
+    `⏳ <b>${toSmallCaps("Processing Withdrawal")}...</b>\n\n💰 ${toSmallCaps("Amount")}: ₹${amount}`,
+    { parse_mode: "HTML" }
+  ).catch(() => { });
+
+  let result = await processGatewayPayout({
+    bot, userId, amount, gatewayInfo: gateway,
+    wallet, channelList, showRemainingBalance: true
+  });
+
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+
+  if (result.status === "success") {
+    let txnNumber = result.txnNumber || generateTxnNumber();
+    let processTime = new Date();
+    await Withdrawal.create({
+      withdrawalId, userId, userWithdrawalCount, amount,
+      method: gwName, details: wallet, status: "Approved",
+      isGateway: true, gatewayName: gateway.name,
+      gatewayResponse: result.rawResponse || "",
+      txnNumber, approvedBy: "Auto Gateway", approvedAt: processTime
+    });
+
+    await LiveFund.findOneAndUpdate({ key: "main_fund" }, { $inc: { usedFund: amount } }, { upsert: true });
+
+    let serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
+    let receiptUrl = `${serverUrl}/receipt/${withdrawalId}`;
+
+    await ctx.editMessageText(
+      `✅ <b>${toSmallCaps("Withdrawal Successful!")}</b>\n\n` +
+      `💰 ${toSmallCaps("Amount")}: ₹${amount.toFixed(2)}\n` +
+      `👛 ${toSmallCaps("Wallet")}: <code>${wallet}</code>\n` +
+      `🆔 ${toSmallCaps("TXN")}: <code>${txnNumber}</code>\n` +
+      `📅 ${formatDateTime(processTime)}\n\n` +
+      `💵 ${toSmallCaps("New Balance")}: ₹${user.balance.toFixed(2)}`,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard()
+          .url("✅ Check Status", receiptUrl).row()
+          .text(makeBtn("Menu"), "back_to_balance")
+      }
+    ).catch(() => { });
+
+    try {
+      await bot.api.sendMessage(userId,
+        `🎁 Your Withdrawal of Rs.<code>${amount.toFixed(2)}</code> is Successfully Processed!🔥🔥\n\n` +
+        `🏦 Destination ==> <code>${wallet}</code>\n` +
+        `🚀 Transaction ID ==> <code>${txnNumber}</code>\n` +
+        `🗓 Date ==> ${formatDateTime(processTime)}\n\n` +
+        `✅ Please Check Your ${gwName} Account!`,
+        { parse_mode: "HTML", reply_markup: new InlineKeyboard().url("✅ Check Status", receiptUrl) });
+    } catch (e) { }
+  } else {
+    user.balance += amount;
+    user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - amount);
+    await user.save();
+    await logBalanceHistory(userId, "Withdrawal Failed (Refunded)", amount);
+
+    await ctx.editMessageText(
+      `❌ <b>${toSmallCaps("Withdrawal Failed")}</b>\n\n💰 ₹${amount.toFixed(2)}\n📛 ${result.message || "Gateway error"}\n\n💵 ${toSmallCaps("Refunded")}: ₹${user.balance.toFixed(2)}`,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text(makeBtn("Menu"), "back_to_balance")
+      }
+    ).catch(() => { });
+  }
+});
+
+bot.callbackQuery("gw_conf_no", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "Cancelled" }).catch(() => { });
+  delete userState[ctx.from.id];
+  await sendBalancePage(ctx, true);
+});
+
+// ────────── Manual Withdraw (UPI/BANK/AMAZON/REDEEM) ──────────
+bot.callbackQuery(/^wd_(upi|bank|amazon|redeem)$/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let userId = ctx.from.id;
+  let method = ctx.callbackQuery.data.replace("wd_", "");
+  let user = await getUser(userId);
+
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+
+  let details = "";
+  if (method === "upi") details = user.upiId;
+  else if (method === "bank") details = (user.bankAccNo && user.bankAccNo !== "Not Set") ? `${user.bankAccNo}, ${user.bankIfsc}` : "";
+  else if (method === "amazon") details = user.amazonEmail;
+  else if (method === "redeem") details = user.redeemCodeAddr;
+
+  if (!details || details === "Not Set" || details.includes("Not Set")) {
+    let promptMsg = "";
+    let stateKey = "";
+    if (method === "upi") { promptMsg = `${toSmallCaps("Send Your UPI ID")}:`; stateKey = "WD_ADD_UPI"; }
+    else if (method === "bank") { promptMsg = `${toSmallCaps("Send Your Bank Account Number")}:`; stateKey = "WD_ADD_BANK_ACCNO"; }
+    else if (method === "amazon") { promptMsg = `${toSmallCaps("Send Your Amazon Email")}:`; stateKey = "WD_ADD_AMAZON"; }
+    else if (method === "redeem") { promptMsg = `${toSmallCaps("Send Your Redeem Code Address")}:`; stateKey = "WD_ADD_REDEEM"; }
+
+    userState[userId] = stateKey;
+    return ctx.editMessageText(
+      `⚠️ ${method.toUpperCase()} ${toSmallCaps("not linked!")}\n\n📝 ${promptMsg}`,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "back_to_withdraw")
+      }
+    ).catch(() => { });
+  }
+
+  userState[userId] = `MANUAL_AMOUNT_${method}`;
+  let methodIcon = method === "upi" ? "⚡" : (method === "bank" ? "🏦" : (method === "amazon" ? "📧" : "🎁"));
+
+  await ctx.editMessageText(
+    `${methodIcon} <b>${method.toUpperCase()}</b>\n\n` +
+    `📌 ${toSmallCaps("Linked")}: <code>${details}</code>\n\n` +
+    `📝 ${toSmallCaps("Enter Withdraw Amount")}:`,
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "wd_cancel")
+    }
+  ).catch(() => { });
+});
+
+// ────────── Manual Confirm ──────────
+bot.callbackQuery(/^man_conf_yes_/, async (ctx) => {
+  let userId = ctx.from.id;
+  let data = ctx.callbackQuery.data.replace("man_conf_yes_", "");
+  let parts = data.split("_");
+  let amount = parseFloat(parts.pop());
+  let method = parts.join("_").toLowerCase();
+
+  await ctx.answerCallbackQuery({ text: "Processing..." }).catch(() => { });
+  delete userState[userId];
+
+  let user = await getUser(userId);
+  let details = "";
+  if (method === "upi") details = user.upiId;
+  else if (method === "bank") details = (user.bankAccNo && user.bankAccNo !== "Not Set") ? `${user.bankAccNo}, ${user.bankIfsc}` : "";
+  else if (method === "amazon") details = user.amazonEmail;
+  else if (method === "redeem") details = user.redeemCodeAddr;
+
+  if (!details || details === "Not Set" || details.includes("Not Set")) {
+    return ctx.editMessageText(`❌ ${toSmallCaps("Method not linked!")}`, { parse_mode: "HTML" }).catch(() => { });
+  }
+
+  let ws = await WithdrawSettings.findOne({ method }).lean();
+  let minW = ws ? ws.minAmount : 0;
+  let maxW = ws ? ws.maxAmount : 0;
+  if (minW > 0 && amount < minW) return ctx.editMessageText(`❌ ${toSmallCaps("Minimum")}: ₹${minW}`, { parse_mode: "HTML" }).catch(() => { });
+  if (maxW > 0 && amount > maxW) return ctx.editMessageText(`❌ ${toSmallCaps("Maximum")}: ₹${maxW}`, { parse_mode: "HTML" }).catch(() => { });
+  if (user.balance < amount) return ctx.editMessageText(`❌ ${toSmallCaps("Insufficient balance!")}`, { parse_mode: "HTML" }).catch(() => { });
+
+  user.balance -= amount;
+  user.withdrawnTotal = (user.withdrawnTotal || 0) + amount;
+  await user.save();
+  await logBalanceHistory(userId, `Withdrawn via ${method.toUpperCase()} (Bot)`, -amount);
+
+  let approvedCount = await Withdrawal.countDocuments({ userId, status: "Approved" });
+  let userWithdrawalCount = approvedCount + 1;
+  let withdrawalId = Math.floor(100000 + Math.random() * 900000).toString();
+  let methodLabel = method.toUpperCase();
+
+  await Withdrawal.create({
+    withdrawalId, userId, userWithdrawalCount, amount,
+    method: methodLabel, details, status: "Pending", isGateway: false
+  });
+
+  // ▶▶ PAYOUT CHANNEL-ലേക്ക് അയക്കുന്നു ◀◀
+  let payoutChannel = await getPayoutChannel(method);
+  if (payoutChannel && payoutChannel !== "Not Set") {
+    const adminKb = new InlineKeyboard()
+      .text("Approve ✅", `wd_app_${withdrawalId}`)
+      .text("Reject ❌", `wd_rej_${withdrawalId}`);
+    const userLink = `<a href="tg://user?id=${userId}">${userId}</a>`;
+    const hashTag = `<code>(#${userWithdrawalCount})</code>`;
+    const methodIcon = method === "upi" ? "⚡" : method === "bank" ? "🏦" : method === "amazon" ? "📧" : "🎁";
+    try {
+      await bot.api.sendMessage(payoutChannel,
+        `⚠️ <b>New ${methodLabel} Payout Request!</b> ${hashTag}\n\n` +
+        `👤 <b>User:</b> ${userLink}\n` +
+        `💰 <b>Request Amount:</b> <code>₹${amount}</code>\n` +
+        `${methodIcon} <b>${methodLabel}:</b> <code>${details}</code>\n\n` +
+        `📊 <b>Status:</b> ⏳ Pending`,
+        { parse_mode: "HTML", reply_markup: adminKb, disable_web_page_preview: true });
+    } catch (e) {
+      console.error("Payout channel error:", e.message);
+    }
+  }
+
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  const methodIcon2 = method === "upi" ? "⚡" : method === "bank" ? "🏦" : method === "amazon" ? "📧" : "🎁";
+
+  await ctx.editMessageText(
+    `✅ <b>${toSmallCaps("Withdrawal Request Submitted!")}</b>\n\n` +
+    `💰 ${toSmallCaps("Amount")}: ₹${amount.toFixed(2)}\n` +
+    `${methodIcon2} ${methodLabel}: <code>${details}</code>\n` +
+    `🆔 <code>${withdrawalId}</code>\n\n` +
+    `⏳ ${toSmallCaps("Waiting for admin approval...")}\n` +
+    `💵 ${toSmallCaps("New Balance")}: ₹${user.balance.toFixed(2)}`,
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard().text(makeBtn("Menu"), "back_to_balance")
+    }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("man_conf_no", async (ctx) => {
+  ctx.answerCallbackQuery({ text: "Cancelled" }).catch(() => { });
+  delete userState[ctx.from.id];
+  await sendBalancePage(ctx, true);
+});
+
+// ────────── Admin: Approve / Reject Withdrawal ──────────
+bot.callbackQuery(/^wd_app_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) {
+    return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  }
+  let wdId = ctx.callbackQuery.data.replace("wd_app_", "");
+  let wd = await Withdrawal.findOne({ withdrawalId: wdId });
+  if (!wd || wd.status !== "Pending") {
+    return ctx.answerCallbackQuery({ text: "Already processed", show_alert: true });
+  }
+
+  let txnNumber = generateTxnNumber();
+  let processTime = new Date();
+  wd.status = "Approved";
+  wd.txnNumber = txnNumber;
+  wd.approvedBy = ctx.from.first_name || "Admin";
+  wd.approvedAt = processTime;
+  await wd.save();
+
+  await LiveFund.findOneAndUpdate({ key: "main_fund" }, { $inc: { usedFund: wd.amount } }, { upsert: true });
+
+  let serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  if (!serverUrl.startsWith("http")) serverUrl = `https://${serverUrl}`;
+  let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
+
+  await ctx.answerCallbackQuery({ text: "✅ Approved!" });
+
+  try {
+    await bot.api.sendMessage(wd.userId,
+      `🎁 Your Withdrawal of Rs.<code>${wd.amount.toFixed(2)}</code> is Successfully Processed!🔥🔥\n\n` +
+      `🏦 Destination ==> <code>${wd.details}</code>\n` +
+      `🚀 Transaction ID ==> <code>${txnNumber}</code>\n` +
+      `🗓 Date ==> ${formatDateTime(processTime)}\n\n` +
+      `✅ Please Check Your ${wd.method} Account!`,
+      { parse_mode: "HTML", reply_markup: new InlineKeyboard().url("✅ Check Status", receiptUrl) });
+  } catch (e) { }
+
+  await ctx.editMessageText(
+    `✅ <b>Approved!</b>\n\n🆔 <code>${wdId}</code>\n💰 ₹${wd.amount.toFixed(2)}\n🚀 <code>${txnNumber}</code>`,
+    { parse_mode: "HTML" }
+  ).catch(() => { });
+});
+
+bot.callbackQuery(/^wd_rej_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) {
+    return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  }
+  let wdId = ctx.callbackQuery.data.replace("wd_rej_", "");
+  let wd = await Withdrawal.findOne({ withdrawalId: wdId });
+  if (!wd || wd.status !== "Pending") {
+    return ctx.answerCallbackQuery({ text: "Already processed", show_alert: true });
+  }
+
+  wd.status = "Rejected";
+  wd.approvedBy = ctx.from.first_name || "Admin";
+  wd.approvedAt = new Date();
+  await wd.save();
+
+  let user = await getUser(wd.userId);
+  user.balance += wd.amount;
+  user.withdrawnTotal = Math.max(0, (user.withdrawnTotal || 0) - wd.amount);
+  await user.save();
+  await logBalanceHistory(wd.userId, "Withdrawal Refunded", wd.amount);
+
+  await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
+
+  try {
+    await bot.api.sendMessage(wd.userId,
+      `❌ <b>Withdrawal Rejected</b>\n\n💰 ₹${wd.amount.toFixed(2)}\n💵 ${toSmallCaps("Refunded")}: ₹${user.balance.toFixed(2)}`,
+      { parse_mode: "HTML" });
+  } catch (e) { }
+
+  await ctx.editMessageText(
+    `❌ <b>Rejected!</b>\n\n🆔 <code>${wdId}</code>\n💰 ₹${wd.amount.toFixed(2)}`,
+    { parse_mode: "HTML" }
+  ).catch(() => { });
+});
+
+// ────────── UPI Deposit Approve/Reject ──────────
+bot.callbackQuery(/^upi_app_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let orderId = ctx.callbackQuery.data.replace("upi_app_", "");
+  let payment = await UPIPayment.findOne({ orderId });
+  if (!payment || payment.status === "Approved") return ctx.answerCallbackQuery({ text: "Already processed", show_alert: true });
+
+  payment.status = "Approved";
+  payment.verifiedAt = new Date();
+  payment.approvedBy = ctx.from.first_name || "Admin";
+  await payment.save();
+
+  let user = await getUser(payment.userId);
+  user.balance += payment.amount;
+  await user.save();
+  await logBalanceHistory(payment.userId, "UPI Deposit", payment.amount);
+
+  await ctx.answerCallbackQuery({ text: "✅ Approved!" });
+
+  try {
+    await bot.api.sendMessage(payment.userId,
+      `✅ <b>${toSmallCaps("Deposit Approved!")}</b>\n\n💰 ₹${payment.amount.toFixed(2)}\n🔐 UTR: <code>${payment.utr}</code>`,
+      { parse_mode: "HTML" });
+  } catch (e) { }
+
+  await ctx.editMessageText(`✅ <b>Approved</b> — ₹${payment.amount}`, { parse_mode: "HTML" }).catch(() => { });
+});
+
+bot.callbackQuery(/^upi_rej_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let orderId = ctx.callbackQuery.data.replace("upi_rej_", "");
+  let payment = await UPIPayment.findOne({ orderId });
+  if (!payment || payment.status === "Rejected") return ctx.answerCallbackQuery({ text: "Already processed", show_alert: true });
+
+  payment.status = "Rejected";
+  payment.approvedBy = ctx.from.first_name || "Admin";
+  await payment.save();
+
+  await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
+
+  try {
+    await bot.api.sendMessage(payment.userId,
+      `❌ <b>${toSmallCaps("Deposit Rejected")}</b>\n\n💰 ₹${payment.amount.toFixed(2)}\n🔐 UTR: <code>${payment.utr}</code>`,
+      { parse_mode: "HTML" });
+  } catch (e) { }
+
+  await ctx.editMessageText(`❌ <b>Rejected</b> — ₹${payment.amount}`, { parse_mode: "HTML" }).catch(() => { });
+});
