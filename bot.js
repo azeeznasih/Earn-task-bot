@@ -1,4 +1,4 @@
-wrequire("dotenv").config();
+require("dotenv").config();
 const { Bot, Keyboard, InlineKeyboard, InputFile } = require("grammy");
 const mongoose = require("mongoose");
 const express = require("express");
@@ -230,6 +230,23 @@ function buildInlineKeyboardFromRows(rows) {
     kb.row();
   }
   return kb;
+}
+
+function formatMinutes(min) {
+  if (min < 60) return `${min} minutes`;
+  if (min < 1440) return `${min / 60} hour(s)`;
+  return `${min / 1440} day(s)`;
+}
+
+function buildProcessingDots(frame) {
+  const dots = [
+    "●  ○  ○",
+    "●  ●  ○",
+    "●  ●  ●",
+    "○  ●  ●",
+    "○  ○  ●"
+  ];
+  return dots[frame % dots.length];
 }
 
 const userSchema = new mongoose.Schema({
@@ -1055,17 +1072,6 @@ async function sendUnknownCommand(ctx) {
   } catch (e) { }
 }
 
-function buildProcessingDots(frame) {
-  const dots = [
-    "●  ○  ○",
-    "●  ●  ○",
-    "●  ●  ●",
-    "○  ●  ●",
-    "○  ○  ●"
-  ];
-  return dots[frame % dots.length];
-}
-
 async function animateProcessing(ctx, messageId, chatId, durationMs = 30000) {
   let frame = 0;
   const startTime = Date.now();
@@ -1084,6 +1090,7 @@ async function animateProcessing(ctx, messageId, chatId, durationMs = 30000) {
   }, 400);
   return interval;
 }
+
 app.get("/receipt/:id", async (req, res) => {
   try {
     let wd = await Withdrawal.findOne({ withdrawalId: req.params.id });
@@ -1366,6 +1373,7 @@ app.post("/miniapp/api/gateway/withdraw", async (req, res) => {
     }
   } catch (e) { res.json({ success: false, error: e.message }); }
 });
+
 app.post("/miniapp/api/withdraw", async (req, res) => {
   try {
     const { userId, amount, method } = req.body;
@@ -1706,6 +1714,7 @@ app.get("/miniapp/api/admin/user-balance-history/:userId", async (req, res) => {
   try { res.json({ success: true, history: await BalanceHistory.find({ userId: parseInt(req.params.userId, 10) }).sort({ createdAt: -1 }).limit(50).lean() }); }
   catch (e) { res.json({ success: false, error: e.message }); }
 });
+
 app.post("/miniapp/api/admin/remove-balance", async (req, res) => {
   try {
     const { userId, amount } = req.body;
@@ -2222,6 +2231,7 @@ async function sendPayoutMethodPage(ctx, edit = false) {
   if (edit && ctx.callbackQuery) await ctx.editMessageText(msg, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
   else await ctx.reply(msg, { reply_markup: kb, parse_mode: "HTML" });
 }
+
 bot.on("message:text", async (ctx, next) => {
   let text = ctx.message.text.trim();
   let userId = ctx.from.id;
@@ -2229,8 +2239,17 @@ bot.on("message:text", async (ctx, next) => {
   const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
   const makeBtn = (text) => `${pad}${text}${pad}`;
 
+  if (state && await isAdmin(userId)) {
+    try {
+      const handled = await handleAdminTextInput(ctx, text, userId, state);
+      if (handled) return;
+    } catch (err) {
+      console.error("Admin handler error:", err.message);
+    }
+  }
+
   if (state) {
-    if (text === `${toSmallCaps("Cancel")}` || text === "❌ Cancel") {
+    if (text === `${toSmallCaps("Cancel")}` || text === "❌ Cancel" || text.toLowerCase() === "cancel") {
       delete userState[userId];
       if (global.quickPayCache) delete global.quickPayCache[userId];
       await ctx.reply(`${toSmallCaps("Cancelled")}`, { reply_markup: await buildKeyboardFromLayout(userId), parse_mode: "HTML" });
@@ -2657,6 +2676,7 @@ bot.on("message:text", async (ctx, next) => {
     return sendUnknownCommand(ctx);
   }
 });
+
 bot.command("admin", async (ctx) => {
   let userId = ctx.from.id;
   let disabled = await isAdminDisabled(userId);
@@ -2744,6 +2764,7 @@ async function sendAdminPanel(ctx, edit = true) {
 bot.callbackQuery("admin", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
+  delete userState[ctx.from.id];
   await sendAdminPanel(ctx, true);
 });
 
@@ -3006,6 +3027,7 @@ bot.callbackQuery("adm_find_user", async (ctx) => {
   const makeBtn = (text) => `${pad}${text}${pad}`;
   await ctx.editMessageText(`<b>Find User Details</b>\n\n📝 Send User ID:`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
 });
+
 bot.callbackQuery(/^user_detail_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3110,7 +3132,6 @@ bot.callbackQuery(/^user_ban_/, async (ctx) => {
   await ctx.answerCallbackQuery({ text: u.isBanned ? "Banned" : "Unbanned" });
   await rerender(ctx, `user_detail_${uid}`);
 });
-
 bot.callbackQuery("adm_manage_channels", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3266,6 +3287,7 @@ bot.callbackQuery(/^sl_edit_/, async (ctx) => {
   const makeBtn = (text) => `${pad}${text}${pad}`;
   await ctx.editMessageText(`<b>Edit Social Link</b>\n\nCurrent: ${s.name} | ${s.link}\n\nSend new: <code>Name | Link</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_manage_channels") });
 });
+
 bot.callbackQuery("adm_broadcast_channels", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3616,6 +3638,7 @@ bot.callbackQuery(/^dep_edit_/, async (ctx) => {
   let text = `📝 <b><u>Set Gateway Details: ${gw.name}</u></b>\n\n<b>Current Settings:</b>\n• Min Deposit: ₹${gw.minAmount}\n• Max Deposit: ₹${gw.maxAmount}\n• Tax: ₹${gw.tax}\n• Number: ${gw.upiOrNumber || "Not Set"}\n• Photo: ${gw.photoFileId ? "Set ✅" : "Not Set ❌"}\n\n${cooldownText}\n\n⚠️ <b>Use Format:</b>\n<code>MIN-MAX-TAX--NUMBER</code>\n\n📌 <b>Example:</b>\n<code>100-5000-2--9999999999</code>\n\n⏱️ <b>To Set Cooldown:</b>\n<code>30 minute = 1 deposit</code>\n<code>cooldown off</code> To Disable\n\n📸 <b>Photo:</b> Send QR Code with caption in same format.`;
   await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("⬅️ Back"), `dep_name_${gwId}`) }).catch(() => { });
 });
+
 bot.callbackQuery("adm_customize_theme", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -3649,7 +3672,6 @@ async function renderKeyboardEditPage(ctx) {
   let kb = new InlineKeyboard();
   for (let btn of layout) {
     let icon = btn.hidden ? "🙈" : "👁️";
-    let row = btn.row + 1;
     let label = `${btn.name.substring(0, 20)}`;
     kb.text(label, `kbc_view_${btn.key}`).text(`✏️`, `kbc_edit_${btn.key}`).text(`${icon}`, `kbc_toggle_${btn.key}`).row();
   }
@@ -3944,6 +3966,7 @@ bot.callbackQuery("adm_reset_balance_text_yes", async (ctx) => {
   const makeBtn = (text) => `${pad}${text}${pad}`;
   await ctx.editMessageText(`<b>Reset Complete!</b>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_edit_balance_text") }).catch(() => { });
 });
+
 bot.callbackQuery("adm_start_edit", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4298,6 +4321,7 @@ bot.callbackQuery("adm_create_task", async (ctx) => {
   const makeBtn = (text) => `${pad}${text}${pad}`;
   await ctx.editMessageText(`<b>Task ID Auto-Generated</b>\n\n<code>${newTaskId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Create Task"), "task_create_start").row().text(makeBtn("Back"), "adm_tasks_manager") }).catch(() => { });
 });
+
 bot.callbackQuery("task_create_start", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -4326,12 +4350,6 @@ async function renderCreateTaskPanel(ctx) {
     .text(makeBtn("Back"), "adm_tasks_manager");
   if (ctx.callbackQuery) await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
   else await ctx.reply(text, { reply_markup: kb, parse_mode: "HTML" });
-}
-
-function formatMinutes(min) {
-  if (min < 60) return `${min} minutes`;
-  if (min < 1440) return `${min / 60} hour(s)`;
-  return `${min / 1440} day(s)`;
 }
 
 bot.callbackQuery("task_field_name", async (ctx) => {
@@ -4684,6 +4702,7 @@ bot.callbackQuery(/^newuser_detail_/, async (ctx) => {
   let kb = new InlineKeyboard().text(makeBtn("Back"), "adm_new_users").text(makeBtn("Admin Panel"), "admin");
   await ctx.editMessageText(`<b>User Details</b>\n\n<blockquote>${bodyText}</blockquote>`, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
 });
+
 bot.callbackQuery("status_wd_requests", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -5003,6 +5022,7 @@ bot.callbackQuery("adm_amazon_add", async (ctx) => {
   const makeBtn = (text) => `${pad}${text}${pad}`;
   await ctx.editMessageText(`➕ <b>Add Amazon Codes</b>\n\n📝 Format: <code>CODE AMOUNT</code>\n\nExample:\n<code>AMZ100 100</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_amazon") });
 });
+
 bot.callbackQuery("adm_broadcast", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
@@ -5210,7 +5230,6 @@ bot.callbackQuery(/^bc_del_/, async (ctx) => {
   await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" }).catch(() => { });
   await renderBroadcastPage(ctx);
 });
-// WITHDRAW CALLBACKS
 
 bot.callbackQuery("set_upi", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
@@ -5493,14 +5512,12 @@ bot.callbackQuery(/^wd_app_/, async (ctx) => {
   let receiptUrl = `${serverUrl}/receipt/${wd.withdrawalId}`;
   await ctx.answerCallbackQuery({ text: "✅ Approved!" });
   try { await bot.api.sendMessage(wd.userId, `🎁 Your Withdrawal of Rs.<code>${wd.amount.toFixed(2)}</code> is Successfully Processed!🔥🔥\n\n🏦 Destination ==> <code>${wd.details}</code>\n🚀 Transaction ID ==> <code>${wd.txnNumber}</code>\n🗓 Date ==> ${formatDateTime(processTime)}\n\n✅ Please Check Your ${wd.method} Account!`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().url("✅ Check Status", receiptUrl) }); } catch (e) { }
-  let u = await User.findOne({ userId: wd.userId }).lean();
-  let userLink = `<a href="tg://user?id=${wd.userId}"><b>${wd.userId}</b></a>`;
   let maskedDetails = halfMaskDetails(wd.method, wd.details);
   let methodDisplay = wd.method.toUpperCase();
   let methodIcon = wd.method.toLowerCase() === "upi" ? "⚡" : wd.method.toLowerCase() === "bank" ? "🏦" : "🎁";
   await ctx.editMessageText(
     `⚠️ <b>New ${methodDisplay} Payout Request!</b> <code>(#${wd.userWithdrawalCount})</code>\n\n` +
-    `👤 <b>User:</b> ${userLink}\n` +
+    `👤 <b>User:</b> <a href="tg://user?id=${wd.userId}"><b>${wd.userId}</b></a>\n` +
     `💰 <b>Request Amount:</b> <b>₹${wd.amount}</b>\n` +
     `${methodIcon} <b>${methodDisplay} ID:</b> <code><b>${maskedDetails}</b></code>\n` +
     `🆔 <b>TXN ID:</b> <code><b>${wd.txnNumber}</b></code>\n\n` +
@@ -5527,13 +5544,11 @@ bot.callbackQuery(/^wd_rej_/, async (ctx) => {
   await logBalanceHistory(wd.userId, "Withdrawal Refunded", wd.amount);
   await ctx.answerCallbackQuery({ text: "❌ Rejected!" });
   try { await bot.api.sendMessage(wd.userId, `❌ <b>Withdrawal Rejected</b>\n\n💰 ₹${wd.amount.toFixed(2)}\n💵 Refunded: ₹${user.balance.toFixed(2)}`, { parse_mode: "HTML" }); } catch (e) { }
-  let u = await User.findOne({ userId: wd.userId }).lean();
-  let userLink = `<a href="tg://user?id=${wd.userId}"><b>${wd.userId}</b></a>`;
   let methodDisplay = wd.method.toUpperCase();
   let methodIcon = wd.method.toLowerCase() === "upi" ? "⚡" : wd.method.toLowerCase() === "bank" ? "🏦" : "🎁";
   await ctx.editMessageText(
     `⚠️ <b>New ${methodDisplay} Payout Request!</b> <code>(#${wd.userWithdrawalCount})</code>\n\n` +
-    `👤 <b>User:</b> ${userLink}\n` +
+    `👤 <b>User:</b> <a href="tg://user?id=${wd.userId}"><b>${wd.userId}</b></a>\n` +
     `💰 <b>Request Amount:</b> <b>₹${wd.amount}</b>\n` +
     `${methodIcon} <b>${methodDisplay} ID:</b> <code><b>${wd.details}</b></code>\n\n` +
     `❌ ${toSmallCaps("Rejected by")} ${adminTag} ${toSmallCaps("at")} ${formatDateTime(processTime)}`,
@@ -5571,7 +5586,6 @@ bot.callbackQuery(/^upi_rej_/, async (ctx) => {
   try { await bot.api.sendMessage(payment.userId, `❌ <b>${toSmallCaps("Deposit Rejected")}</b>\n\n💰 ₹${payment.amount.toFixed(2)}\n🔐 UTR: <code>${payment.utr}</code>`, { parse_mode: "HTML" }); } catch (e) { }
   await ctx.editMessageText(`❌ <b>Rejected</b> — ₹${payment.amount}`, { parse_mode: "HTML" }).catch(() => { });
 });
-// ADMIN TEXT INPUT HANDLERS (inside bot.on("message:text"))
 
 async function handleAdminTextInput(ctx, text, userId, state) {
   const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
@@ -5622,7 +5636,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
       let cleanUsername = input.replace(/^@/, '').toLowerCase();
       targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
     }
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_permissions") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_permissions") }); return true; }
     await BotAdmin.findOneAndUpdate({ userId: targetUser.userId }, { addedAt: new Date(), addedBy: userId, isActive: true }, { upsert: true });
     await logAdminAction(userId, ctx.from.first_name || "Owner", "Admin Added", `${targetUser.userId}`, 0, targetUser.userId);
     await ctx.reply(`✅ Admin added!\n\n👤 ${targetUser.firstName || "User"}\n🆔 <code>${targetUser.userId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_permissions") });
@@ -5632,9 +5646,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_NEW_OWNER") {
     delete userState[userId];
     let newOwnerId = parseInt(text.trim(), 10);
-    if (isNaN(newOwnerId)) return ctx.reply(`❌ Invalid ID!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (isNaN(newOwnerId)) { await ctx.reply(`❌ Invalid ID!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let targetUser = await User.findOne({ userId: newOwnerId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     await ctx.reply(`⚠️ <b>Confirm Transfer?</b>\n\n👑 New Owner: ${targetUser.firstName || "User"}\n🆔 <code>${newOwnerId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), `admin_transfer_confirm_${newOwnerId}`).row().text(makeBtn("Cancel"), "admin") });
     return true;
   }
@@ -5642,7 +5656,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_TAX_PERCENT") {
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ Tax must be 0-50%!`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_set_wd_tax") }), true;
+    if (isNaN(amt) || amt < 0 || amt > 50) { await ctx.reply(`❌ Tax must be 0-50%!`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_set_wd_tax") }); return true; }
     await setConfig("tax_percent", amt);
     await ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_set_wd_tax") });
     return true;
@@ -5651,7 +5665,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_QUICK_PAY_TAX") {
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ Tax must be 0-50%!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_quick_pay") }), true;
+    if (isNaN(amt) || amt < 0 || amt > 50) { await ctx.reply(`❌ Tax must be 0-50%!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_quick_pay") }); return true; }
     await setConfig("quick_pay_tax_percent", amt);
     await ctx.reply(`✅ Quick Pay Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_quick_pay") });
     return true;
@@ -5660,9 +5674,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "BAN_USER_WAIT") {
     delete userState[userId];
     let targetId = parseInt(text, 10);
-    if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }), true;
+    if (isNaN(targetId)) { await ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }); return true; }
     let targetUser = await User.findOne({ userId: targetId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }); return true; }
     targetUser.isBanned = true;
     await targetUser.save();
     await logAdminAction(userId, ctx.from.first_name || "Admin", "User Banned", `${targetId}`, 0, targetId);
@@ -5674,9 +5688,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "UNBAN_USER_WAIT") {
     delete userState[userId];
     let targetId = parseInt(text, 10);
-    if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }), true;
+    if (isNaN(targetId)) { await ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }); return true; }
     let targetUser = await User.findOne({ userId: targetId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") }); return true; }
     targetUser.isBanned = false;
     await targetUser.save();
     await logAdminAction(userId, ctx.from.first_name || "Admin", "User Unbanned", `${targetId}`, 0, targetId);
@@ -5695,17 +5709,17 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_FOR_ADD_BAL") {
     delete userState[userId];
     let parts = text.trim().split(/\s+/).filter(p => p !== "");
-    if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID/@username Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (parts.length < 2) { await ctx.reply(`❌ Format: <code>UserID/@username Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let input = parts[0].trim();
     let amount = parseFloat(parts[parts.length - 1]);
-    if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (isNaN(amount) || amount <= 0) { await ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let targetUser = null;
     if (/^\d+$/.test(input)) targetUser = await User.findOne({ userId: parseInt(input, 10) });
     else {
       let cleanUsername = input.replace(/^@/, '').toLowerCase();
       targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
     }
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     targetUser.balance += amount;
     await targetUser.save();
     await logBalanceHistory(targetUser.userId, "Admin Added Balance", amount);
@@ -5718,17 +5732,17 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_FOR_REM_BAL") {
     delete userState[userId];
     let parts = text.trim().split(/\s+/).filter(p => p !== "");
-    if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID/@username Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (parts.length < 2) { await ctx.reply(`❌ Format: <code>UserID/@username Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let input = parts[0].trim();
     let amount = parseFloat(parts[parts.length - 1]);
-    if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (isNaN(amount) || amount <= 0) { await ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let targetUser = null;
     if (/^\d+$/.test(input)) targetUser = await User.findOne({ userId: parseInt(input, 10) });
     else {
       let cleanUsername = input.replace(/^@/, '').toLowerCase();
       targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
     }
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     targetUser.balance -= amount;
     await targetUser.save();
     await logBalanceHistory(targetUser.userId, "Admin Removed Balance", -amount);
@@ -5741,9 +5755,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_FOR_TRACKER_ID") {
     delete userState[userId];
     let targetId = parseInt(text, 10);
-    if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (isNaN(targetId)) { await ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     let targetUser = await User.findOne({ userId: targetId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") }); return true; }
     await ctx.reply(`👤 Loading user <code>${targetId}</code>...`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("View Details"), `user_detail_${targetId}`) });
     return true;
   }
@@ -5751,10 +5765,10 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_FOR_USER_MESSAGE") {
     delete userState[userId];
     let parts = text.split("|").map(p => p.trim());
-    if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID | Message</code>`, { parse_mode: "HTML" }), true;
+    if (parts.length < 2) { await ctx.reply(`❌ Format: <code>UserID | Message</code>`, { parse_mode: "HTML" }); return true; }
     let targetId = parseInt(parts[0], 10);
     let message = parts.slice(1).join("|").trim();
-    if (isNaN(targetId)) return ctx.reply(`❌ Invalid User ID!`), true;
+    if (isNaN(targetId)) { await ctx.reply(`❌ Invalid User ID!`); return true; }
     try {
       await ctx.api.sendMessage(targetId, `📨 <b>${toSmallCaps("Admin Message")}</b>\n\n${message}`, { parse_mode: "HTML" });
       await ctx.reply(`✅ Sent to <code>${targetId}</code>!`, { parse_mode: "HTML" });
@@ -5765,7 +5779,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "TASK_FIELD_NAME") {
     delete userState[userId];
     let temp = global.taskCreation?.[userId];
-    if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!temp) { await ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     temp.title = text.trim();
     await ctx.reply(`✅ Task Name: ${text.trim()}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
     return true;
@@ -5774,9 +5788,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "TASK_FIELD_REWARD") {
     delete userState[userId];
     let amount = parseFloat(text);
-    if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (isNaN(amount) || amount <= 0) { await ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     let temp = global.taskCreation?.[userId];
-    if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!temp) { await ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     temp.reward = amount;
     await ctx.reply(`✅ Reward: ₹${amount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
     return true;
@@ -5785,9 +5799,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "TASK_FIELD_LINK") {
     delete userState[userId];
     let link = text.trim();
-    if (!link.startsWith("http")) return ctx.reply(`❌ Invalid link!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!link.startsWith("http")) { await ctx.reply(`❌ Invalid link!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     let temp = global.taskCreation?.[userId];
-    if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!temp) { await ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     temp.link = link;
     await ctx.reply(`✅ Link: ${link}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
     return true;
@@ -5796,7 +5810,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "TASK_FIELD_DESC") {
     delete userState[userId];
     let temp = global.taskCreation?.[userId];
-    if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!temp) { await ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     temp.description = text.trim();
     await ctx.reply(`✅ Description: ${text.trim()}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
     return true;
@@ -5805,9 +5819,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "TASK_FIELD_CUSTOM_TIME") {
     delete userState[userId];
     let minutes = parseInt(text.trim(), 10);
-    if (isNaN(minutes) || minutes <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (isNaN(minutes) || minutes <= 0) { await ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     let temp = global.taskCreation?.[userId];
-    if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }), true;
+    if (!temp) { await ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") }); return true; }
     temp.expiryMinutes = minutes;
     await ctx.reply(`✅ Time Limit: ${formatMinutes(minutes)}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
     return true;
@@ -5825,7 +5839,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let taskId = state.replace("TASK_EDIT_REWARD_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt <= 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amt) || amt <= 0) { await ctx.reply(`❌ Invalid!`); return true; }
     await Task.updateOne({ taskId }, { reward: amt });
     await ctx.reply(`✅ Reward updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `view_task_${taskId}`) });
     return true;
@@ -5850,13 +5864,13 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "WAITING_TASK_ALERT_CHANNEL") {
     delete userState[userId];
     let channelId = text.trim();
-    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply(`❌ Invalid Channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }), true;
+    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) { await ctx.reply(`❌ Invalid Channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }); return true; }
     try {
       let chatInfo = await ctx.api.getChat(channelId);
       let botInfo = await ctx.api.getMe();
       let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-      if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin in channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }), true;
-    } catch (e) { return ctx.reply(`❌ Cannot access channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }), true; }
+      if (!["administrator", "creator"].includes(botMember.status)) { await ctx.reply(`❌ Bot must be admin in channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }); return true; }
+    } catch (e) { await ctx.reply(`❌ Cannot access channel!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") }); return true; }
     await setConfig("default_task_alert_channel", channelId);
     await ctx.reply(`✅ Task Alert Channel set!\n\n📢 <code>${channelId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") });
     return true;
@@ -5866,7 +5880,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     delete userState[userId];
     let query = text.trim();
     let task = await Task.findOne({ $or: [{ taskId: query }, { title: { $regex: new RegExp("^" + query + "$", "i") } }, { title: { $regex: new RegExp(query, "i") } }] }).lean();
-    if (!task) return ctx.reply(`❌ Task Not Found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "adm_search_task").row().text(makeBtn("Back"), "adm_tasks_manager") }), true;
+    if (!task) { await ctx.reply(`❌ Task Not Found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "adm_search_task").row().text(makeBtn("Back"), "adm_tasks_manager") }); return true; }
     let bodyText = `Task ID: ${task.taskId}\nName: ${task.title}\nReward: ₹${task.reward}\nLink: ${task.link}\nStatus: ${task.isActive !== false ? "🟢 ON" : "🔴 OFF"}`;
     let kb = new InlineKeyboard().text(makeBtn("View"), `view_task_${task.taskId}`).text(makeBtn("Delete"), `del_task_${task.taskId}`).row().text(makeBtn("Back"), "adm_tasks_manager");
     await ctx.reply(`<b>Task Found!</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: kb });
@@ -5888,7 +5902,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "LIVEFUND_WAIT_AMOUNT") {
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "status_live_fund") }), true;
+    if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "status_live_fund") }); return true; }
     await LiveFund.findOneAndUpdate({ key: "main_fund" }, { totalFund: amt, usedFund: 0, updatedAt: new Date() }, { upsert: true });
     await ctx.reply(`✅ Fund Set: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "status_live_fund") });
     return true;
@@ -5898,7 +5912,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let chId = state.replace("CH_EDIT_LINK_", "");
     delete userState[userId];
     let newLink = text.trim();
-    if (!newLink.startsWith("http")) return ctx.reply(`❌ Invalid link!`), true;
+    if (!newLink.startsWith("http")) { await ctx.reply(`❌ Invalid link!`); return true; }
     await Channel.updateOne({ channelId: chId }, { inviteLink: newLink });
     await ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
     return true;
@@ -5908,7 +5922,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let id = state.replace("SL_EDIT_", "");
     delete userState[userId];
     let parts = text.split("|").map(p => p.trim());
-    if (parts.length !== 2) return ctx.reply(`❌ Format: <code>Name | Link</code>`, { parse_mode: "HTML" }), true;
+    if (parts.length !== 2) { await ctx.reply(`❌ Format: <code>Name | Link</code>`, { parse_mode: "HTML" }); return true; }
     await SocialLink.findByIdAndUpdate(id, { name: parts[0], link: parts[1] });
     await ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
     return true;
@@ -5957,7 +5971,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "EDIT_START_URL") {
     delete userState[userId];
     let input = text.trim();
-    if (!input) return ctx.reply(`❌ Invalid!`), true;
+    if (!input) { await ctx.reply(`❌ Invalid!`); return true; }
     await setConfig("welcome_channel_link", input);
     let link = convertOwnerLink(input);
     await ctx.reply(`✅ Link URL Updated!\n\n🔗 ${link}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_start_edit") });
@@ -5967,7 +5981,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "SUPPORT_SET") {
     delete userState[userId];
     let input = text.trim();
-    if (!isValidTelegramID(input)) return ctx.reply(`❌ INVALID INPUT!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_support") }), true;
+    if (!isValidTelegramID(input)) { await ctx.reply(`❌ INVALID INPUT!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_support") }); return true; }
     await setConfig("support_username", input);
     let link = convertOwnerLink(input);
     await ctx.reply(`✅ Customer Support Set!\n\n🔗 ${link}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_support") });
@@ -5976,9 +5990,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
 
   if (state === "GW_WAIT_NAME_V2") {
     let gwName = text.toUpperCase().replace(/\s+/g, "_");
-    if (gwName.length < 2) return ctx.reply(`❌ Name too short!`), true;
+    if (gwName.length < 2) { await ctx.reply(`❌ Name too short!`); return true; }
     let existing = await Gateway.findOne({ name: gwName });
-    if (existing) { delete userState[userId]; return ctx.reply(`❌ Gateway already exists!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_gateway_menu") }), true; }
+    if (existing) { delete userState[userId]; await ctx.reply(`❌ Gateway already exists!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_gateway_menu") }); return true; }
     userState[userId] = `GW_WAIT_URL_V2_${gwName}`;
     await ctx.reply(`✅ Name: <b>${gwName}</b>\n\n🔗 Paste Your Gateway URL:`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_gateway_menu") });
     return true;
@@ -5986,7 +6000,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
 
   if (state.startsWith("GW_WAIT_URL_V2_")) {
     let gwName = state.replace("GW_WAIT_URL_V2_", "");
-    if (!text.startsWith("http://") && !text.startsWith("https://")) return ctx.reply(`❌ URL must start with http`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_gateway_menu") }), true;
+    if (!text.startsWith("http://") && !text.startsWith("https://")) { await ctx.reply(`❌ URL must start with http`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_gateway_menu") }); return true; }
     delete userState[userId];
     await Gateway.create({ name: gwName, url: text.trim(), url_template: text.trim(), isActive: true, minAmount: 0, maxAmount: 0, taxPercent: 0, createdBy: userId });
     await logAdminAction(userId, ctx.from.first_name || "Admin", "Gateway Added", gwName, 0, null);
@@ -5997,7 +6011,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state.startsWith("GW_EDIT_URL_")) {
     let gwName = state.replace("GW_EDIT_URL_", "");
     delete userState[userId];
-    if (!text.startsWith("http")) return ctx.reply(`❌ Invalid URL!`), true;
+    if (!text.startsWith("http")) { await ctx.reply(`❌ Invalid URL!`); return true; }
     await Gateway.findOneAndUpdate({ name: gwName }, { url: text.trim(), url_template: text.trim(), updatedAt: new Date() });
     await ctx.reply(`✅ Gateway Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_view_${gwName}`) });
     return true;
@@ -6007,7 +6021,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let gwName = state.replace("GW_MIN_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`); return true; }
     await Gateway.updateOne({ name: gwName }, { minAmount: amt, updatedAt: new Date() });
     await ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
     return true;
@@ -6017,7 +6031,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let gwName = state.replace("GW_MAX_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`); return true; }
     await Gateway.updateOne({ name: gwName }, { maxAmount: amt, updatedAt: new Date() });
     await ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
     return true;
@@ -6027,7 +6041,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let gwName = state.replace("GW_TAX_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ Tax must be 0-50%!`), true;
+    if (isNaN(amt) || amt < 0 || amt > 50) { await ctx.reply(`❌ Tax must be 0-50%!`); return true; }
     await Gateway.updateOne({ name: gwName }, { taxPercent: amt, updatedAt: new Date() });
     await ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
     return true;
@@ -6036,14 +6050,14 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "ADD_CHANNEL_WAIT") {
     delete userState[userId];
     let channelId = text.trim();
-    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply(`❌ Invalid Channel ID!`), true;
+    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) { await ctx.reply(`❌ Invalid Channel ID!`); return true; }
     let existing = await Channel.findOne({ channelId });
-    if (existing) return ctx.reply(`❌ Channel already added!`), true;
+    if (existing) { await ctx.reply(`❌ Channel already added!`); return true; }
     try {
       let chatInfo = await ctx.api.getChat(channelId);
       let botInfo = await ctx.api.getMe();
       let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-      if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin in channel!`), true;
+      if (!["administrator", "creator"].includes(botMember.status)) { await ctx.reply(`❌ Bot must be admin in channel!`); return true; }
       let inviteLink = "";
       try {
         if (chatInfo.invite_link) inviteLink = chatInfo.invite_link;
@@ -6054,20 +6068,20 @@ async function handleAdminTextInput(ctx, text, userId, state) {
       await Channel.create({ channelId, inviteLink: inviteLink || `https://t.me/${channelId.replace("@", "")}`, displayName: chatInfo.title || channelId, isActive: true, isHidden: false, order: newOrder });
       await logAdminAction(userId, ctx.from.first_name || "Admin", "Channel Added", channelId, 0, null);
       await ctx.reply(`✅ Added Successfully!\n\n📢 ${chatInfo.title || channelId}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
-    } catch (e) { return ctx.reply(`❌ Cannot access channel! ${e.message}`), true; }
+    } catch (e) { await ctx.reply(`❌ Cannot access channel! ${e.message}`); return true; }
     return true;
   }
 
   if (state === "SET_PAYOUT_CHANNEL") {
     delete userState[userId];
     let channelId = text.trim();
-    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) return ctx.reply(`❌ Invalid!`), true;
+    if (!channelId.startsWith("@") && !/^-?\d+$/.test(channelId)) { await ctx.reply(`❌ Invalid!`); return true; }
     try {
       let chatInfo = await ctx.api.getChat(channelId);
       let botInfo = await ctx.api.getMe();
       let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-      if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin!`), true;
-    } catch (e) { return ctx.reply(`❌ Cannot access: ${e.message}`), true; }
+      if (!["administrator", "creator"].includes(botMember.status)) { await ctx.reply(`❌ Bot must be admin!`); return true; }
+    } catch (e) { await ctx.reply(`❌ Cannot access: ${e.message}`); return true; }
     await setConfig("payout_channel", channelId);
     await logAdminAction(userId, ctx.from.first_name || "Admin", "Set Payout Channel", channelId, 0, null);
     await ctx.reply(`✅ Successfully Set!\n\n📢 Payout Channel:\n<code>${channelId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
@@ -6077,7 +6091,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "ADD_SOCIAL_LINK") {
     delete userState[userId];
     let parts = text.split("|").map(p => p.trim());
-    if (parts.length !== 2) return ctx.reply(`❌ Format: <code>Name | Link</code>`, { parse_mode: "HTML" }), true;
+    if (parts.length !== 2) { await ctx.reply(`❌ Format: <code>Name | Link</code>`, { parse_mode: "HTML" }); return true; }
     await SocialLink.create({ name: parts[0], link: parts[1] });
     await logAdminAction(userId, ctx.from.first_name || "Admin", "Social Link Added", parts[0], 0, null);
     await ctx.reply(`✅ Added!\n\n🔗 ${parts[0]}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
@@ -6088,7 +6102,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let method = state.replace("ADMWD_MIN_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`); return true; }
     let s = await WithdrawSettings.findOne({ method });
     if (!s) s = await WithdrawSettings.create({ method, isActive: false });
     s.minAmount = amt; s.updatedAt = new Date(); await s.save();
@@ -6100,7 +6114,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let method = state.replace("ADMWD_MAX_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`); return true; }
     let s = await WithdrawSettings.findOne({ method });
     if (!s) s = await WithdrawSettings.create({ method, isActive: false });
     s.maxAmount = amt; s.updatedAt = new Date(); await s.save();
@@ -6112,7 +6126,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let method = state.replace("ADMWD_TAX_", "");
     delete userState[userId];
     let amt = parseFloat(text);
-    if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ Tax must be 0-50%!`), true;
+    if (isNaN(amt) || amt < 0 || amt > 50) { await ctx.reply(`❌ Tax must be 0-50%!`); return true; }
     let s = await WithdrawSettings.findOne({ method });
     if (!s) s = await WithdrawSettings.create({ method, isActive: false });
     s.taxPercent = amt; s.updatedAt = new Date(); await s.save();
@@ -6124,9 +6138,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let targetId = parseInt(state.replace("UADD_WAIT_", ""), 10);
     delete userState[userId];
     let amount = parseFloat(text);
-    if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amount) || amount <= 0) { await ctx.reply(`❌ Invalid!`); return true; }
     let targetUser = await User.findOne({ userId: targetId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`); return true; }
     targetUser.balance += amount;
     await targetUser.save();
     await logBalanceHistory(targetId, "Admin Added Balance", amount);
@@ -6140,9 +6154,9 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let targetId = parseInt(state.replace("UREM_WAIT_", ""), 10);
     delete userState[userId];
     let amount = parseFloat(text);
-    if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`), true;
+    if (isNaN(amount) || amount <= 0) { await ctx.reply(`❌ Invalid!`); return true; }
     let targetUser = await User.findOne({ userId: targetId });
-    if (!targetUser) return ctx.reply(`❌ User not found!`), true;
+    if (!targetUser) { await ctx.reply(`❌ User not found!`); return true; }
     targetUser.balance -= amount;
     await targetUser.save();
     await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
@@ -6168,12 +6182,12 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let name, method, url;
     if (parts.length === 2) { name = parts[0]; method = "GET"; url = parts[1]; }
     else if (parts.length === 3) { name = parts[0]; method = parts[1].toUpperCase(); url = parts[2]; }
-    else return ctx.reply(`❌ Format: <code>NAME::METHOD::URL</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_add") }), true;
-    if (!name || name.length < 2) return ctx.reply(`❌ Invalid name!`), true;
+    else { await ctx.reply(`❌ Format: <code>NAME::METHOD::URL</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_add") }); return true; }
+    if (!name || name.length < 2) { await ctx.reply(`❌ Invalid name!`); return true; }
     if (!["GET", "POST"].includes(method)) method = "GET";
-    if (!url || !url.startsWith("http")) return ctx.reply(`❌ Invalid URL!`), true;
+    if (!url || !url.startsWith("http")) { await ctx.reply(`❌ Invalid URL!`); return true; }
     let existing = await DepositGateway.findOne({ name: { $regex: new RegExp("^" + name + "$", "i") } });
-    if (existing) return ctx.reply(`❌ Gateway already exists!`), true;
+    if (existing) { await ctx.reply(`❌ Gateway already exists!`); return true; }
     let gatewayId = "DEP" + Date.now().toString().slice(-8);
     await DepositGateway.create({ gatewayId, name, method, url, minAmount: 0, maxAmount: 0, tax: 0, taxPercent: 0, status: "active", depositMode: "auto", upiOrNumber: "Not Set", isActive: true });
     await logAdminAction(userId, ctx.from.first_name || "Admin", "Deposit Gateway Added", `${name}`, 0, null);
@@ -6185,7 +6199,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
     let gwId = state.replace("DEP_SET_DETAILS_", "");
     delete userState[userId];
     let lines = text.trim().split("\n").map(l => l.trim()).filter(l => l !== "");
-    if (lines.length === 0) return ctx.reply(`❌ Empty input!`), true;
+    if (lines.length === 0) { await ctx.reply(`❌ Empty input!`); return true; }
     let mainLine = lines[0];
     let mainParts = mainLine.split("-");
     let minAmount = 0, maxAmount = 0, tax = 0, upiOrNumber = "Not Set";
@@ -6228,13 +6242,13 @@ async function handleAdminTextInput(ctx, text, userId, state) {
   if (state === "DEP_SEARCH_QUERY") {
     delete userState[userId];
     let query = text.trim();
-    if (!query) return ctx.reply(`❌ Empty query!`), true;
+    if (!query) { await ctx.reply(`❌ Empty query!`); return true; }
     let searchQuery = {};
     if (query.startsWith("@")) {
       let username = query.replace("@", "").toLowerCase();
       let targetUser = await User.findOne({ username: { $regex: new RegExp("^" + username + "$", "i") } }).lean();
       if (targetUser) searchQuery.userId = targetUser.userId;
-      else return ctx.reply(`❌ User not found: ${query}`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_search") }), true;
+      else { await ctx.reply(`❌ User not found: ${query}`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_search") }); return true; }
     } else if (/^\d+$/.test(query)) {
       if (query.length >= 8 && query.length <= 10) {
         let userExists = await User.findOne({ userId: parseInt(query, 10) }).lean();
@@ -6245,7 +6259,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
       searchQuery.$or = [{ utr: { $regex: query, $options: "i" } }, { requestId: { $regex: query, $options: "i" } }];
     }
     let results = await DepositRequest.find(searchQuery).sort({ createdAt: -1 }).limit(20).lean();
-    if (results.length === 0) return ctx.reply(`❌ No matching deposits found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_search") }), true;
+    if (results.length === 0) { await ctx.reply(`❌ No matching deposits found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "dep_search") }); return true; }
     let bodyText = `Found: ${results.length}\n\n`;
     let kb = new InlineKeyboard();
     for (let r of results) {
@@ -6260,6 +6274,7 @@ async function handleAdminTextInput(ctx, text, userId, state) {
 
   return false;
 }
+
 bot.on("message:photo", async (ctx, next) => {
   let userId = ctx.from.id;
   let state = userState[userId];
@@ -6607,6 +6622,7 @@ bot.callbackQuery("refresh_balance_only", async (ctx) => {
 
 bot.callbackQuery("back_to_balance", async (ctx) => {
   await ctx.answerCallbackQuery().catch(() => { });
+  delete userState[ctx.from.id];
   try { await sendBalancePage(ctx, true); } catch (e) { }
 });
 
@@ -6634,7 +6650,7 @@ bot.callbackQuery("balance_statement", async (ctx) => {
 });
 
 bot.callbackQuery("noop", async (ctx) => {
-  await ctx.answerCallbackQuery({ text: "Support not set yet", show_alert: false }).catch(() => { });
+  await ctx.answerCallbackQuery({ text: "No tasks available", show_alert: false }).catch(() => { });
 });
 
 bot.callbackQuery("live_fund", async (ctx) => {
@@ -6765,8 +6781,7 @@ bot.callbackQuery("qp_confirm_multi", async (ctx) => {
   else bodyText += `Your Balance: ₹${senderBefore.toFixed(2)} → ₹${sender.balance.toFixed(2)}`;
   const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
   const makeBtn = (text) => `${pad}${text}${pad}`;
-  await ctx.editMessageText(`<b>${toSmallCaps("Payment Successful")}</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(userId) }).catch(() => { });
-  try { await ctx.api.sendMessage(userId, `✅ ${toSmallCaps("Payment Successful!")}`, { reply_markup: await buildKeyboardFromLayout(userId) }); } catch (e) { }
+  await ctx.editMessageText(`<b>${toSmallCaps("Payment Successful")}</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_balance") }).catch(() => { });
 });
 
 bot.catch((err) => console.error("❌ Bot Error:", err.message));
@@ -6802,11 +6817,68 @@ process.on("unhandledRejection", (reason) => { console.error("⚠️ Unhandled R
 process.on("uncaughtException", (err) => { console.error("⚠️ Uncaught Exception:", err.message); });
 
 mongoose.connect(MONGO_URI)
+  .then(async () => {
     console.log("🍃 MongoDB Connected!");
     try {
-    } catch (e) { }
+      await User.collection.createIndex({ userId: 1 }, { unique: true });
+      await User.collection.createIndex({ balance: -1 });
+      await Withdrawal.collection.createIndex({ userId: 1, status: 1 });
+      await BalanceHistory.collection.createIndex({ userId: 1, createdAt: -1 });
+      await Config.collection.createIndex({ key: 1 }, { unique: true });
+      await Channel.collection.createIndex({ channelId: 1 }, { unique: true });
+      await DepositGateway.collection.createIndex({ gatewayId: 1 }, { unique: true });
+      await DepositRequest.collection.createIndex({ requestId: 1 }, { unique: true });
+      console.log("⚡ MongoDB indexes created!");
+    } catch (e) { console.log("⚠️ Index creation:", e.message); }
+    await preloadAllConfigs();
+    await getConfig("min_withdraw", 0);
+    await getConfig("max_withdraw", 0);
+    await getConfig("balance_welcome_text", DEFAULT_BALANCE_TEXT.welcome);
+    await getConfig("balance_footer_text", DEFAULT_BALANCE_TEXT.footer);
+    await getConfig("start_title_text", DEFAULT_START_TEXT.title);
+    await getConfig("start_link_prefix", DEFAULT_START_TEXT.linkPrefix);
+    await getConfig("start_link_clickable", DEFAULT_START_TEXT.linkClickable);
+    await getConfig("keyboard_layout", DEFAULT_KEYBOARD_LAYOUT);
+    await getConfig("admin_panel_layout", DEFAULT_ADMIN_PANEL_LAYOUT);
+    await getConfig("welcome_channel_link", "https://t.me/yourchannel");
+    await getConfig("bot_active", true);
+    await getConfig("bot_status", "active");
+    await getConfig("withdraw_enabled", true);
+    await getConfig("quick_pay_tax_enabled", false);
+    await getConfig("quick_pay_tax_percent", 0);
+    await getConfig("new_user_notif", true);
+    await getConfig("support_username", "Not Set");
+    await getConfig("payout_channel", "Not Set");
+    await getConfig("banned_in_channel_allowed", true);
+    await getConfig("non_admin_channels_bypass", true);
+    await getConfig("show_mode", "all");
+    await getConfig("force_join_enabled", true);
+    await getConfig("default_task_alert_channel", "Not Set");
+    await getConfig("owner_id", MAIN_OWNER_ID);
+    await getConfig("unknown_command_active", true);
+    await getConfig("unknown_command_text", "❓ I didn't understand that.\n\nPlease /start the bot again.");
+    await getConfig("bot_font", "normal");
+    let fund = await LiveFund.findOne({ key: "main_fund" });
+    if (!fund) await LiveFund.create({ key: "main_fund" });
+    let wsCount = await WithdrawSettings.countDocuments({});
+    if (wsCount === 0) {
+      const defaults = [
+        { method: "upi", isActive: true, minAmount: 0, maxAmount: 0, taxPercent: 0 },
+        { method: "bank", isActive: true, minAmount: 0, maxAmount: 0, taxPercent: 0 },
+        { method: "amazon", isActive: false, minAmount: 0, maxAmount: 0, taxPercent: 0 },
+        { method: "redeem", isActive: false, minAmount: 0, maxAmount: 0, taxPercent: 0 }
+      ];
+      for (let d of defaults) await WithdrawSettings.create(d);
+    }
+    setInterval(async () => {
+      try {
+        let now = new Date();
+        let expiredTasks = await Task.find({ expiresAt: { $ne: null, $lte: now }, isComplete: true });
+        for (let task of expiredTasks) { await Task.deleteOne({ taskId: task.taskId }); console.log(`⏰ Expired task deleted: ${task.taskId}`); }
+      } catch (e) { }
     }, 60 * 1000);
     console.log("⏳ Waiting 8s for cleanup...");
+    await new Promise(r => setTimeout(r, 8000));
     console.log("🌐 Server ready");
     await startBotSafe();
   })
@@ -6833,993 +6905,3 @@ setInterval(() => {
   if (global.broadcastCache) { for (let uid in global.broadcastCache) delete global.broadcastCache[uid]; }
   if (global.taskCreation) { for (let uid in global.taskCreation) delete global.taskCreation[uid]; }
 }, 30 * 60 * 1000);
-// ═══════════════════════════════════════════════════════════════
-// FIX PATCH — Paste this at the very bottom of bot.js
-// ═══════════════════════════════════════════════════════════════
-
-// Fix: Commands must be handled first — before unknown message
-const originalHandleUpdate = bot.handleUpdate.bind(bot);
-bot.handleUpdate = async (update) => {
-  try {
-    if (update.message && update.message.text) {
-      const text = update.message.text.trim();
-      const userId = update.message.from.id;
-      const state = userState[userId];
-      if (text.startsWith("/") && !state) {
-        if (text === "/start") return await bot.handleUpdate.call(bot, update);
-        if (text === "/admin") return await bot.handleUpdate.call(bot, update);
-      }
-    }
-  } catch (e) { }
-  return originalHandleUpdate(update);
-};
-
-// ─────────────────────────────────────────────────────────────
-// FIX 1: Admin Panel /admin command — always works
-// ─────────────────────────────────────────────────────────────
-bot.command("admin", async (ctx) => {
-  let userId = ctx.from.id;
-  let disabled = await isAdminDisabled(userId);
-  if (disabled) {
-    let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
-    let ownerUser = await User.findOne({ userId: ownerId }).lean();
-    let ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
-    return ctx.reply(
-      `❌ <b>ADMIN ACCESS DISABLED</b>\n\nYour admin permissions have been disabled by the Owner.\n\n📞 Contact Owner: ${ownerName}\n🆔 Owner ID: ${ownerId}`,
-      { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(`Back to Main Menu`, "back_to_balance") }
-    );
-  }
-  if (!(await isAdmin(userId))) return ctx.reply(`❌ Not an admin!`, { parse_mode: "HTML" });
-  await sendAdminPanel(ctx, false);
-});
-
-// ─────────────────────────────────────────────────────────────
-// FIX 2: Main text handler — state first, then commands,
-//        then keyboard, then unknown LAST
-// ─────────────────────────────────────────────────────────────
-bot.on("message:text", async (ctx, next) => {
-  let text = ctx.message.text.trim();
-  let userId = ctx.from.id;
-  let state = userState[userId];
-  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
-  const makeBtn = (t) => `${pad}${t}${pad}`;
-
-  // 1. COMMANDS — always pass through
-  if (text.startsWith("/") && !state) {
-    if (text === "/start" || text === "/admin") return next();
-  }
-
-  // 2. STATE HANDLING — must handle and RETURN
-  if (state) {
-    // Cancel
-    if (text === `${toSmallCaps("Cancel")}` || text === "❌ Cancel") {
-      delete userState[userId];
-      if (global.quickPayCache) delete global.quickPayCache[userId];
-      await ctx.reply(`${toSmallCaps("Cancelled")}`, { reply_markup: await buildKeyboardFromLayout(userId), parse_mode: "HTML" });
-      return;
-    }
-
-    // ────────── Admin text inputs ──────────
-    if (await isAdmin(userId)) {
-      // Add Balance
-      if (state === "WAITING_FOR_ADD_BAL") {
-        delete userState[userId];
-        let parts = text.split(/\s+/).filter(p => p !== "");
-        if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        let input = parts[0].trim();
-        let amount = parseFloat(parts[parts.length - 1]);
-        if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        let targetUser = null;
-        if (/^\d+$/.test(input)) targetUser = await User.findOne({ userId: parseInt(input, 10) });
-        else {
-          let cleanUsername = input.replace(/^@/, '').toLowerCase();
-          targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
-        }
-        if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        targetUser.balance += amount;
-        await targetUser.save();
-        await logBalanceHistory(targetUser.userId, "Admin Added Balance", amount);
-        await logAdminAction(userId, ctx.from.first_name || "Admin", "Added Balance", `+₹${amount} to ${targetUser.userId}`, amount, targetUser.userId);
-        try { await ctx.api.sendMessage(targetUser.userId, `💰 Admin Gave You A Increase In Balance By ${amount}`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`💸 Admin Added ₹${amount.toFixed(2)}\n\n👤 User: ${targetUser.firstName || "User"} (<code>${targetUser.userId}</code>)\n💰 Now Balance: ${formatBalance(targetUser.balance)}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-      }
-
-      // Remove Balance
-      if (state === "WAITING_FOR_REM_BAL") {
-        delete userState[userId];
-        let parts = text.split(/\s+/).filter(p => p !== "");
-        if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID Amount</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        let input = parts[0].trim();
-        let amount = parseFloat(parts[parts.length - 1]);
-        if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid amount!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        let targetUser = null;
-        if (/^\d+$/.test(input)) targetUser = await User.findOne({ userId: parseInt(input, 10) });
-        else {
-          let cleanUsername = input.replace(/^@/, '').toLowerCase();
-          targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
-        }
-        if (!targetUser) return ctx.reply(`❌ User not found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-        targetUser.balance -= amount;
-        await targetUser.save();
-        await logBalanceHistory(targetUser.userId, "Admin Removed Balance", -amount);
-        await logAdminAction(userId, ctx.from.first_name || "Admin", "Removed Balance", `-₹${amount} from ${targetUser.userId}`, amount, targetUser.userId);
-        try { await ctx.api.sendMessage(targetUser.userId, `💰 Admin Gave You A Decrease In Balance By ${amount}`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`💸 Admin Removed ₹${amount.toFixed(2)}\n\n👤 User: ${targetUser.firstName || "User"} (<code>${targetUser.userId}</code>)\n💰 Now Balance: ${formatBalance(targetUser.balance)}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "admin") });
-      }
-
-      // Broadcast text
-      if (state === "BROADCAST_WAIT_MSG") {
-        delete userState[userId];
-        global.broadcastCache = global.broadcastCache || {};
-        let html = entitiesToHtml(text, ctx.message.entities || []);
-        global.broadcastCache[userId] = { type: "text", content: html, rawText: text, mode: "direct", buttonRows: null, fromChatId: ctx.chat.id, fromMessageId: ctx.message.message_id };
-        return renderBroadcastConfirm(ctx, global.broadcastCache[userId]);
-      }
-
-      // Broadcast to channels
-      if (state === "BROADCAST_TO_CHANNELS") {
-        delete userState[userId];
-        let channels = await Channel.find({ isActive: true }).lean();
-        let html = entitiesToHtml(text, ctx.message.entities || []);
-        let sent = 0, failed = 0;
-        for (let ch of channels) {
-          try { await ctx.api.sendMessage(ch.channelId, html, { parse_mode: "HTML" }); sent++; } catch (e) { failed++; }
-        }
-        return ctx.reply(`<b>Broadcast Complete!</b>\n\n<blockquote>✅ Sent: ${sent}\n❌ Failed: ${failed}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
-      }
-
-      // Broadcast buttons
-      if (state === "BROADCAST_ADD_BUTTONS") {
-        delete userState[userId];
-        let rows = parseInlineButtons(text);
-        if (!rows) return ctx.reply(`❌ Invalid format!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "broadcast_add_buttons") });
-        if (!global.broadcastCache?.[userId]) return ctx.reply(`❌ Expired.`);
-        global.broadcastCache[userId].buttonRows = rows;
-        return ctx.reply(`✅ Buttons Added!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back to Confirm"), "broadcast_confirm_back") });
-      }
-
-      // Task creation inputs
-      if (state === "TASK_FIELD_NAME") {
-        delete userState[userId];
-        let temp = global.taskCreation?.[userId];
-        if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        temp.title = text;
-        return ctx.reply(`✅ Task Name: ${text}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-      }
-      if (state === "TASK_FIELD_REWARD") {
-        delete userState[userId];
-        let amount = parseFloat(text);
-        if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        let temp = global.taskCreation?.[userId];
-        if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        temp.reward = amount;
-        return ctx.reply(`✅ Reward: ₹${amount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-      }
-      if (state === "TASK_FIELD_LINK") {
-        delete userState[userId];
-        if (!text.startsWith("http")) return ctx.reply(`❌ Invalid link!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        let temp = global.taskCreation?.[userId];
-        if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        temp.link = text;
-        return ctx.reply(`✅ Link: ${text}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-      }
-      if (state === "TASK_FIELD_DESC") {
-        delete userState[userId];
-        let temp = global.taskCreation?.[userId];
-        if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        temp.description = text;
-        return ctx.reply(`✅ Description: ${text}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-      }
-      if (state === "TASK_FIELD_CUSTOM_TIME") {
-        delete userState[userId];
-        let minutes = parseInt(text, 10);
-        if (isNaN(minutes) || minutes <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        let temp = global.taskCreation?.[userId];
-        if (!temp) return ctx.reply(`❌ Session expired`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-        temp.expiryMinutes = minutes;
-        return ctx.reply(`✅ Time Limit: ${formatMinutes(minutes)}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "task_create_start") });
-      }
-
-      // Task edit inputs
-      if (state.startsWith("TASK_EDIT_TITLE_")) {
-        let taskId = state.replace("TASK_EDIT_TITLE_", "");
-        delete userState[userId];
-        await Task.updateOne({ taskId }, { title: text });
-        return ctx.reply(`✅ Title updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `view_task_${taskId}`) });
-      }
-      if (state.startsWith("TASK_EDIT_REWARD_")) {
-        let taskId = state.replace("TASK_EDIT_REWARD_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt <= 0) return ctx.reply(`❌ Invalid!`);
-        await Task.updateOne({ taskId }, { reward: amt });
-        return ctx.reply(`✅ Reward updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `view_task_${taskId}`) });
-      }
-      if (state.startsWith("TASK_EDIT_LINK_")) {
-        let taskId = state.replace("TASK_EDIT_LINK_", "");
-        delete userState[userId];
-        await Task.updateOne({ taskId }, { link: text });
-        return ctx.reply(`✅ Link updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `view_task_${taskId}`) });
-      }
-      if (state.startsWith("TASK_EDIT_CHANNEL_")) {
-        let taskId = state.replace("TASK_EDIT_CHANNEL_", "");
-        delete userState[userId];
-        await Task.updateOne({ taskId }, { alertChannel: text });
-        return ctx.reply(`✅ Channel updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `view_task_${taskId}`) });
-      }
-
-      // Search task
-      if (state === "TASK_SEARCH") {
-        delete userState[userId];
-        let query = text.trim();
-        let task = await Task.findOne({ $or: [{ taskId: query }, { title: { $regex: new RegExp("^" + query + "$", "i") } }, { title: { $regex: new RegExp(query, "i") } }] }).lean();
-        if (!task) return ctx.reply(`❌ Not Found!`, { reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "adm_search_task").row().text(makeBtn("Back"), "adm_tasks_manager") });
-        let bodyText = `Task ID: ${task.taskId}\nName: ${task.title}\nReward: ₹${task.reward}`;
-        return ctx.reply(`<b>Task Found!</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("View"), `view_task_${task.taskId}`).row().text(makeBtn("Back"), "adm_tasks_manager") });
-      }
-
-      // Task alert channel
-      if (state === "WAITING_TASK_ALERT_CHANNEL") {
-        delete userState[userId];
-        let channelId = text.trim();
-        try {
-          let botInfo = await ctx.api.getMe();
-          let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-          if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin!`);
-        } catch (e) { return ctx.reply(`❌ Cannot access!`); }
-        await setConfig("default_task_alert_channel", channelId);
-        return ctx.reply(`✅ Channel set!\n\n📢 <code>${channelId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_tasks_manager") });
-      }
-
-      // Redeem codes
-      if (state === "WAITING_REDEEM_CODES") {
-        delete userState[userId];
-        await saveCodes(text, "redeem", ctx);
-        return;
-      }
-      if (state === "WAITING_AMAZON_CODES") {
-        delete userState[userId];
-        await saveCodes(text, "amazon", ctx);
-        return;
-      }
-
-      // Live Fund
-      if (state === "LIVEFUND_WAIT_AMOUNT") {
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`);
-        await LiveFund.findOneAndUpdate({ key: "main_fund" }, { totalFund: amt, usedFund: 0, updatedAt: new Date() }, { upsert: true });
-        return ctx.reply(`✅ Fund Set: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "status_live_fund") });
-      }
-
-      // Add admin
-      if (state === "WAITING_ADMIN_ADD") {
-        delete userState[userId];
-        let input = text.trim();
-        let targetUser = null;
-        if (/^\d+$/.test(input)) targetUser = await User.findOne({ userId: parseInt(input, 10) });
-        else {
-          let cleanUsername = input.replace(/^@/, '').toLowerCase();
-          targetUser = await User.findOne({ username: { $regex: new RegExp("^" + cleanUsername + "$", "i") } });
-        }
-        if (!targetUser) return ctx.reply(`❌ Not found!`);
-        await BotAdmin.findOneAndUpdate({ userId: targetUser.userId }, { addedAt: new Date(), addedBy: userId, isActive: true }, { upsert: true });
-        return ctx.reply(`✅ Admin added!\n\n👤 ${targetUser.firstName || "User"}\n🆔 <code>${targetUser.userId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_permissions") });
-      }
-
-      // New owner
-      if (state === "WAITING_NEW_OWNER") {
-        delete userState[userId];
-        let newOwnerId = parseInt(text.trim(), 10);
-        if (isNaN(newOwnerId)) return ctx.reply(`❌ Invalid ID!`);
-        let targetUser = await User.findOne({ userId: newOwnerId });
-        if (!targetUser) return ctx.reply(`❌ Not found!`);
-        return ctx.reply(`⚠️ Confirm Transfer?\n\n👑 ${targetUser.firstName || "User"}\n🆔 <code>${newOwnerId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), `admin_transfer_confirm_${newOwnerId}`).row().text(makeBtn("Cancel"), "admin") });
-      }
-
-      // Ban user
-      if (state === "BAN_USER_WAIT") {
-        delete userState[userId];
-        let targetId = parseInt(text, 10);
-        if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`);
-        let targetUser = await User.findOne({ userId: targetId });
-        if (!targetUser) return ctx.reply(`❌ Not found!`);
-        targetUser.isBanned = true;
-        await targetUser.save();
-        try { await ctx.api.sendMessage(targetId, `🚫 You have been banned.`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`✅ User ${targetId} BANNED`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") });
-      }
-
-      // Unban user
-      if (state === "UNBAN_USER_WAIT") {
-        delete userState[userId];
-        let targetId = parseInt(text, 10);
-        if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`);
-        let targetUser = await User.findOne({ userId: targetId });
-        if (!targetUser) return ctx.reply(`❌ Not found!`);
-        targetUser.isBanned = false;
-        await targetUser.save();
-        try { await ctx.api.sendMessage(targetId, `✅ You have been unbanned.`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`✅ User ${targetId} UNBANNED`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_ban") });
-      }
-
-      // Talk with user
-      if (state === "WAITING_FOR_USER_MESSAGE") {
-        delete userState[userId];
-        let parts = text.split("|").map(p => p.trim());
-        if (parts.length < 2) return ctx.reply(`❌ Format: <code>UserID | Message</code>`, { parse_mode: "HTML" });
-        let targetId = parseInt(parts[0], 10);
-        let message = parts.slice(1).join("|").trim();
-        if (isNaN(targetId)) return ctx.reply(`❌ Invalid ID!`);
-        try { await ctx.api.sendMessage(targetId, `📨 <b>Admin Message</b>\n\n${message}`, { parse_mode: "HTML" }); return ctx.reply(`✅ Sent to ${targetId}`); }
-        catch (e) { return ctx.reply(`❌ Failed: ${e.message}`); }
-      }
-
-      // Find user
-      if (state === "WAITING_FOR_TRACKER_ID") {
-        delete userState[userId];
-        let targetId = parseInt(text, 10);
-        if (isNaN(targetId)) return ctx.reply(`❌ Invalid!`);
-        let targetUser = await User.findOne({ userId: targetId });
-        if (!targetUser) return ctx.reply(`❌ Not found!`);
-        return ctx.reply(`👤 Loading <code>${targetId}</code>...`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("View Details"), `user_detail_${targetId}`) });
-      }
-
-      // Tax
-      if (state === "WAITING_TAX_PERCENT") {
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ 0-50 only!`);
-        await setConfig("tax_percent", amt);
-        return ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_set_wd_tax") });
-      }
-      if (state === "WAITING_QUICK_PAY_TAX") {
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ 0-50 only!`);
-        await setConfig("quick_pay_tax_percent", amt);
-        return ctx.reply(`✅ QP Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_quick_pay") });
-      }
-
-      // Channel add
-      if (state === "ADD_CHANNEL_WAIT") {
-        delete userState[userId];
-        let channelId = text.trim();
-        let existing = await Channel.findOne({ channelId });
-        if (existing) return ctx.reply(`❌ Already added!`);
-        try {
-          let chatInfo = await ctx.api.getChat(channelId);
-          let botInfo = await ctx.api.getMe();
-          let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-          if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin!`);
-          let inviteLink = chatInfo.invite_link || `https://t.me/${channelId.replace("@", "")}`;
-          let maxOrder = await Channel.findOne({}).sort({ order: -1 }).lean();
-          await Channel.create({ channelId, inviteLink, displayName: chatInfo.title || channelId, isActive: true, isHidden: false, order: (maxOrder?.order || 0) + 1 });
-          return ctx.reply(`✅ Added: ${chatInfo.title || channelId}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
-        } catch (e) { return ctx.reply(`❌ Cannot access: ${e.message}`); }
-      }
-
-      // Set payout channel
-      if (state === "SET_PAYOUT_CHANNEL") {
-        delete userState[userId];
-        let channelId = text.trim();
-        try {
-          let botInfo = await ctx.api.getMe();
-          let botMember = await ctx.api.getChatMember(channelId, botInfo.id);
-          if (!["administrator", "creator"].includes(botMember.status)) return ctx.reply(`❌ Bot must be admin!`);
-        } catch (e) { return ctx.reply(`❌ Cannot access!`); }
-        await setConfig("payout_channel", channelId);
-        return ctx.reply(`✅ Payout Channel:\n<code>${channelId}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
-      }
-
-      // Add social link
-      if (state === "ADD_SOCIAL_LINK") {
-        delete userState[userId];
-        let parts = text.split("|").map(p => p.trim());
-        if (parts.length !== 2) return ctx.reply(`❌ Format: <code>Name | Link</code>`, { parse_mode: "HTML" });
-        await SocialLink.create({ name: parts[0], link: parts[1] });
-        return ctx.reply(`✅ Added!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_manage_channels") });
-      }
-
-      // Gateway name
-      if (state === "GW_WAIT_NAME_V2") {
-        let gwName = text.toUpperCase().replace(/\s+/g, "_");
-        let existing = await Gateway.findOne({ name: gwName });
-        if (existing) { delete userState[userId]; return ctx.reply(`❌ Already exists!`); }
-        userState[userId] = `GW_WAIT_URL_V2_${gwName}`;
-        return ctx.reply(`✅ Name: <b>${gwName}</b>\n\n🔗 Paste Gateway URL:`, { parse_mode: "HTML" });
-      }
-      if (state.startsWith("GW_WAIT_URL_V2_")) {
-        let gwName = state.replace("GW_WAIT_URL_V2_", "");
-        if (!text.startsWith("http")) return ctx.reply(`❌ Must start with http`);
-        delete userState[userId];
-        await Gateway.create({ name: gwName, url: text.trim(), url_template: text.trim(), isActive: true, minAmount: 0, maxAmount: 0, taxPercent: 0 });
-        return ctx.reply(`✅ Gateway Created: ${gwName}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_gateway_menu") });
-      }
-
-      // Gateway edit URL
-      if (state.startsWith("GW_EDIT_URL_")) {
-        let gwName = state.replace("GW_EDIT_URL_", "");
-        delete userState[userId];
-        if (!text.startsWith("http")) return ctx.reply(`❌ Invalid!`);
-        await Gateway.updateOne({ name: gwName }, { url: text.trim(), url_template: text.trim() });
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_view_${gwName}`) });
-      }
-
-      // Gateway min/max/tax
-      if (state.startsWith("GW_MIN_")) {
-        let gwName = state.replace("GW_MIN_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`);
-        await Gateway.updateOne({ name: gwName }, { minAmount: amt });
-        return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
-      }
-      if (state.startsWith("GW_MAX_")) {
-        let gwName = state.replace("GW_MAX_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`);
-        await Gateway.updateOne({ name: gwName }, { maxAmount: amt });
-        return ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
-      }
-      if (state.startsWith("GW_TAX_")) {
-        let gwName = state.replace("GW_TAX_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ 0-50 only!`);
-        await Gateway.updateOne({ name: gwName }, { taxPercent: amt });
-        return ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `gw_edit_${gwName}`) });
-      }
-
-      // Withdraw method min/max/tax
-      if (state.startsWith("ADMWD_MIN_")) {
-        let method = state.replace("ADMWD_MIN_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`);
-        let s = await WithdrawSettings.findOne({ method });
-        if (!s) s = await WithdrawSettings.create({ method, isActive: false });
-        s.minAmount = amt; s.updatedAt = new Date(); await s.save();
-        return ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `admwd_edit_${method}`) });
-      }
-      if (state.startsWith("ADMWD_MAX_")) {
-        let method = state.replace("ADMWD_MAX_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0) return ctx.reply(`❌ Invalid!`);
-        let s = await WithdrawSettings.findOne({ method });
-        if (!s) s = await WithdrawSettings.create({ method, isActive: false });
-        s.maxAmount = amt; s.updatedAt = new Date(); await s.save();
-        return ctx.reply(`✅ Max: ₹${amt}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `admwd_edit_${method}`) });
-      }
-      if (state.startsWith("ADMWD_TAX_")) {
-        let method = state.replace("ADMWD_TAX_", "");
-        delete userState[userId];
-        let amt = parseFloat(text);
-        if (isNaN(amt) || amt < 0 || amt > 50) return ctx.reply(`❌ 0-50 only!`);
-        let s = await WithdrawSettings.findOne({ method });
-        if (!s) s = await WithdrawSettings.create({ method, isActive: false });
-        s.taxPercent = amt; s.updatedAt = new Date(); await s.save();
-        return ctx.reply(`✅ Tax: ${amt}%`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `admwd_edit_${method}`) });
-      }
-
-      // Keyboard edit name
-      if (state.startsWith("KBC_EDIT_NAME_")) {
-        let btnKey = state.replace("KBC_EDIT_NAME_", "");
-        delete userState[userId];
-        let layout = configCache.data["keyboard_layout"] || DEFAULT_KEYBOARD_LAYOUT;
-        let btn = layout.find(b => b.key === btnKey);
-        if (btn) { btn.name = text; configCache.data["keyboard_layout"] = layout; await setConfig("keyboard_layout", layout); }
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_keyboard_custom") });
-      }
-
-      // Admin panel edit name
-      if (state.startsWith("APC_EDIT_NAME_")) {
-        let btnKey = state.replace("APC_EDIT_NAME_", "");
-        delete userState[userId];
-        let layout = configCache.data["admin_panel_layout"] || DEFAULT_ADMIN_PANEL_LAYOUT;
-        let btn = layout.find(b => b.key === btnKey);
-        if (btn) { btn.name = text; configCache.data["admin_panel_layout"] = layout; await setConfig("admin_panel_layout", layout); }
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_panel_custom") });
-      }
-
-      // Unknown command edit text
-      if (state === "UNKNOWN_CMD_EDIT_TEXT") {
-        delete userState[userId];
-        await setConfig("unknown_command_text", text);
-        return ctx.reply(`✅ Saved!\n\n<code>${escapeHtml(text)}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_unknown_cmd") });
-      }
-
-      // Balance welcome text
-      if (state === "EDIT_WELCOME_TEXT") {
-        delete userState[userId];
-        let html = entitiesToHtml(text, ctx.message.entities || []);
-        await setConfig("balance_welcome_text", html);
-        return ctx.reply(`✅ Updated!\n\n${html}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_edit_balance_text") });
-      }
-      if (state === "EDIT_FOOTER_TEXT") {
-        delete userState[userId];
-        let html = entitiesToHtml(text, ctx.message.entities || []);
-        await setConfig("balance_footer_text", html);
-        return ctx.reply(`✅ Updated!\n\n❝ ${html} ❞`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_edit_balance_text") });
-      }
-      if (state === "EDIT_START_TITLE") {
-        delete userState[userId];
-        let html = entitiesToHtml(text, ctx.message.entities || []);
-        await setConfig("start_title_text", html);
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_start_edit") });
-      }
-      if (state === "EDIT_START_LINK_PREFIX") {
-        delete userState[userId];
-        await setConfig("start_link_prefix", text);
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_start_edit") });
-      }
-      if (state === "EDIT_START_LINK_CLICKABLE") {
-        delete userState[userId];
-        await setConfig("start_link_clickable", text);
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_start_edit") });
-      }
-      if (state === "EDIT_START_URL") {
-        delete userState[userId];
-        await setConfig("welcome_channel_link", text.trim());
-        return ctx.reply(`✅ Updated!\n\n🔗 ${convertOwnerLink(text.trim())}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_start_edit") });
-      }
-
-      // Support
-      if (state === "SUPPORT_SET") {
-        delete userState[userId];
-        let input = text.trim();
-        if (!isValidTelegramID(input)) return ctx.reply(`❌ Invalid!`);
-        await setConfig("support_username", input);
-        return ctx.reply(`✅ Set!\n\n🔗 ${convertOwnerLink(input)}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_support") });
-      }
-
-      // User add/remove balance via detail
-      if (state.startsWith("UADD_WAIT_")) {
-        let targetId = parseInt(state.replace("UADD_WAIT_", ""), 10);
-        delete userState[userId];
-        let amount = parseFloat(text);
-        if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`);
-        let tu = await User.findOne({ userId: targetId });
-        if (!tu) return ctx.reply(`❌ Not found!`);
-        tu.balance += amount;
-        await tu.save();
-        await logBalanceHistory(targetId, "Admin Added Balance", amount);
-        try { await ctx.api.sendMessage(targetId, `💰 Admin Added ${amount}`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`✅ Added ₹${amount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `user_detail_${targetId}`) });
-      }
-      if (state.startsWith("UREM_WAIT_")) {
-        let targetId = parseInt(state.replace("UREM_WAIT_", ""), 10);
-        delete userState[userId];
-        let amount = parseFloat(text);
-        if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`);
-        let tu = await User.findOne({ userId: targetId });
-        if (!tu) return ctx.reply(`❌ Not found!`);
-        tu.balance -= amount;
-        await tu.save();
-        await logBalanceHistory(targetId, "Admin Removed Balance", -amount);
-        try { await ctx.api.sendMessage(targetId, `💰 Admin Removed ${amount}`, { parse_mode: "HTML" }); } catch (e) { }
-        return ctx.reply(`✅ Removed ₹${amount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `user_detail_${targetId}`) });
-      }
-      if (state.startsWith("UMSG_WAIT_")) {
-        let targetId = parseInt(state.replace("UMSG_WAIT_", ""), 10);
-        delete userState[userId];
-        try { await ctx.api.sendMessage(targetId, `📨 <b>Admin Message</b>\n\n${text}`, { parse_mode: "HTML" }); return ctx.reply(`✅ Sent!`); }
-        catch (e) { return ctx.reply(`❌ Failed: ${e.message}`); }
-      }
-
-      // Deposit gateway
-      if (state === "DEP_ADD_GATEWAY") {
-        delete userState[userId];
-        let parts = text.trim().split("::").map(p => p.trim());
-        let name, method, url;
-        if (parts.length === 2) { name = parts[0]; method = "GET"; url = parts[1]; }
-        else if (parts.length === 3) { name = parts[0]; method = parts[1].toUpperCase(); url = parts[2]; }
-        else return ctx.reply(`❌ Format: <code>NAME::METHOD::URL</code>`, { parse_mode: "HTML" });
-        if (!url.startsWith("http")) return ctx.reply(`❌ Invalid URL!`);
-        let gatewayId = "DEP" + Date.now().toString().slice(-8);
-        await DepositGateway.create({ gatewayId, name, method, url, minAmount: 0, maxAmount: 0, tax: 0, taxPercent: 0, status: "active", depositMode: "auto", upiOrNumber: "Not Set", isActive: true });
-        return ctx.reply(`✅ Added: ${name}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_deposit_steps") });
-      }
-
-      if (state.startsWith("DEP_SET_DETAILS_")) {
-        let gwId = state.replace("DEP_SET_DETAILS_", "");
-        delete userState[userId];
-        let lines = text.trim().split("\n").map(l => l.trim()).filter(l => l !== "");
-        if (lines.length === 0) return ctx.reply(`❌ Empty!`);
-        let mainParts = lines[0].split("-");
-        let minAmount = 0, maxAmount = 0, tax = 0, upiOrNumber = "Not Set";
-        if (mainParts.length >= 3) {
-          let minP = parseFloat(mainParts[0]); let maxP = parseFloat(mainParts[1]); let taxP = parseFloat(mainParts[2]);
-          if (!isNaN(minP)) minAmount = minP;
-          if (!isNaN(maxP)) maxAmount = maxP;
-          if (!isNaN(taxP)) tax = taxP;
-          if (mainParts.length >= 4) { let numPart = mainParts.slice(3).join("-").replace(/^-+/, "").trim(); if (numPart) upiOrNumber = numPart; }
-        }
-        await DepositGateway.updateOne({ gatewayId: gwId }, { minAmount, maxAmount, tax, upiOrNumber });
-        return ctx.reply(`✅ Updated!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `dep_name_${gwId}`) });
-      }
-
-      if (state === "DEP_SEARCH_QUERY") {
-        delete userState[userId];
-        let query = text.trim();
-        let searchQuery = { requestId: { $regex: query, $options: "i" } };
-        if (/^\d+$/.test(query) && query.length >= 8 && query.length <= 10) {
-          let ux = await User.findOne({ userId: parseInt(query, 10) }).lean();
-          if (ux) searchQuery = { userId: parseInt(query, 10) };
-        }
-        let results = await DepositRequest.find(searchQuery).sort({ createdAt: -1 }).limit(20).lean();
-        if (results.length === 0) return ctx.reply(`❌ Not found!`);
-        let bodyText = `Found: ${results.length}\n\n`;
-        let kb = new InlineKeyboard();
-        for (let r of results) {
-          let statusIcon = r.status === "Approved" ? "✅" : (r.status === "Rejected" ? "❌" : "⏳");
-          bodyText += `${statusIcon} ₹${r.amount}\n`;
-          kb.text(`${statusIcon} ₹${r.amount}`, `dep_req_${r.requestId}`).row();
-        }
-        kb.text(makeBtn("Back"), "adm_deposit_steps");
-        return ctx.reply(`🔍 <b>Results</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: kb });
-      }
-    }
-
-    // ────────── User state inputs ──────────
-    if (state === "SET_WALLET_NUMBER") {
-      delete userState[userId];
-      let number = text.trim();
-      if (!number || number.length < 5) return ctx.reply(`❌ Invalid!`);
-      let user = await getUser(userId);
-      user.walletNumber = number;
-      await user.save();
-      return ctx.reply(`✅ Wallet Added!\n\n<code>${number}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") });
-    }
-    if (state === "SET_UPI_ACC") {
-      delete userState[userId];
-      if (!text.includes("@")) return ctx.reply(`❌ Invalid!`);
-      await User.findOneAndUpdate({ userId }, { upiId: text.trim() });
-      return ctx.reply(`✅ UPI Added!\n\n<code>${text.trim()}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") });
-    }
-    if (state === "SET_BANK_ACCNO") {
-      userState[userId] = `SET_BANK_IFSC_${text.trim()}`;
-      return ctx.reply(`🏦 Send IFSC:`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") });
-    }
-    if (state.startsWith("SET_BANK_IFSC_")) {
-      let accNo = state.replace("SET_BANK_IFSC_", "");
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { bankAccNo: accNo, bankIfsc: text.trim().toUpperCase() });
-      return ctx.reply(`✅ Bank Added!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "btn_payout_back") });
-    }
-    if (state === "WD_ADD_UPI") {
-      delete userState[userId];
-      if (!text.includes("@")) return ctx.reply(`❌ Invalid!`);
-      await User.findOneAndUpdate({ userId }, { upiId: text.trim() });
-      return ctx.reply(`✅ UPI Saved!\n\n<code>${text.trim()}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_withdraw") });
-    }
-    if (state === "WD_ADD_BANK_ACCNO") {
-      userState[userId] = `WD_ADD_BANK_IFSC_${text.trim()}`;
-      return ctx.reply(`✅ Send IFSC:`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "back_to_withdraw") });
-    }
-    if (state.startsWith("WD_ADD_BANK_IFSC_")) {
-      let accNo = state.replace("WD_ADD_BANK_IFSC_", "");
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { bankAccNo: accNo, bankIfsc: text.trim().toUpperCase() });
-      return ctx.reply(`✅ Bank Saved!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_withdraw") });
-    }
-    if (state === "WD_ADD_AMAZON") {
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { amazonEmail: text.trim() });
-      return ctx.reply(`✅ Amazon Saved!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_withdraw") });
-    }
-    if (state === "WD_ADD_REDEEM") {
-      delete userState[userId];
-      await User.findOneAndUpdate({ userId }, { redeemCodeAddr: text.trim() });
-      return ctx.reply(`✅ Redeem Saved!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "back_to_withdraw") });
-    }
-
-    // Withdraw amount
-    if (state.startsWith("GW_NUMBER_")) {
-      let gwName = state.replace("GW_NUMBER_", "");
-      let number = text.trim();
-      if (!number || number.length < 5) return ctx.reply(`❌ Invalid!`);
-      let user = await getUser(userId);
-      user.walletNumber = number;
-      await user.save();
-      userState[userId] = `GW_AMOUNT_${gwName}`;
-      let kb = new Keyboard().text("Cancel").resized().oneTime();
-      return ctx.reply(`Enter Withdraw Amount`, { reply_markup: kb });
-    }
-    if (state.startsWith("GW_AMOUNT_")) {
-      let gwName = state.replace("GW_AMOUNT_", "");
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let user = await getUser(userId);
-      let gateway = await Gateway.findOne({ name: gwName, isActive: true });
-      if (!gateway) return ctx.reply(`❌ Not found!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let minW = gateway.minAmount || 0;
-      let maxW = gateway.maxAmount || 0;
-      if (minW > 0 && amount < minW) return ctx.reply(`❌ Min ₹${minW}`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      if (maxW > 0 && amount > maxW) return ctx.reply(`❌ Max ₹${maxW}`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      if (user.balance < amount) return ctx.reply(`❌ Insufficient!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let wallet = user.walletNumber || "";
-      if (!wallet) return ctx.reply(`❌ No number saved!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let taxPercent = gateway.taxPercent || 0;
-      let taxAmount = taxPercent > 0 ? (amount * taxPercent) / 100 : 0;
-      let receiveAmount = amount - taxAmount;
-      let bodyText = `${toSmallCaps("Amount")}: <code>${amount}</code> INR\n` +
-        `${toSmallCaps("You receive")}: <code>${receiveAmount.toFixed(2)}</code> INR (Tax: <code>₹${taxAmount.toFixed(2)}</code>)\n\n` +
-        `🔗 ${gwName} ${toSmallCaps("Wallet")}: <code>${wallet}</code>`;
-      let confirmMsg = `<b>${toSmallCaps("Withdrawal Confirmation")}</b>\n\n<blockquote>${bodyText}</blockquote>\n\n${toSmallCaps("Confirm your transaction by clicking Confirm")}`;
-      userState[userId] = `GW_CONFIRM_${gwName}_${amount}`;
-      return ctx.reply(confirmMsg, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), `gw_conf_yes_${gwName}_${amount}`).row().text(makeBtn("Cancel ❌"), `gw_conf_no`) });
-    }
-    if (state.startsWith("MANUAL_AMOUNT_")) {
-      let method = state.replace("MANUAL_AMOUNT_", "");
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let user = await getUser(userId);
-      let details = "";
-      if (method === "upi") details = user.upiId;
-      else if (method === "bank") details = (user.bankAccNo && user.bankAccNo !== "Not Set") ? `${user.bankAccNo}, ${user.bankIfsc}` : "";
-      else if (method === "amazon") details = user.amazonEmail;
-      else if (method === "redeem") details = user.redeemCodeAddr;
-      if (!details || details === "Not Set" || details.includes("Not Set")) return ctx.reply(`❌ Not linked!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let ws = await WithdrawSettings.findOne({ method }).lean();
-      let minW = ws ? ws.minAmount : 0;
-      let maxW = ws ? ws.maxAmount : 0;
-      if (minW > 0 && amount < minW) return ctx.reply(`❌ Min ₹${minW}`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      if (maxW > 0 && amount > maxW) return ctx.reply(`❌ Max ₹${maxW}`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      if (user.balance < amount) return ctx.reply(`❌ Insufficient!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let taxPercent = ws ? ws.taxPercent : 0;
-      let taxAmount = taxPercent > 0 ? (amount * taxPercent) / 100 : 0;
-      let receiveAmount = amount - taxAmount;
-      let methodIcon = method === "upi" ? "⚡" : (method === "bank" ? "🏦" : (method === "amazon" ? "📧" : "🎁"));
-      let methodLabel = method.toUpperCase();
-      let bodyText = `${toSmallCaps("Amount")}: <code>${amount}</code> INR\n` +
-        `${toSmallCaps("You receive")}: <code>${receiveAmount.toFixed(2)}</code> INR (Tax: <code>₹${taxAmount.toFixed(2)}</code>)\n\n` +
-        `${methodIcon} ${methodLabel} ID: <code>${details}</code>`;
-      let confirmMsg = `<b>${toSmallCaps("Withdrawal Confirmation")}</b>\n\n<blockquote>${bodyText}</blockquote>\n\n${toSmallCaps("Confirm your transaction by clicking Confirm")}`;
-      userState[userId] = `MANUAL_CONFIRM_${method}_${amount}`;
-      return ctx.reply(confirmMsg, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), `man_conf_yes_${method}_${amount}`).row().text(makeBtn("Cancel ❌"), "man_conf_no") });
-    }
-
-    // Quick Pay
-    if (state === "QP_WAIT_INPUT") {
-      delete userState[userId];
-      let lines = text.split("\n").map(l => l.trim()).filter(l => l !== "");
-      if (lines.length === 0) return ctx.reply(`${toSmallCaps("No data!")}`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let parsed = [];
-      let errors = [];
-      for (let line of lines) {
-        let parts = line.split(/\s+/).filter(p => p !== "");
-        if (parts.length < 2) { errors.push(`${line} (invalid)`); continue; }
-        let userInput = parts[0].trim();
-        let amt = parseFloat(parts[parts.length - 1]);
-        if (isNaN(amt) || amt <= 0) { errors.push(`${line} (invalid amount)`); continue; }
-        let receiver = null;
-        if (/^\d+$/.test(userInput)) receiver = await User.findOne({ userId: parseInt(userInput, 10) }).lean();
-        else if (userInput.startsWith("@")) {
-          let cu = userInput.replace(/^@/, '').toLowerCase();
-          receiver = await User.findOne({ username: { $regex: new RegExp("^" + cu + "$", "i") } }).lean();
-        }
-        if (!receiver) { errors.push(`${userInput} (not found)`); continue; }
-        if (receiver.userId === userId) { errors.push(`${userInput} (self)`); continue; }
-        parsed.push({ receiver, amount: amt });
-      }
-      if (errors.length > 0) return ctx.reply(`<b>Errors</b>\n\n<blockquote>${errors.join("\n")}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Try Again"), "qp_retry") });
-      if (parsed.length === 0) return ctx.reply(`❌ No valid!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let totalAmount = parsed.reduce((s, p) => s + p.amount, 0);
-      let sender = await getUser(userId);
-      let isPriv = (await isAdmin(userId)) || (await isOwner(userId));
-      if (!isPriv && sender.balance < totalAmount) return ctx.reply(`❌ Insufficient!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      global.quickPayCache = global.quickPayCache || {};
-      global.quickPayCache[userId] = { payments: parsed };
-      let bodyText = "";
-      parsed.forEach((p, i) => { bodyText += `${i + 1}. ${p.receiver.firstName || "User"}\nID: ${p.receiver.userId}\nAmount: ₹${p.amount}\n\n`; });
-      bodyText += `Total: ₹${totalAmount.toFixed(2)}`;
-      userState[userId] = `QP_CONFIRM_MULTI`;
-      return ctx.reply(`<b>Confirm Payment</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), "qp_confirm_multi").row().text(makeBtn("Cancel ❌"), "qp_cancel") });
-    }
-    if (state.startsWith("QP_AMOUNT_")) {
-      let targetId = parseInt(state.replace("QP_AMOUNT_", ""), 10);
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let target = await User.findOne({ userId: targetId }).lean();
-      if (!target) return ctx.reply(`❌ Not found!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let sender = await getUser(userId);
-      let isPriv = (await isAdmin(userId)) || (await isOwner(userId));
-      if (!isPriv && sender.balance < amount) return ctx.reply(`❌ Insufficient!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      global.quickPayCache = global.quickPayCache || {};
-      global.quickPayCache[userId] = { payments: [{ receiver: target, amount }] };
-      userState[userId] = "QP_CONFIRM_MULTI";
-      return ctx.reply(`<b>Confirm Payment</b>\n\n<blockquote>To: ${target.firstName || "User"}\nAmount: ₹${amount}</blockquote>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Confirm ✅"), "qp_confirm_multi").row().text(makeBtn("Cancel ❌"), "qp_cancel") });
-    }
-
-    // Gift redeem
-    if (state === "WAITING_FOR_GIFT_REDEEM") {
-      delete userState[userId];
-      let gift = await GiftCode.findOneAndUpdate({ code: text, type: "redeem", usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } }, { $push: { usedUsers: userId } }, { new: true });
-      if (!gift) return ctx.reply(`🚫 Invalid!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let user = await getUser(userId);
-      user.balance += gift.amount;
-      await user.save();
-      await logBalanceHistory(userId, `Gift Redeemed`, gift.amount);
-      return ctx.reply(`🎉 Added ₹${gift.amount}!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-    }
-
-    // Deposit amount
-    if (state && state.startsWith("USER_DEP_AMOUNT_")) {
-      let gwId = state.replace("USER_DEP_AMOUNT_", "");
-      delete userState[userId];
-      let amount = parseFloat(text);
-      if (isNaN(amount) || amount <= 0) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `user_dep_gw_${gwId}`) });
-      let gw = await DepositGateway.findOne({ gatewayId: gwId, status: "active" });
-      if (!gw) return ctx.reply(`❌ Not available!`);
-      if (gw.minAmount > 0 && amount < gw.minAmount) return ctx.reply(`❌ Min ₹${gw.minAmount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `user_dep_gw_${gwId}`) });
-      if (gw.maxAmount > 0 && amount > gw.maxAmount) return ctx.reply(`❌ Max ₹${gw.maxAmount}`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), `user_dep_gw_${gwId}`) });
-      if (gw.depositMode === "auto" || gw.depositMode === "both") {
-        userState[userId] = `USER_DEP_API_${gw.gatewayId}_${amount}`;
-        return ctx.reply(`⚡ Auto Deposit: ${gw.name}\n\n🔗 Enter Deposit API URL:`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "user_dep_cancel") });
-      } else return processManualDeposit(ctx, userId, gw, amount);
-    }
-    if (state && state.startsWith("USER_DEP_API_")) {
-      let parts = state.replace("USER_DEP_API_", "").split("_");
-      let amount = parseFloat(parts.pop());
-      let gwId = parts.join("_");
-      delete userState[userId];
-      let apiUrl = text.trim();
-      if (!apiUrl.startsWith("http")) return ctx.reply(`❌ Invalid URL!`);
-      let gw = await DepositGateway.findOne({ gatewayId: gwId, status: "active" });
-      if (!gw) return ctx.reply(`❌ Not available!`);
-      let adminNumber = gw.upiOrNumber || "Not Set";
-      if (adminNumber === "Not Set") return ctx.reply(`❌ Not configured!`);
-      let orderId = "ORD" + Date.now() + Math.floor(Math.random() * 1000);
-      let finalUrl = apiUrl.replace(/{wallet}/g, adminNumber).replace(/{amount}/g, amount).replace(/{comment}/g, `Dep-${userId}-${orderId}`).replace(/{userId}/g, userId).replace(/{order_id}/g, orderId).replace(/{timestamp}/g, Date.now());
-      await DepositRequest.create({ requestId: orderId, userId, userName: ctx.from.first_name || "", gatewayId: gwId, gatewayName: gw.name, amount, tax: gw.tax || 0, status: "Pending", apiUrl: finalUrl });
-      return processDeposit(ctx, userId, gw, amount, finalUrl, orderId);
-    }
-    if (state && state.startsWith("USER_DEP_UTR_")) {
-      let orderId = state.replace("USER_DEP_UTR_", "");
-      delete userState[userId];
-      let utr = text.replace(/\s/g, "");
-      if (utr.length < 6) return ctx.reply(`❌ Invalid UTR!`);
-      let req = await DepositRequest.findOne({ requestId: orderId });
-      if (!req || req.status !== "Pending") return ctx.reply(`❌ Invalid or processed!`);
-      req.utr = utr;
-      await req.save();
-      await ctx.reply(`✅ UTR Submitted!\n\n🆔 <code>${orderId}</code>`, { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(userId) });
-      let gw = await DepositGateway.findOne({ gatewayId: req.gatewayId }).lean();
-      if (gw) {
-        let channel = await getPayoutChannel(gw.name);
-        if (channel && channel !== "Not Set") {
-          try {
-            await bot.api.sendMessage(channel, `📥 New Manual Deposit\n\n👤 <a href="tg://user?id=${userId}"><b>${userId}</b></a>\n💰 ₹${req.amount}\n🔐 UTR: <code><b>${utr}</b></code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("✅ Approve", `dep_app_${orderId}`).text("❌ Reject", `dep_rej_${orderId}`) });
-          } catch (e) { }
-        }
-      }
-      return;
-    }
-
-    // Task refer
-    if (state.startsWith("TASK_REFER_")) {
-      let taskId = state.replace("TASK_REFER_", "");
-      delete userState[userId];
-      let task = await Task.findOne({ taskId });
-      if (!task) return ctx.reply(`❌ Not found!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      if (task.completedUsers.includes(userId)) return ctx.reply(`❌ Done!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-      let referValue = text.trim();
-      if (!referValue.startsWith("http") && !/^\d{10}$/.test(referValue) && !referValue.startsWith("@")) return ctx.reply(`❌ Invalid!`, { reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "canc_task") });
-      let submissionId = Math.floor(100000 + Math.random() * 900000).toString();
-      let user = await getUser(userId);
-      await TaskSubmission.create({ submissionId, userId, userName: user.firstName || "User", taskId: task.taskId, taskTitle: task.title, reward: task.reward, photoFileId: `REFER: ${referValue}`, status: "Pending" });
-      let alertChannel = await getConfig("default_task_alert_channel", "Not Set");
-      if (alertChannel && alertChannel !== "Not Set") {
-        try { await bot.api.sendMessage(alertChannel, `<b>NEW TASK</b>\n\nUser: ${userId}\nTask: ${task.title}\nType: Refer`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("Approve ✅", `task_app_${submissionId}`).text("Reject ❌", `task_rej_${submissionId}`) }); } catch (e) { }
-      }
-      return ctx.reply(`✅ Submitted!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-    }
-
-    // Handle unknown state — fall through to next handlers
-    return next();
-  }
-
-  // 3. ADMIN COMMANDS (without state)
-  if (text === "/start") return next();
-  if (text === "/admin") return next();
-
-  // 4. KEYBOARD BUTTONS
-  let user = await getUser(userId);
-  let layout = await getCurrentKeyboardLayoutForUser(userId);
-  let matchedKey = null;
-  for (let btn of layout) {
-    if (btn.name === text && !btn.hidden) { matchedKey = btn.key; break; }
-  }
-
-  if (matchedKey === "btn_balance") { try { await sendBalancePage(ctx, false); } catch (e) { } return; }
-  if (matchedKey === "btn_tasks") {
-    try {
-      let tasks = await Task.find({ isActive: { $ne: false }, isComplete: true }).sort({ createdAt: -1 }).lean();
-      if (!tasks || tasks.length === 0) return ctx.reply(`No tasks available.`, { parse_mode: "HTML" });
-      let taskButtons = [];
-      tasks.forEach(t => taskButtons.push([{ text: `${t.title} (₹${t.reward})`, callback_data: `do_task_${t.taskId}` }]));
-      return ctx.reply(`<b>Available Tasks</b>`, { reply_markup: await buildStyledKb(taskButtons), parse_mode: "HTML" });
-    } catch (e) { return ctx.reply(`❌ Error.`); }
-  }
-  if (matchedKey === "btn_gift") { userState[userId] = "WAITING_FOR_GIFT_REDEEM"; return ctx.reply(`🎁 Send Gift Code:`, { parse_mode: "HTML" }); }
-  if (matchedKey === "btn_quickpay") {
-    const { Keyboard } = require("grammy");
-    let qpText = `💡 Quick Pay\n\n<blockquote>Format:\n<code>UserID 1</code>  <code>@username 1</code></blockquote>`;
-    userState[userId] = "QP_WAIT_INPUT";
-    let kb = new Keyboard().requestUsers("Select User", 1, { user_is_bot: false, request_name: true, request_username: true }).row().text("❌ Cancel").resized().oneTime();
-    return ctx.reply(qpText, { parse_mode: "HTML", reply_markup: kb });
-  }
-  if (matchedKey === "btn_payout") return sendPayoutMethodPage(ctx, false);
-  if (matchedKey === "btn_withdraw") {
-    let withdrawEnabled = await getConfig("withdraw_enabled", true);
-    if (!withdrawEnabled) {
-      let isAdminU = await isAdmin(userId);
-      if (!isAdminU) return ctx.reply(`⚠️ Withdrawals disabled`);
-    }
-    let buttons = await buildWithdrawMenu();
-    if (buttons.length === 0) return ctx.reply(`<b>Choose Withdraw Method</b>\n\n❌ No methods.`, { parse_mode: "HTML" });
-    return ctx.reply(`<b>Choose Withdraw Method</b>`, { reply_markup: await buildStyledKb(buttons), parse_mode: "HTML" });
-  }
-
-  // 5. GIFT CODE (redeem)
-  let gift = await GiftCode.findOneAndUpdate({ code: text, type: "redeem", usedUsers: { $ne: userId }, $expr: { $lt: [{ $size: "$usedUsers" }, "$maxUses"] } }, { $push: { usedUsers: userId } }, { new: true });
-  if (gift) {
-    user.balance += gift.amount;
-    await user.save();
-    await logBalanceHistory(userId, `Gift Redeemed`, gift.amount);
-    return ctx.reply(`🎉 Added ₹${gift.amount}!`, { reply_markup: await buildKeyboardFromLayout(userId) });
-  }
-
-  // 6. UNKNOWN COMMAND — LAST
-  return sendUnknownCommand(ctx);
-});
-
-// ─────────────────────────────────────────────────────────────
-// FIX 3: Bot start / catch
-// ─────────────────────────────────────────────────────────────
-bot.catch((err) => console.error("❌ Bot Error:", err.message));
-
-let botRetryCount = 0;
-const MAX_BOT_RETRIES = 15;
-
-async function startBotSafe() {
-  try {
-    await bot.start({
-      onStart: (info) => {
-        console.log(`🚀 Bot @${info.username} running!`);
-        botRetryCount = 0;
-      }
-    });
-  } catch (err) {
-    const errMsg = err?.message || String(err);
-    console.error("❌ Bot start error:", errMsg);
-    if (errMsg.includes("409") || errMsg.includes("Conflict")) {
-      botRetryCount++;
-      if (botRetryCount <= MAX_BOT_RETRIES) {
-        console.log(`⚠️ 409. Retry ${botRetryCount}/${MAX_BOT_RETRIES} in 5s...`);
-        await new Promise(r => setTimeout(r, 5000));
-        return startBotSafe();
-      }
-    }
-    console.error("❌ Bot failed after max retries.");
-    process.exit(1);
-  }
-}
-
-process.on("unhandledRejection", (reason) => { console.error("⚠️ Unhandled Rejection:", reason); });
-process.on("uncaughtException", (err) => { console.error("⚠️ Uncaught Exception:", err.message); });
-
-// Start bot (mongoose already connected in your main code)
-if (mongoose.connection.readyState === 1) {
-  startBotSafe();
-} else {
-  mongoose.connection.once("open", () => {
-    startBotSafe();
-  });
-}
