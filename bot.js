@@ -6808,7 +6808,6 @@ mongoose.connect(MONGO_URI)
     } catch (e) { }
     }, 60 * 1000);
     console.log("⏳ Waiting 8s for cleanup...");
-    await new Promise(r => setTimeout(r, 8000));
     console.log("🌐 Server ready");
     await startBotSafe();
   })
