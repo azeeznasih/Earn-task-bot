@@ -6805,6 +6805,7 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log("🍃 MongoDB Connected!");
     try {
+    } catch (e) { }
     }, 60 * 1000);
     console.log("⏳ Waiting 8s for cleanup...");
     await new Promise(r => setTimeout(r, 8000));
