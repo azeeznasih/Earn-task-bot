@@ -6802,7 +6802,6 @@ process.on("unhandledRejection", (reason) => { console.error("⚠️ Unhandled R
 process.on("uncaughtException", (err) => { console.error("⚠️ Uncaught Exception:", err.message); });
 
 mongoose.connect(MONGO_URI)
-  .then(async () => {
     console.log("🍃 MongoDB Connected!");
     try {
     } catch (e) { }
