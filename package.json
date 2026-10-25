@@ -1,7 +1,7 @@
 {
   "name": "earn-task-bot",
-  "version": "2.2.0",
-  "description": "Telegram Payment Task Bot with Mini App + Dynamic Gateway + Auto UPI",
+  "version": "2.3.0",
+  "description": "Telegram Payment Task Bot with Mini App + Dynamic Gateway + Auto UPI (Deposit & Withdraw)",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -30,7 +30,9 @@
     "upi",
     "gateway",
     "dynamic",
-    "auto-upi"
+    "auto-upi",
+    "auto-withdraw",
+    "qr-code"
   ],
   "author": "azeeznasi",
   "license": "MIT"
