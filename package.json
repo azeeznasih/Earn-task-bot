@@ -1,7 +1,7 @@
 {
   "name": "earn-task-bot",
-  "version": "2.1.0",
-  "description": "Telegram Payment Task Bot with Mini App + Dynamic Gateway",
+  "version": "2.2.0",
+  "description": "Telegram Payment Task Bot with Mini App + Dynamic Gateway + Auto UPI",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -12,7 +12,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "grammy": "^1.35.1",
-    "mongoose": "^8.13.0"
+    "mongoose": "^8.13.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
@@ -28,7 +29,8 @@
     "payment",
     "upi",
     "gateway",
-    "dynamic"
+    "dynamic",
+    "auto-upi"
   ],
   "author": "azeeznasi",
   "license": "MIT"
