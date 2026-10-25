@@ -5280,3 +5280,334 @@ setInterval(() => {
   if (global.broadcastCache) { for (let uid in global.broadcastCache) delete global.broadcastCache[uid]; }
   if (global.taskCreation) { for (let uid in global.taskCreation) delete global.taskCreation[uid]; }
 }, 30 * 60 * 1000);
+
+
+// ═══════════════════════════════════════════════════════════════
+// ════════════ MISSING CODE BLOCK — PASTE AT BOTTOM ════════════
+// ═══════════════════════════════════════════════════════════════
+
+// ============ FIX 1: MongoDB Cleanup (Auto-run once) ============
+(async () => {
+  try {
+    let cleanupFlag = await Config.findOne({ key: "cleanup_v230_done" }).lean();
+    if (!cleanupFlag || cleanupFlag.value !== true) {
+      console.log("🧹 Running one-time DB cleanup...");
+      await Config.deleteMany({
+        key: { $in: ["admin_panel_layout", "keyboard_layout", "bot_font", "owner_id", "payout_channel"] }
+      });
+      let allAdmins = await BotAdmin.find({}).lean();
+      let seenIds = new Set();
+      for (let a of allAdmins) {
+        if (seenIds.has(a.userId)) await BotAdmin.deleteOne({ _id: a._id });
+        else seenIds.add(a.userId);
+      }
+      await Config.findOneAndUpdate({ key: "cleanup_v230_done" }, { value: true }, { upsert: true });
+      configCache.loaded = false;
+      configCache.data = {};
+      console.log("✅ DB cleanup complete.");
+    }
+  } catch (e) { console.error("Cleanup error:", e.message); }
+})();
+
+// ============ FIX 2: Override /admin command ============
+bot.command("admin", async (ctx) => {
+  try {
+    let userId = ctx.from.id;
+    let disabled = await isAdminDisabled(userId);
+    if (disabled) {
+      let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+      let ownerUser = await User.findOne({ userId: ownerId }).lean();
+      let ownerName = ownerUser ? (ownerUser.firstName || "Owner") : "Owner";
+      return ctx.reply(
+        `❌ <b>${toSmallCaps("ADMIN ACCESS DISABLED")}</b>\n\n${toSmallCaps("Your admin permissions have been disabled by the Owner.")}\n\n📞 ${toSmallCaps("Contact Owner")}: ${ownerName}\n🆔 ${toSmallCaps("Owner ID")}: ${ownerId}`,
+        { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(`${toSmallCaps("Back to Main Menu")}`, "back_to_balance") }
+      );
+    }
+    let adminCheck = await isAdmin(userId);
+    if (!adminCheck) {
+      return ctx.reply(`❌ ${toSmallCaps("Not an admin!")}\n\nYour ID: <code>${userId}</code>`, { parse_mode: "HTML" });
+    }
+    configCache.data["admin_panel_layout"] = undefined;
+    configCache.loaded = false;
+    await sendAdminPanel(ctx, false);
+  } catch (err) {
+    console.error("admin command error:", err);
+    await ctx.reply(`❌ Error: ${err.message}`);
+  }
+});
+
+// ============ FIX 3: Override sendAdminPanel (force Auto UPI btn) ============
+async function sendAdminPanel(ctx, edit = true) {
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+
+  let [userCount, activeAdmins, gatewayCount] = await Promise.all([
+    User.countDocuments({}),
+    BotAdmin.countDocuments({ isActive: true }),
+    Gateway.countDocuments({ isActive: true })
+  ]);
+
+  let botStatus = await getConfig("bot_status", "active");
+  let statusDisplay = botStatus === "active" ? "✅ Active" : (botStatus === "maintenance" ? "⚠️ Maintenance" : "❌ Disabled");
+  let minW = await getConfig("min_withdraw", 0);
+  let maxW = await getConfig("max_withdraw", 0);
+  let pChannel = await getConfig("payout_channel", "Not Set");
+  let supportId = await getConfig("support_username", "Not Set");
+  let quickTaxEnabled = await getConfig("quick_pay_tax_enabled", false);
+  let quickTaxPercent = await getConfig("quick_pay_tax_percent", 0);
+
+  let panelText =
+    `👑 <b>Admin Panel</b>\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🤖 <b>Bot Status:</b> ${statusDisplay}\n` +
+    `💸 <b>Min:</b> ₹${minW} | 💰 <b>Max:</b> ₹${maxW}\n` +
+    `📢 <b>Payout:</b> <code>${pChannel}</code>\n` +
+    `💬 <b>Support:</b> <code>${supportId}</code>\n` +
+    `🌐 <b>Gateways:</b> ${gatewayCount} active\n` +
+    `⚡ <b>Quick Pay Tax:</b> ${quickTaxEnabled ? `🟢 ${quickTaxPercent}%` : "🔴 OFF"}\n` +
+    `👥 <b>Users:</b> ${userCount} | 👑 <b>Admins:</b> ${activeAdmins}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━`;
+
+  let freshConfig = await Config.findOne({ key: "admin_panel_layout" }).lean();
+  let layout = (freshConfig && Array.isArray(freshConfig.value) && freshConfig.value.length > 0)
+    ? freshConfig.value
+    : DEFAULT_ADMIN_PANEL_LAYOUT;
+
+  let hasAutoUpi = layout.some(b => b.key === "adm_auto_upi");
+  if (!hasAutoUpi) {
+    layout = [...layout, { name: `🇮🇳 Auto Gateway UPI`, key: "adm_auto_upi", row: 99, hidden: false }];
+  }
+
+  let visibleLayout = layout.filter(b => !b.hidden);
+  let rawButtons = [];
+  let maxRow = visibleLayout.length > 0 ? Math.max(...visibleLayout.map(b => b.row)) : 0;
+  for (let r = 0; r <= maxRow; r++) {
+    let rowButtons = visibleLayout.filter(b => b.row === r);
+    if (rowButtons.length > 0) {
+      let row = rowButtons.map(btn => ({ text: btn.name, callback_data: btn.key }));
+      rawButtons.push(row);
+    }
+  }
+
+  let styledKb = await buildStyledKb(rawButtons);
+
+  if (edit && ctx.callbackQuery) {
+    await ctx.editMessageText(panelText, { reply_markup: styledKb, parse_mode: "HTML" }).catch(() => { });
+  } else {
+    await ctx.reply(panelText, { reply_markup: styledKb, parse_mode: "HTML" });
+  }
+}
+
+// ============ MISSING: Broadcast Handlers ============
+bot.callbackQuery("adm_broadcast", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderBroadcastPage(ctx);
+});
+
+async function renderBroadcastPage(ctx) {
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  let broadcasts = await Broadcast.find({ createdAt: { $gte: cutoff }, status: "Completed" }).sort({ createdAt: -1 }).limit(15).lean();
+  let text = `📢 <b>Broadcast Setup</b>\n\n<b>Step 1 — Send Your Message</b>\nWrite your message just like a normal Telegram chat.\n\nYou can use Telegram's built-in formatting:\n• <b>Bold</b> • <i>Italic</i> • <u>Underline</u> • <s>Strike</s> • <code>Mono</code>\n• <a href="https://t.me">Clickable Links</a> • <tg-spoiler>Spoiler</tg-spoiler>\n<blockquote>Quote 💬</blockquote>\n\n<i>No HTML or coding is required.</i>\nThe bot will send the message exactly as you format it. ✅\n\n<b>Step 2 — Choose a Send Mode</b>\n🚀 Direct Mode — Clean message (no forwarding tag)\n🔄 Forward Mode — Shows Forwarded from channel\n\n👉 <b>Now, send your message below</b> 👇`;
+  let kb = new InlineKeyboard();
+  for (let b of broadcasts) {
+    let preview = getBroadcastPreview(b);
+    let timeAgo = formatTimeAgo(b.createdAt);
+    let label = `${preview} — ${timeAgo}`;
+    if (label.length > 40) label = label.substring(0, 38) + "..";
+    kb.text(label, `bc_view_${b.broadcastId}`).row();
+  }
+  kb.text(makeBtn("Back"), "admin");
+  if (ctx.callbackQuery) await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+  else await ctx.reply(text, { reply_markup: kb, parse_mode: "HTML" });
+}
+
+function getBroadcastPreview(b) {
+  if (b.messageType === "text") {
+    let content = (b.content || "").replace(/<[^>]*>/g, "").trim();
+    if (!content) return "📢 Text";
+    return content.length > 25 ? content.substring(0, 25) + "..." : content;
+  }
+  let icons = { photo: "📸 Photo", video: "🎬 Video", audio: "🎵 Audio", document: "📄 Document", sticker: "🎨 Sticker", voice: "🎤 Voice", animation: "🎬 GIF" };
+  return icons[b.messageType] || "📢 Broadcast";
+}
+
+async function renderBroadcastConfirm(ctx, cacheObj) {
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let mode = cacheObj.mode || "direct";
+  let modeIcon = mode === "direct" ? "🚀" : "🔄";
+  let modeText = mode === "direct" ? "DIRECT MODE" : "FORWARD MODE";
+  let modeDesc = mode === "direct" ? "Clean broadcast, no forwarding tag" : "Shows 'Forwarded from channel' tag";
+  let buttonCount = 0;
+  if (cacheObj.buttonRows) buttonCount = cacheObj.buttonRows.reduce((s, r) => s + r.length, 0);
+  let buttonText = buttonCount > 0 ? `✅ ${buttonCount} Buttons` : `❌ No Buttons`;
+  let typeText = (cacheObj.type || "text").toUpperCase();
+  let text = `⚠️ <b>Confirm Broadcast</b>\n\n<b>Type:</b> ${typeText}\n<b>Mode:</b> ${modeIcon} <b>${modeText}</b> (${modeDesc})\n<b>Buttons:</b> ${buttonText}\n\n<i>Select mode then click Confirm:</i>\n• 🚀 Direct Mode: Fast, clean (recommended)\n• 🔄 Forward Mode: Shows 'Forwarded from channel' tag\n\n<b>Do you want to send this message to all users?</b>`;
+  let directBtn = mode === "direct" ? `✅ Direct Mode` : `Direct Mode`;
+  let forwardBtn = mode === "forward" ? `✅ Forward Mode` : `Forward Mode`;
+  let kb = new InlineKeyboard()
+    .text(directBtn, "broadcast_mode_direct")
+    .text(forwardBtn, "broadcast_mode_forward").row()
+    .text(makeBtn("Add Buttons"), "broadcast_add_buttons").row()
+    .text(makeBtn("Confirm & Send"), "broadcast_confirm_send")
+    .text(makeBtn("Cancel"), "broadcast_cancel").row()
+    .text(makeBtn("Back"), "adm_broadcast");
+  if (ctx.callbackQuery) await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+  else await ctx.reply(text, { reply_markup: kb, parse_mode: "HTML" });
+}
+
+bot.callbackQuery("broadcast_mode_direct", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let userId = ctx.from.id;
+  if (!global.broadcastCache?.[userId]) return ctx.answerCallbackQuery({ text: "Expired!", show_alert: true });
+  global.broadcastCache[userId].mode = "direct";
+  await ctx.answerCallbackQuery({ text: "🚀 Direct Mode" });
+  await renderBroadcastConfirm(ctx, global.broadcastCache[userId]);
+});
+
+bot.callbackQuery("broadcast_mode_forward", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let userId = ctx.from.id;
+  if (!global.broadcastCache?.[userId]) return ctx.answerCallbackQuery({ text: "Expired!", show_alert: true });
+  global.broadcastCache[userId].mode = "forward";
+  await ctx.answerCallbackQuery({ text: "🔄 Forward Mode" });
+  await renderBroadcastConfirm(ctx, global.broadcastCache[userId]);
+});
+
+bot.callbackQuery("broadcast_add_buttons", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "BROADCAST_ADD_BUTTONS";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let text = `⌨️ <b>Add Inline Buttons</b>\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🟢 <b>Basic Format (One Button)</b>\n<code>Button Text - https://example.com</code>\n\n🟢 <b>Multiple Buttons (New Row)</b>\n<code>Join Channel - https://t.me/YourChannel\nSupport - https://t.me/YourSupport</code>\n\n🟢 <b>Two Buttons In Same Row</b>\n<code>Join - https://t.me/A && Support - https://t.me/B</code>\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📌 <b>Rules:</b>\n• Each new line = new row\n• Use && to place buttons in same row`;
+  await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "broadcast_confirm_back") }).catch(() => { });
+});
+
+bot.callbackQuery("broadcast_confirm_back", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let userId = ctx.from.id;
+  let cacheObj = global.broadcastCache?.[userId];
+  if (!cacheObj) return ctx.answerCallbackQuery({ text: "Expired!", show_alert: true });
+  await renderBroadcastConfirm(ctx, cacheObj);
+});
+
+bot.callbackQuery("broadcast_cancel", async (ctx) => {
+  let userId = ctx.from.id;
+  delete userState[userId];
+  if (global.broadcastCache) delete global.broadcastCache[userId];
+  await ctx.answerCallbackQuery({ text: "❌ Cancelled" }).catch(() => { });
+  await renderBroadcastPage(ctx);
+});
+
+bot.callbackQuery("broadcast_confirm_send", async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let userId = ctx.from.id;
+  let cacheObj = global.broadcastCache?.[userId];
+  if (!cacheObj) return ctx.answerCallbackQuery({ text: "Expired!", show_alert: true });
+  if (cacheObj.confirmed) return ctx.answerCallbackQuery({ text: "Already confirmed!", show_alert: true });
+  cacheObj.confirmed = true;
+  let mode = cacheObj.mode || "direct";
+  let modeIcon = mode === "direct" ? "🚀" : "🔄";
+  let modeText = mode === "direct" ? "DIRECT MODE" : "FORWARD MODE";
+  delete userState[userId];
+  delete global.broadcastCache[userId];
+  await ctx.answerCallbackQuery({ text: "🚀 Broadcasting..." });
+  let totalUsers = await User.countDocuments({});
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(`📢 <b>Broadcasting...</b>\n\n📢 <b>Mode:</b> ${modeIcon} ${modeText}\n👥 <b>Total Users:</b> ${totalUsers}\n\n⏳ Starting...`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back to Admin"), "admin") }).catch(() => { });
+  setImmediate(async () => { await runBroadcast(userId, ctx, cacheObj, totalUsers); });
+});
+
+async function runBroadcast(adminId, ctx, cacheObj, totalUsers) {
+  let startTime = Date.now();
+  let allUsers = await User.find({}).lean();
+  let total = allUsers.length;
+  let sent = 0, failed = 0, processed = 0;
+  let mode = cacheObj.mode || "direct";
+  let modeIcon = mode === "direct" ? "🚀" : "🔄";
+  let modeText = mode === "direct" ? "DIRECT MODE" : "FORWARD MODE";
+  let inlineKb = null;
+  if (cacheObj.buttonRows && cacheObj.buttonRows.length > 0) inlineKb = buildInlineKeyboardFromRows(cacheObj.buttonRows);
+  let statusMsg;
+  try {
+    statusMsg = await bot.api.sendMessage(adminId, buildStatusMessage({ running: true, modeIcon, modeText, processed: 0, total, success: 0, failed: 0, speed: 0 }), { parse_mode: "HTML" });
+  } catch (e) { }
+  let lastUpdate = Date.now();
+  const UPDATE_INTERVAL = 1500;
+  for (let u of allUsers) {
+    try {
+      let sendOpts = { parse_mode: "HTML" };
+      if (inlineKb) sendOpts.reply_markup = inlineKb;
+      if (mode === "forward" && cacheObj.fromChatId && cacheObj.fromMessageId) await bot.api.forwardMessage(u.userId, cacheObj.fromChatId, cacheObj.fromMessageId);
+      else {
+        if (cacheObj.type === "text") await bot.api.sendMessage(u.userId, cacheObj.content, sendOpts);
+        else if (cacheObj.type === "photo") await bot.api.sendPhoto(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+        else if (cacheObj.type === "video") await bot.api.sendVideo(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+        else if (cacheObj.type === "audio") await bot.api.sendAudio(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+        else if (cacheObj.type === "document") await bot.api.sendDocument(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+        else if (cacheObj.type === "sticker") await bot.api.sendSticker(u.userId, cacheObj.fileId, inlineKb ? { reply_markup: inlineKb } : {});
+        else if (cacheObj.type === "animation") await bot.api.sendAnimation(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+        else if (cacheObj.type === "voice") await bot.api.sendVoice(u.userId, cacheObj.fileId, { ...sendOpts, caption: cacheObj.caption || "" });
+      }
+      sent++;
+    } catch (e) { failed++; }
+    processed++;
+    let now = Date.now();
+    if (now - lastUpdate > UPDATE_INTERVAL && statusMsg) {
+      let elapsed = (now - startTime) / 1000;
+      let speed = elapsed > 0 ? processed / elapsed : 0;
+      try { await bot.api.editMessageText(adminId, statusMsg.message_id, buildStatusMessage({ running: true, modeIcon, modeText, processed, total, success: sent, failed, speed }), { parse_mode: "HTML" }); } catch (e) { }
+      lastUpdate = now;
+    }
+    await new Promise(r => setTimeout(r, 40));
+  }
+  let totalTime = (Date.now() - startTime) / 1000;
+  let avgSpeed = totalTime > 0 ? total / totalTime : 0;
+  let broadcastId = Math.floor(100000 + Math.random() * 900000).toString();
+  await Broadcast.create({ broadcastId, adminId, adminName: "Admin", messageType: cacheObj.type || "text", content: cacheObj.content || cacheObj.caption || "", fileId: cacheObj.fileId || "", sentCount: sent, failedCount: failed, totalCount: total, timeTaken: parseFloat(totalTime.toFixed(1)), status: "Completed" });
+  if (statusMsg) {
+    try { await bot.api.editMessageText(adminId, statusMsg.message_id, buildStatusMessage({ running: false, modeIcon, modeText, processed: total, total, success: sent, failed, speed: avgSpeed }), { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(`⬅️ Back`, "admin") }); } catch (e) { }
+  }
+}
+
+function buildStatusMessage({ running = true, modeIcon = "🚀", modeText = "DIRECT MODE", processed = 0, total = 0, success = 0, failed = 0, speed = 0 }) {
+  let percent = total > 0 ? (processed / total) * 100 : 0;
+  let bar = makeProgressBar(percent);
+  let title = running ? `🚀 <b>Broadcast Running...</b>` : `🚀 <b>Broadcast Completed!</b>`;
+  return `${title}\n\n📢 <b>Mode:</b> ${modeIcon} ${modeText}\n📊 <b>Progress:</b> ${percent.toFixed(1)}%\n${bar}\n\n👥 <b>Total Users:</b> ${total}\n✅ <b>Total Success:</b> ${success}\n❌ <b>Total Failed:</b> ${failed}\n⚡ <b>Speed:</b> ${speed.toFixed(1)} users/sec\n📈 <b>Processed:</b> ${processed} / ${total}`;
+}
+
+bot.callbackQuery(/^bc_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let bcId = ctx.callbackQuery.data.replace("bc_view_", "");
+  let b = await Broadcast.findOne({ broadcastId: bcId }).lean();
+  if (!b) return ctx.answerCallbackQuery({ text: "Not found", show_alert: true });
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let typeIcon = { text: "📝", photo: "📸", video: "🎬", audio: "🎵", document: "📄", sticker: "🎨", voice: "🎤", animation: "🎬" }[b.messageType] || "📢";
+  let bodyText = `${typeIcon} Type: ${b.messageType}\n👥 Sent: ${b.sentCount}\n❌ Failed: ${b.failedCount}\n📊 Total: ${b.totalCount}\n⏱️ Time: ${b.timeTaken}s\n🕐 ${formatDateTime(b.createdAt)}\n`;
+  if (b.content) bodyText += `\nContent:\n${b.content}`;
+  let kb = new InlineKeyboard().text(makeBtn("🗑️ Delete"), `bc_del_${bcId}`).row().text(makeBtn("Back"), "adm_broadcast");
+  await ctx.editMessageText(`📢 <b>Broadcast Details</b>\n\n<blockquote>${bodyText}</blockquote>`, { parse_mode: "HTML", reply_markup: kb }).catch(() => { });
+});
+
+bot.callbackQuery(/^bc_del_/, async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) return ctx.answerCallbackQuery({ text: "Unauthorized", show_alert: true });
+  let bcId = ctx.callbackQuery.data.replace("bc_del_", "");
+  await Broadcast.deleteOne({ broadcastId: bcId });
+  await logAdminAction(ctx.from.id, ctx.from.first_name || "Admin", "Broadcast Deleted", bcId, 0, null);
+  await ctx.answerCallbackQuery({ text: "🗑️ Deleted!" }).catch(() => { });
+  await renderBroadcastPage(ctx);
+});
+
+console.log("✅ Missing block loaded: broadcast handlers, /admin override, sendAdminPanel override, DB cleanup");
+
+// ═══════════════════════════════════════════════════════════════
+// ════════════ END MISSING CODE BLOCK ══════════════════════════
+// ═══════════════════════════════════════════════════════════════  
