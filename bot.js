@@ -5609,5 +5609,38 @@ bot.callbackQuery(/^bc_del_/, async (ctx) => {
 console.log("✅ Missing block loaded: broadcast handlers, /admin override, sendAdminPanel override, DB cleanup");
 
 // ═══════════════════════════════════════════════════════════════
-// ════════════ END MISSING CODE BLOCK ══════════════════════════
-// ═══════════════════════════════════════════════════════════════  
+// ════════════ DIAGNOSTIC CODE (test only) ═════════════════════
+// ═══════════════════════════════════════════════════════════════
+
+setTimeout(async () => {
+  try {
+    console.log("\n════════ DIAGNOSTIC ════════");
+    console.log("BOT INFO:");
+    console.log("  Bot username:", bot.botInfo?.username || "unknown");
+    console.log("  Bot ID:", bot.botInfo?.id || "unknown");
+    console.log("\nOWNER CHECK:");
+    console.log("  MAIN_OWNER_ID:", MAIN_OWNER_ID);
+    let ownerId = await getConfig("owner_id", MAIN_OWNER_ID);
+    console.log("  owner_id (from DB):", ownerId);
+    console.log("\nADMIN COMMAND CHECK:");
+    let hasAdminCmd = false;
+    let hasSendAdminPanel = false;
+    console.log("  (searching handlers...)");
+    console.log("\nMONGODB:");
+    let cfgCount = await Config.countDocuments({});
+    console.log("  configs count:", cfgCount);
+    let cleanupDone = await Config.findOne({ key: "cleanup_v230_done" }).lean();
+    console.log("  cleanup_v230_done:", cleanupDone?.value || "NOT SET");
+    let layoutCfg = await Config.findOne({ key: "admin_panel_layout" }).lean();
+    console.log("  admin_panel_layout exists:", !!layoutCfg);
+    let admins = await BotAdmin.find({}).lean();
+    console.log("  BotAdmin count:", admins.length);
+    admins.forEach(a => console.log(`    - ${a.userId} (active: ${a.isActive})`));
+    console.log("\nUSERS:");
+    let userCount = await User.countDocuments({});
+    console.log("  Total users:", userCount);
+    console.log("════════ END DIAGNOSTIC ════════\n");
+  } catch (e) {
+    console.error("Diagnostic error:", e);
+  }
+}, 10000);
