@@ -5644,3 +5644,261 @@ setTimeout(async () => {
     console.error("Diagnostic error:", e);
   }
 }, 10000);
+
+
+// ═══════════════════════════════════════════════════════════════
+// ══════════ RAZORPAY PAYOUT (TEST MODE) — FULL CODE ═════════════
+// ═══════════════════════════════════════════════════════════════
+
+// RazorpayX Payout API Call
+async function processRazorpayPayout(userId, amount, upiId, userName) {
+  try {
+    let keyId = await getConfig("razorpay_payout_key_id", null);
+    let keySecret = await getConfig("razorpay_payout_key_secret", null);
+    let accountNumber = await getConfig("razorpay_payout_account_number", null);
+
+    console.log("═══════ RAZORPAY PAYOUT CALL ═══════");
+    console.log("Key ID:", keyId ? keyId.substring(0, 10) + "..." : "NOT SET");
+    console.log("Key Secret:", keySecret ? "SET (" + keySecret.length + " chars)" : "NOT SET");
+    console.log("Account Number:", accountNumber || "NOT SET");
+    console.log("Amount:", amount);
+    console.log("UPI:", upiId);
+    console.log("User:", userName);
+    console.log("════════════════════════════════════");
+
+    if (!keyId || !keySecret || !accountNumber) {
+      return { status: "error", message: "Razorpay Payout not configured. Admin please set keys." };
+    }
+
+    let payload = {
+      account_number: accountNumber,
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      mode: "UPI",
+      purpose: "payout",
+      fund_account: {
+        account_type: "vpa",
+        vpa: { address: upiId },
+        contact: {
+          name: userName || "User",
+          type: "customer"
+        }
+      },
+      queue_if_low_balance: true,
+      reference_id: "WD" + userId + "_" + Date.now()
+    };
+
+    console.log("📤 Sending to Razorpay:", JSON.stringify(payload, null, 2));
+
+    let response = await axios.post("https://api.razorpay.com/v1/payouts", payload, {
+      auth: { username: keyId, password: keySecret },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Payout-Idempotency": "wd_" + userId + "_" + Date.now()
+      },
+      timeout: 30000
+    });
+
+    let data = response.data;
+    console.log("📥 Razorpay Response:", JSON.stringify(data, null, 2));
+
+    if (["processed", "processing", "queued"].includes(data.status)) {
+      return { status: "success", txnId: data.id, utr: data.utr || null, raw: data };
+    } else {
+      return { status: "failed", message: data.status_details?.description || "Payout failed: " + data.status, raw: data };
+    }
+  } catch (error) {
+    console.log("❌ Razorpay ERROR:");
+    console.log("Response:", JSON.stringify(error.response?.data, null, 2));
+    console.log("Message:", error.message);
+    let errMsg = error.response?.data?.error?.description || error.response?.data?.error?.reason || error.message;
+    return { status: "error", message: errMsg };
+  }
+}
+
+// ============ ADMIN: Razorpay Payout Settings Panel ============
+bot.callbackQuery("adm_auto_upi", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  await renderRazorpayPayoutPanel(ctx);
+});
+
+async function renderRazorpayPayoutPanel(ctx) {
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+
+  let keyId = await getConfig("razorpay_payout_key_id", "Not Set");
+  let keySecret = await getConfig("razorpay_payout_key_secret", "");
+  let accountNumber = await getConfig("razorpay_payout_account_number", "Not Set");
+
+  let text = `💳 <b>Razorpay Payout (Test Mode)</b>\n\n━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `🔑 <b>Key ID:</b> <code>${keyId}</code>\n` +
+    `🔐 <b>Key Secret:</b> <code>${keySecret ? "••••••••" : "Not Set"}</code>\n` +
+    `🏦 <b>Account Number:</b> <code>${accountNumber}</code>\n\n` +
+    `⚠️ RazorpayX (Payouts) അക്കൗണ്ട് ആവശ്യമാണ്.\n` +
+    `🧪 Test Mode-ൽ ഡമ്മി പണം മാത്രം പോകും.\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━`;
+
+  let kb = new InlineKeyboard()
+    .text(makeBtn("✏️ Set Key ID"), "rp_set_key_id").row()
+    .text(makeBtn("🔑 Set Key Secret"), "rp_set_key_secret").row()
+    .text(makeBtn("🏦 Set Account Number"), "rp_set_account").row()
+    .text(makeBtn("🧪 Test Payout"), "rp_test_payout").row()
+    .text(makeBtn("⬅️ Back to Admin"), "admin");
+
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+}
+
+bot.callbackQuery("rp_set_key_id", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "RP_SET_KEY_ID";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `📝 <b>Set RazorpayX Key ID</b>\n\nSend your Key ID:\n\nExample: <code>rzp_test_XXXXXXXXXX</code>\n\n⚠️ Test Mode-ൽ <code>rzp_test_</code> എന്ന് തുടങ്ങും.`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_auto_upi") }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("rp_set_key_secret", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "RP_SET_KEY_SECRET";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `🔑 <b>Set RazorpayX Key Secret</b>\n\nSend your Key Secret:\n\nExample: <code>abcdefghijklmnop1234567890</code>\n\n⚠️ ഇത് സുരക്ഷിതമായി സൂക്ഷിക്കുക.`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_auto_upi") }
+  ).catch(() => { });
+});
+
+bot.callbackQuery("rp_set_account", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "RP_SET_ACCOUNT";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `🏦 <b>Set RazorpayX Account Number</b>\n\nSend your Current Account Number:\n\nExample: <code>7878787878787878</code>\n\n📍 RazorpayX Dashboard → My Account & Settings → Banking`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_auto_upi") }
+  ).catch(() => { });
+});
+
+// Test Payout — Manual test with custom amount/UPI
+bot.callbackQuery("rp_test_payout", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "RP_TEST_PAYOUT";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(
+    `🧪 <b>Test Payout</b>\n\nFormat: <code>AMOUNT|UPI_ID|NAME</code>\n\nExample:\n<code>1|test@upi|Test User</code>\n\n⚠️ Test Mode-ൽ മാത്രം ഉപയോഗിക്കുക.`,
+    { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_auto_upi") }
+  ).catch(() => { });
+});
+
+// ============ Handle admin text inputs ============
+// Patch into existing handleAdminTextInput by registering a new text handler
+// (This runs BEFORE the main handler and intercepts RP_ states)
+bot.on("message:text", async (ctx, next) => {
+  let userId = ctx.from.id;
+  let state = userState[userId];
+  if (!state || !state.startsWith("RP_")) return next();
+  if (!(await isAdmin(userId))) return next();
+
+  let text = ctx.message.text.trim();
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (t) => `${pad}${t}${pad}`;
+
+  if (state === "RP_SET_KEY_ID") {
+    delete userState[userId];
+    if (!text.startsWith("rzp_")) {
+      await ctx.reply(`❌ Key ID must start with <code>rzp_</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+      return;
+    }
+    await setConfig("razorpay_payout_key_id", text);
+    await ctx.reply(`✅ <b>Key ID Saved!</b>\n\n🔑 <code>${text}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+    return;
+  }
+
+  if (state === "RP_SET_KEY_SECRET") {
+    delete userState[userId];
+    await setConfig("razorpay_payout_key_secret", text);
+    await ctx.reply(`✅ <b>Key Secret Saved!</b>\n\n🔐 Length: ${text.length} chars`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+    return;
+  }
+
+  if (state === "RP_SET_ACCOUNT") {
+    delete userState[userId];
+    if (!/^\d{8,20}$/.test(text)) {
+      await ctx.reply(`❌ Account number must be 8-20 digits`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+      return;
+    }
+    await setConfig("razorpay_payout_account_number", text);
+    await ctx.reply(`✅ <b>Account Number Saved!</b>\n\n🏦 <code>${text}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+    return;
+  }
+
+  if (state === "RP_TEST_PAYOUT") {
+    delete userState[userId];
+    let parts = text.split("|").map(p => p.trim());
+    if (parts.length < 2) {
+      await ctx.reply(`❌ Format: <code>AMOUNT|UPI_ID|NAME</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+      return;
+    }
+    let amount = parseFloat(parts[0]);
+    let upi = parts[1];
+    let name = parts[2] || "Test User";
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply(`❌ Invalid amount`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+      return;
+    }
+    if (!upi.includes("@")) {
+      await ctx.reply(`❌ Invalid UPI (must contain @)`, { reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi") });
+      return;
+    }
+
+    let processingMsg = await ctx.reply(`🧪 <b>Testing Payout...</b>\n\n💰 ₹${amount}\n📌 ${upi}\n👤 ${name}\n\n⏳ Please wait...`, { parse_mode: "HTML" });
+
+    let result = await processRazorpayPayout(userId, amount, upi, name);
+
+    let resultText = "";
+    if (result.status === "success") {
+      resultText = `✅ <b>Payout Success!</b>\n\n💰 Amount: ₹${amount}\n📌 UPI: <code>${upi}</code>\n🆔 Payout ID: <code>${result.txnId}</code>\n${result.utr ? `🏦 UTR: <code>${result.utr}</code>\n` : ""}\n📊 Status: ${result.raw?.status || "success"}\n\n🎉 RazorpayX works!`;
+    } else if (result.status === "failed") {
+      resultText = `⚠️ <b>Payout Failed</b>\n\n💰 Amount: ₹${amount}\n📌 UPI: <code>${upi}</code>\n\n❌ Reason: ${result.message}\n\n🔍 Raw: <code>${JSON.stringify(result.raw).substring(0, 300)}</code>`;
+    } else {
+      resultText = `❌ <b>Payout Error</b>\n\n💰 Amount: ₹${amount}\n📌 UPI: <code>${upi}</code>\n\n❌ Error: ${result.message}\n\n💡 Check: Key ID, Key Secret, Account Number, IP allowlist.`;
+    }
+
+    await ctx.api.editMessageText(ctx.chat.id, processingMsg.message_id, resultText, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text(makeBtn("Back"), "adm_auto_upi").row().text(makeBtn("Test Again"), "rp_test_payout") }).catch(() => { });
+    return;
+  }
+
+  return next();
+});
+
+// ============ USER AUTO UPI WITHDRAW — Uses Razorpay Payout ============
+bot.callbackQuery("wd_auto_upi", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let userId = ctx.from.id;
+  let keyId = await getConfig("razorpay_payout_key_id", null);
+  if (!keyId) return ctx.answerCallbackQuery({ text: "Razorpay Payout not configured by admin", show_alert: true });
+  let user = await getUser(userId);
+  if (!user.upiId || user.upiId === "Not Set") {
+    return ctx.answerCallbackQuery({ text: "❌ Please set UPI in Payout Method first!", show_alert: true });
+  }
+  if (user.balance <= 0) return ctx.answerCallbackQuery({ text: "Insufficient balance", show_alert: true });
+  userState[userId] = "WD_AUTO_UPI_AMOUNT";
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let kb = new Keyboard().text("Cancel").resized().oneTime();
+  await ctx.reply(
+    `💳 <b>Auto UPI Withdraw (Razorpay)</b>\n\n` +
+    `💰 Your Balance: <b>₹${user.balance.toFixed(2)}</b>\n` +
+    `📌 Payout UPI: <code>${user.upiId}</code>\n\n` +
+    `📝 Enter the amount you want to withdraw:`,
+    { parse_mode: "HTML", reply_markup: kb }
+  ).catch(() => { });
+});
