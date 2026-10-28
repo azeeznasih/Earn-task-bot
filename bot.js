@@ -6203,7 +6203,7 @@ bot.callbackQuery(/^man_conf_yes_/, async (ctx) => {
           `User : ${userLink}\n` +
           `Request Amount : ₹<code>${amount}</code>\n` +
           `Amount After Tax : ₹<code>${netAmount.toFixed(2)}</code>\n` +
-          `${methodIcon} <b>${methodLabel} ID :</b> <code>${halfMaskDetails(methodLabel, details)}</code>\n\n` +
+          `${methodIcon} <b>${methodLabel} ID :</b> <code>${details}</code>\n\n` +
           `📊 <b>Status:</b> ⏳ Pending`,
           { parse_mode: "HTML", reply_markup: adminKb, disable_web_page_preview: true }
         ).catch(() => { });
