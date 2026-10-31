@@ -7351,6 +7351,338 @@ handleAdminTextInput = async function(ctx, text, userId, state) {
     return await originalHandleAdminTextInput(ctx, text, userId, state);
 };
 
+// ==========================================
+// ✅ UNIVERSAL GATEWAY & AUTO BANK GATEWAY SUPPORT
+// ==========================================
+
+// 1. NORMAL GATEWAY UNIVERSAL PATCH (VSV Support)
+const originalProcessGatewayPayout = processGatewayPayout;
+processGatewayPayout = async function({ bot, userId, amount, gatewayInfo, wallet, channelList = [], showRemainingBalance = true }) {
+  try {
+    let urlTemplate = gatewayInfo.url_template || gatewayInfo.url || "";
+    
+    let finalUrl = urlTemplate
+      .replace(/{wallet}/g, encodeURIComponent(wallet))
+      .replace(/{number}/g, encodeURIComponent(wallet))
+      .replace(/{paytm}/g, encodeURIComponent(wallet))
+      .replace(/{amount}/g, encodeURIComponent(amount))
+      .replace(/{userId}/g, encodeURIComponent(userId))
+      .replace(/{orderId}/g, encodeURIComponent("WD" + Date.now()))
+      .replace(/{order_id}/g, encodeURIComponent("WD" + Date.now()))
+      .replace(/{comment}/g, encodeURIComponent("WD" + Date.now()))
+      .replace(/{txnId}/g, encodeURIComponent("TXN" + Date.now()))
+      .replace(/{timestamp}/g, encodeURIComponent(Date.now()));
+
+    let response, resData;
+    try {
+      response = await axios.get(finalUrl, { timeout: 30000 });
+      try { resData = JSON.stringify(response.data); } catch (e) { resData = String(response.data); }
+    } catch (apiErr) {
+      return { status: 'error', message: apiErr.response?.data?.message || apiErr.message || 'Gateway request failed' };
+    }
+
+    let isSuccess = false;
+    let txnNumber = null;
+    try {
+      let data = response.data;
+      let jsonData = null;
+      if (typeof data === 'string') { try { jsonData = JSON.parse(data); } catch (e) { } } 
+      else if (data && typeof data === 'object') { jsonData = data; }
+
+      if (jsonData) {
+        isSuccess = jsonData.status === 'success' || jsonData.status === 'Success' || jsonData.success === true || jsonData.code === 200 || jsonData.status === 'ok';
+        txnNumber = jsonData.txn_id || jsonData.txnNumber || jsonData.transaction_id || jsonData.txnId || jsonData.orderId || null;
+      }
+      if (!isSuccess && resData) {
+        if (/failed|error|declined|invalid|insufficient/i.test(resData)) isSuccess = false;
+        else if (/success|completed|done|paid|processed|ok/i.test(resData)) isSuccess = true;
+      }
+    } catch (parseErr) { }
+
+    if (!isSuccess) {
+      let errMsg = 'Gateway declined';
+      if (response.data && response.data.message) errMsg = response.data.message;
+      else if (resData && resData.length < 100) errMsg = resData;
+      return { status: 'failed', message: errMsg, rawResponse: resData ? resData.substring(0, 300) : '' };
+    }
+
+    let user = await User.findOne({ userId });
+    if (!user) return { status: 'error', message: 'User not found' };
+
+    let maskedWallet = halfMaskWallet(wallet);
+    let msg = `✅ <b>New Withdrawal Processed</b> ✅\n\n🟢 <b>User :</b> <b>${userId}</b>\n`;
+    if (showRemainingBalance) msg += `🤘 <b>Remaining Balance :-</b> ₹<code>${user.balance.toFixed(2)}</code>\n`;
+    msg += `\n🚀 <b>Amount :</b> ₹<b><code>${amount}</code></b> INR (-)\n⛔ <b>Address :</b> <b><code>${maskedWallet}</code></b>\n\n💡 <b>Bot:</b> @${bot.botInfo ? bot.botInfo.username : "Bot"}\n\n⚠️ <b>${gatewayInfo.name} Response:</b>\n<code>${resData}</code>`;
+
+    for (let ch of channelList) {
+      if (ch) try { await bot.api.sendMessage(ch, msg, { parse_mode: "HTML" }).catch(() => { }); } catch (e) { }
+    }
+    return { status: 'success', txnNumber: txnNumber || generateTxnNumber(), rawResponse: resData };
+  } catch (e) { return { status: 'error', message: e.message }; }
+};
+
+// 2. AUTO UPI UNIVERSAL PATCH
+const originalProcessAutoUpiPayout = processAutoUpiPayout;
+processAutoUpiPayout = async function({ bot, userId, amount, gateway, upiId }) {
+  try {
+    let apiUrl = gateway.apiUrl || "";
+    let method = (gateway.method || "GET").toUpperCase();
+    let token = gateway.apiKey || "";
+    let finalUrl = apiUrl;
+    
+    if (finalUrl.includes("{upi_id}") || finalUrl.includes("{upi}") || finalUrl.includes("{amount}")) {
+        finalUrl = finalUrl.replace(/{upi_id}/g, encodeURIComponent(upiId)).replace(/{upi}/g, encodeURIComponent(upiId)).replace(/{amount}/g, amount).replace(/{token}/g, token);
+        if (token && !finalUrl.includes("token=") && !finalUrl.includes(token)) finalUrl += `${finalUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+    } else {
+        finalUrl = `${apiUrl}${apiUrl.includes("?") ? "&" : "?"}${token ? `token=${encodeURIComponent(token)}&` : ""}upi=${encodeURIComponent(upiId)}&amount=${amount}&order_id=AUTO${Date.now()}`;
+    }
+
+    let response, resData;
+    try {
+      response = await axios({ method, url: finalUrl, timeout: 30000 });
+      try { resData = JSON.stringify(response.data); } catch (e) { resData = String(response.data); }
+    } catch (apiErr) { return { status: 'error', message: apiErr.response?.data?.message || apiErr.message }; }
+
+    let isSuccess = false, txnId = null;
+    try {
+      let data = response.data;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
+      if (data && typeof data === 'object') {
+        isSuccess = data.status === 'success' || data.status === 'Success' || data.success === true;
+        txnId = data.txn_id || data.transaction_id || data.order_id || null;
+      }
+    } catch (e) { }
+
+    if (!isSuccess) return { status: 'failed', message: response.data?.message || 'Gateway declined', rawResponse: resData };
+
+    let user = await User.findOne({ userId });
+    if (!user) return { status: 'error', message: 'User not found' };
+
+    let msg = `✅ <b>New Auto UPI Withdrawal</b> ✅\n\n🟢 <b>User :</b> <b>${userId}</b>\n🤘 <b>Remaining Balance :-</b> ₹<code>${user.balance.toFixed(2)}</code>\n\n🚀 <b>Amount :</b> ₹<b><code>${amount}</code></b> INR (-)\n🏦 <b>UPI :</b> <b><code>${halfMaskUPI(upiId)}</code></b>\n🌐 <b>Gateway :</b> ${gateway.name}\n\n💡 <b>Bot:</b> @${bot.botInfo ? bot.botInfo.username : "Bot"}\n\n⚠️ <b>${gateway.name} Response:</b>\n<code>${resData}</code>`;
+
+    let payoutChannel = await getPayoutChannel("auto_upi");
+    if (payoutChannel && payoutChannel !== "Not Set") try { await bot.api.sendMessage(payoutChannel, msg, { parse_mode: "HTML" }).catch(() => { }); } catch (e) { }
+
+    return { status: 'success', txnNumber: txnId || generateTxnNumber(), rawResponse: resData };
+  } catch (e) { return { status: 'error', message: e.message }; }
+};
+
+// 3. OVERRIDE ADMIN TEXT INPUT (For Auto UPI Token Support)
+const originalHandleAdminTextInput = handleAdminTextInput;
+handleAdminTextInput = async function(ctx, text, userId, state) {
+    if (state === "AUTO_UPI_ADVANCED_INPUT") {
+        delete userState[userId];
+        let parts = text.trim().split("::").map(p => p.trim());
+        let name, method, url, apiKey = "";
+        
+        if (parts.length === 4) { name = parts[0].toUpperCase(); method = parts[1].toUpperCase(); url = parts[2]; apiKey = parts[3]; }
+        else if (parts.length === 3) { name = parts[0].toUpperCase(); method = parts[1].toUpperCase(); url = parts[2]; }
+        else if (parts.length === 2) { name = parts[0].toUpperCase(); method = "GET"; url = parts[1]; }
+        else { await ctx.reply(`❌ Invalid format!\nUse: <code>NAME::METHOD::URL::TOKEN</code>`, {parse_mode: "HTML"}).catch(() => { }); return true; }
+        
+        if (!name || name.length < 2) { await ctx.reply(`❌ Name too short!`).catch(() => { }); return true; }
+        if (!["GET", "POST"].includes(method)) method = "GET";
+        if (!url.startsWith("http")) { await ctx.reply(`❌ Invalid URL!`).catch(() => { }); return true; }
+        
+        let existing = await AutoUpi.findOne({ name });
+        if (existing) { await ctx.reply(`❌ Already exists!`).catch(() => { }); return true; }
+        
+        let gwId = "AUTO" + Date.now().toString().slice(-8);
+        await AutoUpi.create({ gatewayId: gwId, name, apiUrl: url, method, apiKey, status: "active", minAmount: 0, maxAmount: 0, taxPercent: 0 });
+        
+        await logAdminAction(userId, ctx.from.first_name || "Admin", "Auto UPI Added (Advanced)", name, 0, null);
+        await ctx.reply(`✅ <b>Auto UPI Added!</b>\n\n🌐 ${name}\n🟢 ON\nMethod: ${method}\n${apiKey ? `🔑 Token/Key: <code>${apiKey.substring(0, 8)}...</code>\n` : ""}\nURL:\n<code>${url}</code>`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("View", `auto_upi_view_${gwId}`).row().text("Back", "adm_auto_upi") }).catch(() => { });
+        return true;
+    }
+
+    // ✅ AUTO BANK GATEWAY TEXT INPUT HANDLERS
+    if (state === "AUTO_BANK_ADD") {
+        delete userState[userId];
+        let parts = text.trim().split("::").map(p => p.trim());
+        let name, url;
+        if (parts.length === 2) { name = parts[0].toUpperCase().replace(/\s+/g, "_"); url = parts[1]; }
+        else { name = "BANK_" + Date.now().toString().slice(-6); url = text.trim(); }
+        
+        if (!url.startsWith("http")) { await ctx.reply(`❌ Invalid URL!`).catch(() => { }); return true; }
+        
+        let gwId = "ABG" + Date.now().toString().slice(-8);
+        await AutoBank.create({ gatewayId: gwId, name, apiUrl: url, status: "active", minAmount: 0, maxAmount: 0, taxPercent: 0 });
+        
+        await ctx.reply(`✅ <b>Auto Bank Gateway Added!</b>\n\n🌐 ${name}\n🟢 ON\nURL:\n<code>${url}</code>`, { 
+            parse_mode: "HTML", 
+            reply_markup: new InlineKeyboard().text("View", `auto_bank_view_${gwId}`).row().text("Back", "adm_auto_bank") 
+        }).catch(() => { });
+        return true;
+    }
+
+    return await originalHandleAdminTextInput(ctx, text, userId, state);
+};
+
+// 4. NEW: AUTO BANK GATEWAY SYSTEM
+const autoBankSchema = new mongoose.Schema({
+  gatewayId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  apiUrl: { type: String, required: true },
+  method: { type: String, default: "GET" },
+  status: { type: String, default: "active" },
+  minAmount: { type: Number, default: 0 },
+  maxAmount: { type: Number, default: 0 },
+  taxPercent: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+const AutoBank = mongoose.models.AutoBank || mongoose.model("AutoBank", autoBankSchema);
+
+// Add "Auto Bank Gateway" button to Withdrawal Step
+const originalRenderWithdrawalStep = renderWithdrawalStep;
+renderWithdrawalStep = async function(ctx) {
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  let text = `🚀 <b>Withdrawal Step</b>\n\nChoose withdrawal method:`;
+  let kb = new InlineKeyboard()
+    .text(makeBtn("🌐 Gateway"), "adm_gateway_list").row()
+    .text(makeBtn("⚡ Auto UPI"), "adm_auto_upi").row()
+    .text(makeBtn("🏦 Auto Bank Gateway"), "adm_auto_bank").row() // NEW
+    .text(makeBtn("Back to Admin"), "admin");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+};
+
+// Auto Bank Admin Callbacks
+bot.callbackQuery("adm_auto_bank", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let banks = await AutoBank.find({}).sort({ createdAt: 1 }).lean();
+  let text = `🏦 <b>Auto Bank Gateways</b>\n\nTotal: ${banks.length}\n\n`;
+  let kb = new InlineKeyboard().text(makeBtn("➕ Add Bank Gateway"), "auto_bank_add").row();
+  for (let b of banks) {
+    kb.text(`${b.status === "active" ? "🟢" : "🔴"} ${b.name}`, `auto_bank_view_${b.gatewayId}`).row();
+  }
+  kb.text(makeBtn("Back"), "adm_gateway_menu");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+});
+
+bot.callbackQuery("auto_bank_add", async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  userState[ctx.from.id] = "AUTO_BANK_ADD";
+  await ctx.editMessageText(`➕ <b>Add Auto Bank Gateway</b>\n\nFormat:\n<code>NAME::URL</code>\n\nExample:\n<code>ICICI::https://api.bank.com/payout?acc={account}&amount={amount}</code>`, { 
+    parse_mode: "HTML", 
+    reply_markup: new InlineKeyboard().text("Cancel", "adm_auto_bank") 
+  }).catch(() => { });
+});
+
+bot.callbackQuery(/^auto_bank_view_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  if (!(await isAdmin(ctx.from.id))) return;
+  let gwId = ctx.callbackQuery.data.replace("auto_bank_view_", "");
+  let bank = await AutoBank.findOne({ gatewayId: gwId }).lean();
+  if (!bank) return;
+  
+  let text = `🏦 <b>${bank.name}</b>\n\nStatus: ${bank.status === "active" ? "🟢 ON" : "🔴 OFF"}\nURL:\n<code>${bank.apiUrl}</code>`;
+  let kb = new InlineKeyboard()
+    .text(makeBtn(bank.status === "active" ? "Turn OFF" : "Turn ON"), `auto_bank_toggle_${gwId}`).row()
+    .text(makeBtn("Delete"), `auto_bank_del_${gwId}`).row()
+    .text(makeBtn("Back"), "adm_auto_bank");
+  await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
+});
+
+bot.callbackQuery(/^auto_bank_toggle_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let gwId = ctx.callbackQuery.data.replace("auto_bank_toggle_", "");
+  let bank = await AutoBank.findOne({ gatewayId: gwId });
+  if (bank) { bank.status = bank.status === "active" ? "off" : "active"; await bank.save(); }
+  ctx.editMessageText(`✅ Status Updated`, { reply_markup: new InlineKeyboard().text("Back", `auto_bank_view_${gwId}`) }).catch(() => { });
+});
+
+bot.callbackQuery(/^auto_bank_del_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let gwId = ctx.callbackQuery.data.replace("auto_bank_del_", "");
+  await AutoBank.deleteOne({ gatewayId: gwId });
+  await bot.callbackQuery("adm_auto_bank")(ctx); // refresh
+});
+
+// User Withdrawal Flow for Auto Bank
+const originalBuildWithdrawMenu = buildWithdrawMenu;
+buildWithdrawMenu = async function() {
+  let buttons = await originalBuildWithdrawMenu();
+  let banks = await AutoBank.find({ status: "active" }).lean();
+  for (let b of banks) {
+    buttons.push([{ text: `🏦 ${b.name}`, callback_data: `wd_bank_${b.gatewayId}` }]);
+  }
+  return buttons;
+};
+
+bot.callbackQuery(/^wd_bank_/, async (ctx) => {
+  ctx.answerCallbackQuery().catch(() => { });
+  let userId = ctx.from.id;
+  let gwId = ctx.callbackQuery.data.replace("wd_bank_", "");
+  let bank = await AutoBank.findOne({ gatewayId: gwId, status: "active" });
+  if (!bank) return ctx.reply("❌ Gateway not available").catch(() => { });
+  
+  let user = await getUser(userId);
+  if (!user.bankAccNo || user.bankAccNo === "Not Set") {
+    return ctx.reply(`❌ Please link your Bank Account first from Payout Method.`, { reply_markup: new InlineKeyboard().text("Payout Method", "btn_payout_back") }).catch(() => { });
+  }
+  
+  userState[userId] = `AUTO_BANK_AMOUNT_${gwId}`;
+  await ctx.reply(`Enter Withdraw Amount`, { reply_markup: new Keyboard().text("Cancel").resized().oneTime() }).catch(() => { });
+});
+
+// Catch amount input for Auto Bank
+const originalOnMessageText = bot.on("message:text");
+// Overriding message:text to handle AUTO_BANK_AMOUNT_ is tricky, so we inject into the original flow.
+// In your main file, inside `bot.on("message:text")` find `if (state.startsWith("MANUAL_AMOUNT_"))` and add `AUTO_BANK_AMOUNT_` logic. 
+// BUT for a clean patch, we can register a high-priority listener:
+bot.on("message:text", async (ctx, next) => {
+    let state = userState[ctx.from.id];
+    if (!state || !state.startsWith("AUTO_BANK_AMOUNT_")) return next();
+    
+    delete userState[ctx.from.id];
+    let gwId = state.replace("AUTO_BANK_AMOUNT_", "");
+    let bank = await AutoBank.findOne({ gatewayId: gwId, status: "active" });
+    if (!bank) return;
+    
+    let amount = parseFloat(ctx.message.text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid amount");
+    
+    let user = await getUser(ctx.from.id);
+    if (user.balance < amount) return ctx.reply("❌ Insufficient balance");
+    
+    user.balance -= amount;
+    await user.save();
+    await logBalanceHistory(ctx.from.id, `Withdrawn via Bank (${bank.name})`, -amount);
+    
+    // Processing message
+    let msg = await ctx.reply("⏳ Processing...").catch(() => null);
+    if (!msg) return;
+    
+    let finalUrl = bank.apiUrl
+        .replace(/{account}/g, encodeURIComponent(user.bankAccNo))
+        .replace(/{ifsc}/g, encodeURIComponent(user.bankIfsc))
+        .replace(/{amount}/g, amount)
+        .replace(/{comment}/g, encodeURIComponent("WD" + Date.now()));
+        
+    let isSuccess = false;
+    let resData = "";
+    let txnId = null;
+    try {
+        let res = await axios.get(finalUrl, { timeout: 30000 });
+        resData = JSON.stringify(res.data);
+        isSuccess = res.data.status === "success" || res.data.success === true || /success/i.test(resData);
+        txnId = res.data.txn_id || res.data.txnId || res.data.orderId;
+    } catch (e) {
+        resData = e.message;
+    }
+    
+    if (isSuccess) {
+        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, `✅ Withdrawal Successful!\n\nAmount: ₹${amount}\nBank: ${bank.name}\nTXN: ${txnId}`, { parse_mode: "HTML" }).catch(() => { });
+    } else {
+        user.balance += amount;
+        await user.save();
+        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, `❌ Withdrawal Failed\nRefunded: ₹${user.balance}`, { parse_mode: "HTML" }).catch(() => { });
+    }
+    return;
+});
+
 setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => { });
