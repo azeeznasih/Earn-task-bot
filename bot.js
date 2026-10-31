@@ -2919,8 +2919,8 @@ bot.on("message:text", async (ctx, next) => {
       let withdrawEnabled = await getConfig("withdraw_enabled", true);
       if (!withdrawEnabled) {
         let isAdminU = await isAdmin(userId);
-        if (!isAdminU) return ctx.reply(`⚠️ ${toSmallCaps("Withdrawals are currently disabled")}`, { parse_mode "HTML" }).catch(() => { });
-      }
+     if (!isAdminU) return ctx.reply(`⚠️ ${toSmallCaps("Withdrawals are currently disabled")}`, { parse_mode "HTML" }).catch(() => { });
+
       return sendWithdrawMenu(ctx, false);
     }
     else {
