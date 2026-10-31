@@ -8110,7 +8110,7 @@ if (state.startsWith("AUTO_UPI_MIN_")) {
   let gwId = state.replace("AUTO_UPI_MIN_", "");
   delete userState[userId];
   let amt = parseFloat(text);
-  if (isNaN(amt) || amt      if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`).catch(() => { }); return true; }
+ if (isNaN(amt) || amt < 0) { await ctx.reply(`❌ Invalid!`).catch(() => { }); return true; }
       await AutoUpi.updateOne({ gatewayId: gwId }, { minAmount: amt });
       await ctx.reply(`✅ Min: ₹${amt}`, { reply_markup: new InlineKeyboard().text("Back", `auto_upi_edit_${gwId}`).primary() }).catch(() => { });
       return true;
