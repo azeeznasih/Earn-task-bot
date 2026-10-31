@@ -666,7 +666,7 @@ async function getConfig(key, defaultValue) {
   let conf = await Config.findOne({ key }).lean();
   let value = conf ? conf.value : defaultValue;
   configCache.data[key] = value;
-  return  }
+  return value;
 }
 
 async function setConfig(key, value) {
