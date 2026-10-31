@@ -7215,6 +7215,142 @@ server.on('error', (err) => {
 process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
 process.on('SIGINT', () => { server.close(() => process.exit(0)); });
 
+// ==========================================
+// ✅ AUTO UPI UNIVERSAL SUPPORT (Ravi Wallet & Others)
+// ==========================================
+
+const originalProcessAutoUpiPayout = processAutoUpiPayout;
+processAutoUpiPayout = async function({ bot, userId, amount, gateway, upiId }) {
+  try {
+    let ref = "AUTO" + Date.now();
+    let apiUrl = gateway.apiUrl || "";
+    let method = (gateway.method || "GET").toUpperCase();
+    let token = gateway.apiKey || "";
+    let finalUrl = apiUrl;
+    
+    if (finalUrl.includes("{upi_id}") || finalUrl.includes("{upi}") || finalUrl.includes("{amount}")) {
+        finalUrl = finalUrl
+            .replace(/{upi_id}/g, encodeURIComponent(upiId))
+            .replace(/{upi}/g, encodeURIComponent(upiId))
+            .replace(/{amount}/g, amount)
+            .replace(/{token}/g, token);
+        if (token && !finalUrl.includes("token=") && !finalUrl.includes(token)) {
+            let separator = finalUrl.includes("?") ? "&" : "?";
+            finalUrl += `${separator}token=${encodeURIComponent(token)}`;
+        }
+    } else {
+        let separator = apiUrl.includes("?") ? "&" : "?";
+        let tokenParam = token ? `token=${encodeURIComponent(token)}&` : "";
+        finalUrl = `${apiUrl}${separator}${tokenParam}upi=${encodeURIComponent(upiId)}&amount=${amount}&order_id=${ref}`;
+    }
+
+    let response;
+    let resData;
+    try {
+      response = await axios({ method: method, url: finalUrl, timeout: 30000 });
+      try { resData = JSON.stringify(response.data); }
+      catch (e) { resData = String(response.data); }
+    } catch (apiErr) {
+      let errorMsg = apiErr.response?.data?.message || apiErr.message || 'Auto UPI request failed';
+      return { status: 'error', message: errorMsg };
+    }
+
+    let isSuccess = false;
+    let txnId = null;
+    try {
+      let data = response.data;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
+      if (data && typeof data === 'object') {
+        isSuccess = data.status === 'success' || data.status === 'Success' || data.success === true;
+        txnId = data.txn_id || data.transaction_id || data.order_id || null;
+      }
+    } catch (parseErr) { }
+
+    if (!isSuccess) {
+      let errMsg = response.data?.message || 'Gateway declined';
+      return { status: 'failed', message: errMsg, rawResponse: resData ? resData.substring(0, 300) : '' };
+    }
+
+    let user = await User.findOne({ userId });
+    if (!user) return { status: 'error', message: 'User not found' };
+
+    let newBalance = user.balance;
+    let botUsername = bot.botInfo ? bot.botInfo.username : "Bot";
+    let maskedUPI = halfMaskUPI(upiId);
+
+    let msg = `✅ <b>New Auto UPI Withdrawal</b> ✅\n\n` +
+              `🟢 <b>User :</b> <b>${userId}</b>\n` +
+              `🤘 <b>Remaining Balance :-</b> ₹<code>${newBalance.toFixed(2)}</code>\n\n` +
+              `🚀 <b>Amount :</b> ₹<b><code>${amount}</code></b> INR (-)\n` +
+              `🏦 <b>UPI :</b> <b><code>${maskedUPI}</code></b>\n` +
+              `🌐 <b>Gateway :</b> ${gateway.name}\n\n` +
+              `💡 <b>Bot:</b> @${botUsername}\n\n` +
+              `⚠️ <b>${gateway.name} Response:</b>\n<code>${resData}</code>`;
+
+    let payoutChannel = await getPayoutChannel("auto_upi");
+    if (payoutChannel && payoutChannel !== "Not Set") {
+      try { await bot.api.sendMessage(payoutChannel, msg, { parse_mode: "HTML" }).catch(() => { }); } catch (e) { }
+    }
+
+    return { status: 'success', txnNumber: txnId || generateTxnNumber(), rawResponse: resData };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+};
+
+const originalHandleAdminTextInput = handleAdminTextInput;
+handleAdminTextInput = async function(ctx, text, userId, state) {
+    if (state === "AUTO_UPI_ADVANCED_INPUT") {
+        delete userState[userId];
+        let parts = text.trim().split("::").map(p => p.trim());
+        let name, method, url, apiKey = "", apiSecret = "";
+        
+        if (parts.length === 4) { 
+            name = parts[0].toUpperCase(); 
+            method = parts[1].toUpperCase(); 
+            url = parts[2]; 
+            apiKey = parts[3]; 
+        }
+        else if (parts.length === 3) { 
+            name = parts[0].toUpperCase(); 
+            method = parts[1].toUpperCase(); 
+            url = parts[2]; 
+        }
+        else if (parts.length === 2) { 
+            name = parts[0].toUpperCase(); 
+            method = "GET"; 
+            url = parts[1]; 
+        }
+        else { 
+            await ctx.reply(`❌ Invalid format!\nUse: <code>NAME::METHOD::URL::TOKEN</code>`, {parse_mode: "HTML"}).catch(() => { }); 
+            return true; 
+        }
+        
+        if (!name || name.length < 2) { await ctx.reply(`❌ Name too short!`).catch(() => { }); return true; }
+        if (!["GET", "POST"].includes(method)) method = "GET";
+        if (!url.startsWith("http")) { await ctx.reply(`❌ Invalid URL!`).catch(() => { }); return true; }
+        
+        let existing = await AutoUpi.findOne({ name });
+        if (existing) { await ctx.reply(`❌ Already exists!`).catch(() => { }); return true; }
+        
+        let gwId = "AUTO" + Date.now().toString().slice(-8);
+        
+        await AutoUpi.create({ 
+            gatewayId: gwId, name, apiUrl: url, method, apiKey, apiSecret, 
+            status: "active", minAmount: 0, maxAmount: 0, taxPercent: 0 
+        });
+        
+        await logAdminAction(userId, ctx.from.first_name || "Admin", "Auto UPI Added (Advanced)", name, 0, null);
+        await ctx.reply(
+            `✅ <b>Auto UPI Added!</b>\n\n🌐 ${name}\n🟢 ON\nMethod: ${method}\n${apiKey ? `🔑 Token/Key: <code>${apiKey.substring(0, 8)}...</code>\n` : ""}\nURL:\n<code>${url}</code>`, 
+            { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("View", `auto_upi_view_${gwId}`).row().text("Back", "adm_auto_upi") }
+        ).catch(() => { });
+        return true;
+    }
+    
+    return await originalHandleAdminTextInput(ctx, text, userId, state);
+};
+
 setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => { });
