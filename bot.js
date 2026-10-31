@@ -2936,6 +2936,7 @@ bot.on("message:text", async (ctx, next) => {
       }
       return sendUnknownCommand(ctx);
     }
+    }
   } catch (e) {
     console.error("message:text error:", e.message);
   }
