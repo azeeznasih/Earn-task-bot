@@ -7352,7 +7352,7 @@ handleAdminTextInput = async function(ctx, text, userId, state) {
 };
 
 // ==========================================
-// ✅ UNIVERSAL GATEWAY & AUTO BANK GATEWAY SUPPORT
+// ✅ UNIVERSAL GATEWAY & AUTO BANK GATEWAY SUPPORT (FIXED)
 // ==========================================
 
 // 1. NORMAL GATEWAY UNIVERSAL PATCH (VSV Support)
@@ -7422,7 +7422,7 @@ processGatewayPayout = async function({ bot, userId, amount, gatewayInfo, wallet
 };
 
 // 2. AUTO UPI UNIVERSAL PATCH
-const originalProcessAutoUpiPayout = processAutoUpiPayout;
+const originalProcessAutoUpiPayoutFn = processAutoUpiPayout;
 processAutoUpiPayout = async function({ bot, userId, amount, gateway, upiId }) {
   try {
     let apiUrl = gateway.apiUrl || "";
@@ -7467,8 +7467,22 @@ processAutoUpiPayout = async function({ bot, userId, amount, gateway, upiId }) {
   } catch (e) { return { status: 'error', message: e.message }; }
 };
 
-// 3. OVERRIDE ADMIN TEXT INPUT (For Auto UPI Token Support)
-const originalHandleAdminTextInput = handleAdminTextInput;
+// 3. AUTO BANK GATEWAY SCHEMA & LOGIC
+const autoBankSchema = new mongoose.Schema({
+  gatewayId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  apiUrl: { type: String, required: true },
+  method: { type: String, default: "GET" },
+  status: { type: String, default: "active" },
+  minAmount: { type: Number, default: 0 },
+  maxAmount: { type: Number, default: 0 },
+  taxPercent: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+const AutoBank = mongoose.models.AutoBank || mongoose.model("AutoBank", autoBankSchema);
+
+// 4. OVERRIDE ADMIN TEXT INPUT (For Auto UPI & Auto Bank)
+const originalHandleAdminTextInputFn = handleAdminTextInput;
 handleAdminTextInput = async function(ctx, text, userId, state) {
     if (state === "AUTO_UPI_ADVANCED_INPUT") {
         delete userState[userId];
@@ -7495,7 +7509,6 @@ handleAdminTextInput = async function(ctx, text, userId, state) {
         return true;
     }
 
-    // ✅ AUTO BANK GATEWAY TEXT INPUT HANDLERS
     if (state === "AUTO_BANK_ADD") {
         delete userState[userId];
         let parts = text.trim().split("::").map(p => p.trim());
@@ -7515,25 +7528,11 @@ handleAdminTextInput = async function(ctx, text, userId, state) {
         return true;
     }
 
-    return await originalHandleAdminTextInput(ctx, text, userId, state);
+    return await originalHandleAdminTextInputFn(ctx, text, userId, state);
 };
 
-// 4. NEW: AUTO BANK GATEWAY SYSTEM
-const autoBankSchema = new mongoose.Schema({
-  gatewayId: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  apiUrl: { type: String, required: true },
-  method: { type: String, default: "GET" },
-  status: { type: String, default: "active" },
-  minAmount: { type: Number, default: 0 },
-  maxAmount: { type: Number, default: 0 },
-  taxPercent: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
-});
-const AutoBank = mongoose.models.AutoBank || mongoose.model("AutoBank", autoBankSchema);
-
-// Add "Auto Bank Gateway" button to Withdrawal Step
-const originalRenderWithdrawalStep = renderWithdrawalStep;
+// 5. RENDER WITHDRAWAL STEP WITH AUTO BANK BUTTON
+const originalRenderWithdrawalStepFn = renderWithdrawalStep;
 renderWithdrawalStep = async function(ctx) {
   const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
   const makeBtn = (text) => `${pad}${text}${pad}`;
@@ -7541,15 +7540,17 @@ renderWithdrawalStep = async function(ctx) {
   let kb = new InlineKeyboard()
     .text(makeBtn("🌐 Gateway"), "adm_gateway_list").row()
     .text(makeBtn("⚡ Auto UPI"), "adm_auto_upi").row()
-    .text(makeBtn("🏦 Auto Bank Gateway"), "adm_auto_bank").row() // NEW
+    .text(makeBtn("🏦 Auto Bank Gateway"), "adm_auto_bank").row()
     .text(makeBtn("Back to Admin"), "admin");
   await ctx.editMessageText(text, { reply_markup: kb, parse_mode: "HTML" }).catch(() => { });
 };
 
-// Auto Bank Admin Callbacks
+// 6. AUTO BANK ADMIN CALLBACKS
 bot.callbackQuery("adm_auto_bank", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
   let banks = await AutoBank.find({}).sort({ createdAt: 1 }).lean();
   let text = `🏦 <b>Auto Bank Gateways</b>\n\nTotal: ${banks.length}\n\n`;
   let kb = new InlineKeyboard().text(makeBtn("➕ Add Bank Gateway"), "auto_bank_add").row();
@@ -7564,9 +7565,11 @@ bot.callbackQuery("auto_bank_add", async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   if (!(await isAdmin(ctx.from.id))) return;
   userState[ctx.from.id] = "AUTO_BANK_ADD";
-  await ctx.editMessageText(`➕ <b>Add Auto Bank Gateway</b>\n\nFormat:\n<code>NAME::URL</code>\n\nExample:\n<code>ICICI::https://api.bank.com/payout?acc={account}&amount={amount}</code>`, { 
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
+  await ctx.editMessageText(`➕ <b>Add Auto Bank Gateway</b>\n\nFormat:\n<code>NAME::URL</code>\n\nExample:\n<code>ICICI::https://api.bank.com/payout?acc={account}&ifsc={ifsc}&amount={amount}</code>`, { 
     parse_mode: "HTML", 
-    reply_markup: new InlineKeyboard().text("Cancel", "adm_auto_bank") 
+    reply_markup: new InlineKeyboard().text(makeBtn("Cancel"), "adm_auto_bank") 
   }).catch(() => { });
 });
 
@@ -7576,6 +7579,8 @@ bot.callbackQuery(/^auto_bank_view_/, async (ctx) => {
   let gwId = ctx.callbackQuery.data.replace("auto_bank_view_", "");
   let bank = await AutoBank.findOne({ gatewayId: gwId }).lean();
   if (!bank) return;
+  const pad = "\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003";
+  const makeBtn = (text) => `${pad}${text}${pad}`;
   
   let text = `🏦 <b>${bank.name}</b>\n\nStatus: ${bank.status === "active" ? "🟢 ON" : "🔴 OFF"}\nURL:\n<code>${bank.apiUrl}</code>`;
   let kb = new InlineKeyboard()
@@ -7590,27 +7595,29 @@ bot.callbackQuery(/^auto_bank_toggle_/, async (ctx) => {
   let gwId = ctx.callbackQuery.data.replace("auto_bank_toggle_", "");
   let bank = await AutoBank.findOne({ gatewayId: gwId });
   if (bank) { bank.status = bank.status === "active" ? "off" : "active"; await bank.save(); }
-  ctx.editMessageText(`✅ Status Updated`, { reply_markup: new InlineKeyboard().text("Back", `auto_bank_view_${gwId}`) }).catch(() => { });
+  await rerender(ctx, `auto_bank_view_${gwId}`);
 });
 
 bot.callbackQuery(/^auto_bank_del_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   let gwId = ctx.callbackQuery.data.replace("auto_bank_del_", "");
   await AutoBank.deleteOne({ gatewayId: gwId });
-  await bot.callbackQuery("adm_auto_bank")(ctx); // refresh
+  await rerender(ctx, `adm_auto_bank`);
 });
 
-// User Withdrawal Flow for Auto Bank
-const originalBuildWithdrawMenu = buildWithdrawMenu;
+// 7. OVERRIDE WITHDRAW MENU TO INCLUDE AUTO BANK
+const originalBuildWithdrawMenuFn = buildWithdrawMenu;
 buildWithdrawMenu = async function() {
-  let buttons = await originalBuildWithdrawMenu();
+  let buttons = await originalBuildWithdrawMenuFn();
   let banks = await AutoBank.find({ status: "active" }).lean();
   for (let b of banks) {
-    buttons.push([{ text: `🏦 ${b.name}`, callback_data: `wd_bank_${b.gatewayId}` }]);
+    let shortName = b.name.length > 15 ? b.name.substring(0, 15) + ".." : b.name;
+    buttons.push([{ text: `🏦 ${shortName}`, callback_data: `wd_bank_${b.gatewayId}` }]);
   }
   return buttons;
 };
 
+// 8. USER WITHDRAWAL FLOW FOR AUTO BANK
 bot.callbackQuery(/^wd_bank_/, async (ctx) => {
   ctx.answerCallbackQuery().catch(() => { });
   let userId = ctx.from.id;
@@ -7619,47 +7626,52 @@ bot.callbackQuery(/^wd_bank_/, async (ctx) => {
   if (!bank) return ctx.reply("❌ Gateway not available").catch(() => { });
   
   let user = await getUser(userId);
-  if (!user.bankAccNo || user.bankAccNo === "Not Set") {
-    return ctx.reply(`❌ Please link your Bank Account first from Payout Method.`, { reply_markup: new InlineKeyboard().text("Payout Method", "btn_payout_back") }).catch(() => { });
+  if (!user.bankAccNo || user.bankAccNo === "Not Set" || !user.bankIfsc || user.bankIfsc === "Not Set") {
+    return ctx.reply(`❌ Please link your Bank Account first from Payout Method.`, { 
+      reply_markup: new InlineKeyboard().text("Payout Method", "btn_payout_back") 
+    }).catch(() => { });
   }
   
   userState[userId] = `AUTO_BANK_AMOUNT_${gwId}`;
   await ctx.reply(`Enter Withdraw Amount`, { reply_markup: new Keyboard().text("Cancel").resized().oneTime() }).catch(() => { });
 });
 
-// Catch amount input for Auto Bank
-const originalOnMessageText = bot.on("message:text");
-// Overriding message:text to handle AUTO_BANK_AMOUNT_ is tricky, so we inject into the original flow.
-// In your main file, inside `bot.on("message:text")` find `if (state.startsWith("MANUAL_AMOUNT_"))` and add `AUTO_BANK_AMOUNT_` logic. 
-// BUT for a clean patch, we can register a high-priority listener:
+// Catch Amount Input for Auto Bank
 bot.on("message:text", async (ctx, next) => {
     let state = userState[ctx.from.id];
     if (!state || !state.startsWith("AUTO_BANK_AMOUNT_")) return next();
     
+    if (ctx.message.text.trim().toLowerCase() === "cancel") {
+        delete userState[ctx.from.id];
+        await ctx.reply(`✅ Cancelled`, { reply_markup: await buildKeyboardFromLayout(ctx.from.id) }).catch(() => { });
+        return;
+    }
+    
+    let amount = parseFloat(ctx.message.text);
+    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid amount. Try again or type 'Cancel'").catch(() => { });
+    
     delete userState[ctx.from.id];
     let gwId = state.replace("AUTO_BANK_AMOUNT_", "");
     let bank = await AutoBank.findOne({ gatewayId: gwId, status: "active" });
-    if (!bank) return;
-    
-    let amount = parseFloat(ctx.message.text);
-    if (isNaN(amount) || amount <= 0) return ctx.reply("❌ Invalid amount");
+    if (!bank) return ctx.reply("❌ Gateway not available").catch(() => { });
     
     let user = await getUser(ctx.from.id);
-    if (user.balance < amount) return ctx.reply("❌ Insufficient balance");
+    if (user.balance < amount) return ctx.reply(`❌ Insufficient balance. Your Balance: ₹${user.balance.toFixed(2)}`, { reply_markup: await buildKeyboardFromLayout(ctx.from.id) }).catch(() => { });
     
     user.balance -= amount;
     await user.save();
     await logBalanceHistory(ctx.from.id, `Withdrawn via Bank (${bank.name})`, -amount);
     
-    // Processing message
-    let msg = await ctx.reply("⏳ Processing...").catch(() => null);
+    let msg = await ctx.reply(`⏳ Processing ${buildProcessingDots(0)}`, { parse_mode: "HTML" }).catch(() => null);
     if (!msg) return;
     
     let finalUrl = bank.apiUrl
         .replace(/{account}/g, encodeURIComponent(user.bankAccNo))
+        .replace(/{acc_no}/g, encodeURIComponent(user.bankAccNo))
         .replace(/{ifsc}/g, encodeURIComponent(user.bankIfsc))
         .replace(/{amount}/g, amount)
-        .replace(/{comment}/g, encodeURIComponent("WD" + Date.now()));
+        .replace(/{comment}/g, encodeURIComponent("WD" + Date.now()))
+        .replace(/{userId}/g, ctx.from.id);
         
     let isSuccess = false;
     let resData = "";
@@ -7667,23 +7679,33 @@ bot.on("message:text", async (ctx, next) => {
     try {
         let res = await axios.get(finalUrl, { timeout: 30000 });
         resData = JSON.stringify(res.data);
-        isSuccess = res.data.status === "success" || res.data.success === true || /success/i.test(resData);
-        txnId = res.data.txn_id || res.data.txnId || res.data.orderId;
+        isSuccess = (res.data && (res.data.status === "success" || res.data.success === true)) || /success|completed|done|paid|processed/i.test(resData);
+        txnId = res.data?.txn_id || res.data?.txnId || res.data?.orderId || "WD" + Date.now();
     } catch (e) {
         resData = e.message;
     }
     
     if (isSuccess) {
-        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, `✅ Withdrawal Successful!\n\nAmount: ₹${amount}\nBank: ${bank.name}\nTXN: ${txnId}`, { parse_mode: "HTML" }).catch(() => { });
+        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, 
+            `🎁 Your Withdrawal of Rs.<code>${amount.toFixed(2)}</code> is Successfully Processed!🔥🔥\n\n` +
+            `🏦 Destination ==> <code>${halfMaskBank(user.bankAccNo)}</code>\n` +
+            `🚀 Transaction ID ==> <code>${txnId}</code>\n\n` +
+            `✅ Please Check Your Bank Account!`, 
+            { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(ctx.from.id) }
+        ).catch(() => { });
     } else {
         user.balance += amount;
         await user.save();
-        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, `❌ Withdrawal Failed\nRefunded: ₹${user.balance}`, { parse_mode: "HTML" }).catch(() => { });
+        await logBalanceHistory(ctx.from.id, "Bank Withdrawal Failed (Refunded)", amount);
+        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, 
+            `❌ Withdrawal Failed\n\nAmount: ₹${amount.toFixed(2)}\nRefunded: ₹${user.balance.toFixed(2)}`, 
+            { parse_mode: "HTML", reply_markup: await buildKeyboardFromLayout(ctx.from.id) }
+        ).catch(() => { });
     }
     return;
 });
 
-setInterval(() => {
+ setInterval(() => {
   let renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) fetch(renderUrl).catch(() => { });
 }, 300000);
