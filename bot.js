@@ -8227,6 +8227,8 @@ if (state.startsWith("AUTO_UPI_MIN_")) {
     }
 
     return true;
+    }
+  }
   } catch (e) {
     console.error("handleAdminTextInput error:", e.message);
     return true;
